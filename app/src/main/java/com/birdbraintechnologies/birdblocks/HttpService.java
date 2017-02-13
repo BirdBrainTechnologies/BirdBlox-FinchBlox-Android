@@ -1,6 +1,10 @@
 package com.birdbraintechnologies.birdblocks;
 
 import android.app.Service;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
@@ -13,6 +17,7 @@ public class HttpService extends Service {
     public static final String TAG = "HTTPService";
     public static final int DEFAULT_PORT = 22179;
     private Server server;
+    private BluetoothAdapter btAdapter;
 
     public HttpService() {
     }
@@ -25,9 +30,20 @@ public class HttpService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         try {
-            server = new Server(DEFAULT_PORT);
+            server = new Server(DEFAULT_PORT, this);
         } catch (IOException e) {
             Log.d(TAG, "Unable to start service " + e);
+        }
+
+        final BluetoothManager btManager =
+                (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+        btAdapter = btManager.getAdapter();
+
+        // Enable bt if disabled
+        if (!btAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            enableBtIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(enableBtIntent);
         }
         return START_STICKY;
     }
@@ -40,15 +56,19 @@ public class HttpService extends Service {
         }
     }
 
+    public BluetoothAdapter getBluetoothAdapter() {
+        return this.btAdapter;
+    }
+
 
     private static class Server extends NanoHTTPD {
         public static final String TAG = "NanoHTTPServer";
         private RequestRouter router;
 
-        public Server(int port) throws IOException {
+        public Server(int port, HttpService service) throws IOException {
             super(port);
             start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-            router = new RequestRouter();
+            router = new RequestRouter(service);
             Log.d(TAG, "Started server on port " + port);
         }
 

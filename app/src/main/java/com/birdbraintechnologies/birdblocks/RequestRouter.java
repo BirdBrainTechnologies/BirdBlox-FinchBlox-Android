@@ -1,6 +1,8 @@
 package com.birdbraintechnologies.birdblocks;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -14,14 +16,16 @@ import fi.iki.elonen.NanoHTTPD;
 public class RequestRouter {
 
     private HashMap<Pattern, RequestHandler> routes;
+    private HttpService service;
 
-    public RequestRouter() {
-        routes = new HashMap();
+    public RequestRouter(HttpService service) {
+        this.routes = new HashMap();
+        this.service = service;
         init();
     }
 
     private void init() {
-        addRoute("^/hummingbird/(.*)", new HummingbirdRequestHandler());
+        addRoute("^/hummingbird/(.*)$", new HummingbirdRequestHandler(service));
     }
 
     private void addRoute(String regex, RequestHandler handler) {
@@ -42,7 +46,11 @@ public class RequestRouter {
             Pattern p = e.getKey();
             Matcher match = p.matcher(path);
             if (match.matches()) {
-                return e.getValue().handleRequest(session);
+                List<String> args = new ArrayList<>();
+                for (int i = 1; i <= match.groupCount(); i++) {
+                    args.add(match.group(i));
+                }
+                return e.getValue().handleRequest(session, args);
             }
         }
 
