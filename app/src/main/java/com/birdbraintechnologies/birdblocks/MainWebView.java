@@ -9,6 +9,8 @@ import android.webkit.WebView;
 
 public class MainWebView extends AppCompatActivity {
 
+    private WebView webView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -17,11 +19,32 @@ public class MainWebView extends AppCompatActivity {
         HttpService service = new HttpService();
         startService(new Intent(this, HttpService.class));
 
-        WebView wv = (WebView) findViewById(R.id.main_webview);
-        wv.loadUrl("file:///android_asset/frontend/HummingbirdDragAndDrop.html");
-        wv.setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        webView = (WebView) findViewById(R.id.main_webview);
+        webView.loadUrl("file:///android_asset/frontend/HummingbirdDragAndDrop.html");
+        webView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN);
-        WebSettings webSettings = wv.getSettings();
+        WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
+        webView.resumeTimers();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        webView.onResume();
+        webView.resumeTimers();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        webView.pauseTimers();
+        webView.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        webView.destroy();
     }
 }
