@@ -1,9 +1,11 @@
-package com.birdbraintechnologies.birdblocks;
+package com.birdbraintechnologies.birdblocks.httpservice;
 
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
+
+import com.birdbraintechnologies.birdblocks.BluetoothHelper;
 
 import java.io.IOException;
 

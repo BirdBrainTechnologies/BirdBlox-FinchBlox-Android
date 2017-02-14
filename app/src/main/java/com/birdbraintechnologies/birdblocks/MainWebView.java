@@ -7,6 +7,8 @@ import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 
+import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
+
 public class MainWebView extends AppCompatActivity {
 
     private WebView webView;
