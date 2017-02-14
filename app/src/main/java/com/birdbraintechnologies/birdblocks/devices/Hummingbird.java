@@ -1,6 +1,6 @@
 package com.birdbraintechnologies.birdblocks.devices;
 
-import com.birdbraintechnologies.birdblocks.UARTConnection;
+import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 
 /**
  * Created by tsun on 2/14/17.

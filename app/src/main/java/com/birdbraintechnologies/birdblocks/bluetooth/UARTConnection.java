@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks;
+package com.birdbraintechnologies.birdblocks.bluetooth;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;

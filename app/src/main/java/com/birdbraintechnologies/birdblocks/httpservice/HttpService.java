@@ -5,7 +5,7 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
 
-import com.birdbraintechnologies.birdblocks.BluetoothHelper;
+import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
 
 import java.io.IOException;
 

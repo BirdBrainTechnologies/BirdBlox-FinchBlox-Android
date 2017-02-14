@@ -5,9 +5,9 @@ import android.bluetooth.le.ScanFilter;
 import android.os.ParcelUuid;
 import android.util.Log;
 
-import com.birdbraintechnologies.birdblocks.BluetoothHelper;
-import com.birdbraintechnologies.birdblocks.UARTConnection;
-import com.birdbraintechnologies.birdblocks.UARTSettings;
+import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
+import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
+import com.birdbraintechnologies.birdblocks.bluetooth.UARTSettings;
 import com.birdbraintechnologies.birdblocks.devices.Hummingbird;
 
 import java.util.ArrayList;
