@@ -26,8 +26,8 @@ public class HttpService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         try {
-            server = new Server(DEFAULT_PORT, this);
             btService = new BluetoothHelper(this);
+            server = new Server(DEFAULT_PORT, this);
         } catch (IOException e) {
             Log.d(TAG, "Unable to start service " + e);
         }

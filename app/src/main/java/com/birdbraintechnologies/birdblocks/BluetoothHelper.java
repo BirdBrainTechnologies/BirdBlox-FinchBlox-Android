@@ -2,6 +2,7 @@ package com.birdbraintechnologies.birdblocks;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
@@ -14,6 +15,7 @@ import android.os.Handler;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -28,12 +30,19 @@ public class BluetoothHelper {
     private BluetoothAdapter btAdapter;
     private Handler handler;
     private boolean btScanning;
-    private HashSet<BluetoothDevice> deviceList = new HashSet<>();
+    private Context context;
+    private HashMap<String, BluetoothDevice> deviceList;
 
     public BluetoothHelper(Context context) {
+        this.context = context;
+        this.btScanning = false;
+        this.handler = new Handler();
+        this.deviceList = new HashMap<>();
+
+        // Acquire bluetooth
         final BluetoothManager btManager =
                 (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
-        btAdapter = btManager.getAdapter();
+        this.btAdapter = btManager.getAdapter();
 
         // Enable bt if disabled
         if (!btAdapter.isEnabled()) {
@@ -57,9 +66,11 @@ public class BluetoothHelper {
 
         // Start scanning for devices
         btScanning = true;
-        ScanSettings.Builder settingsBuilder = new ScanSettings.Builder();
-        settingsBuilder.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY);
-        scanner.startScan(scanFilters, settingsBuilder.build(), populateDevices);
+
+        ScanSettings scanSettings = (new ScanSettings.Builder())
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .build();
+        scanner.startScan(scanFilters, scanSettings, populateDevices);
 
         // Wait until scanning is complete
         try {
@@ -71,7 +82,18 @@ public class BluetoothHelper {
             Log.e(TAG, e.toString());
         }
 
-        return new ArrayList<>(deviceList);
+        return new ArrayList<>(deviceList.values());
+    }
+
+    synchronized public UARTConnection connectToDeviceUART(String addr, UARTSettings settings) {
+        BluetoothDevice device = deviceList.get(addr);
+        if (device == null) {
+            return null;
+        }
+
+        UARTConnection conn = new UARTConnection(context, device, settings);
+
+        return conn;
     }
 
 
@@ -79,7 +101,7 @@ public class BluetoothHelper {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             super.onScanResult(callbackType, result);
-            deviceList.add(result.getDevice());
+            deviceList.put(result.getDevice().getAddress(), result.getDevice());
         }
     };
 }
