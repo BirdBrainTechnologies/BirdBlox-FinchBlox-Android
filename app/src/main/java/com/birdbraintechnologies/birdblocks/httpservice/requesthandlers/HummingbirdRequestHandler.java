@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.httpservice;
+package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.ScanFilter;
@@ -9,6 +9,8 @@ import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTSettings;
 import com.birdbraintechnologies.birdblocks.devices.Hummingbird;
+import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
 import java.util.ArrayList;
 import java.util.HashMap;
