@@ -5,6 +5,8 @@ import android.bluetooth.le.ScanFilter;
 import android.os.ParcelUuid;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblocks.devices.Hummingbird;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +30,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
     private HttpService service;
     private UARTSettings hbUARTSettings;
     private BluetoothHelper btHelper;
-    private HashMap<String, UARTConnection> connectedDevices;
+    private HashMap<String, Hummingbird> connectedDevices;
 
 
     public HummingbirdRequestHandler(HttpService service) {
@@ -82,35 +84,36 @@ public class HummingbirdRequestHandler implements RequestHandler {
         return devices.trim();
     }
 
-    private String connectToDevice(String deviceId) {
+    private String extractMAC(String deviceId) {
         Matcher match = Pattern.compile("^.*\\(([\\w\\:]+)\\)").matcher(deviceId);
-
         if (match.matches()) {
-            String deviceMAC = match.group(1);
-
-            Log.d(TAG, "Connecting to device: " + deviceMAC);
-
-            UARTConnection conn = btHelper.connectToDeviceUART(deviceMAC, this.hbUARTSettings);
-            connectedDevices.put(deviceMAC, conn);
+            return match.group(1);
         }
+        return "";
+    }
+
+    private Hummingbird getDeviceFromId(String deviceId) {
+        String deviceMAC = extractMAC(deviceId);
+        return connectedDevices.get(deviceMAC);
+    }
+
+    private String connectToDevice(String deviceId) {
+        String deviceMAC = extractMAC(deviceId);
+
+        // Create hummingbird
+        UARTConnection conn = btHelper.connectToDeviceUART(deviceMAC, this.hbUARTSettings);
+        Hummingbird device = new Hummingbird(conn);
+        connectedDevices.put(deviceMAC, device);
 
         return "";
     }
 
     private String disconnectFromDevice(String deviceId) {
-        Matcher match = Pattern.compile("^.*\\(([\\w\\:]+)\\)").matcher(deviceId);
-
-        if (match.matches()) {
-            String deviceMAC = match.group(1);
-
-            Log.d(TAG, "Disconnecting from device: " + deviceMAC);
-
-            UARTConnection conn = connectedDevices.remove(deviceMAC);
-            if (conn != null) {
-                conn.disconnect();
-            }
+        Hummingbird device = getDeviceFromId(deviceId);
+        if (device != null) {
+            Log.d(TAG, "Disconnecting from device: " + deviceId);
+            device.disconnect();
         }
-
         return "";
     }
 
@@ -133,9 +136,9 @@ public class HummingbirdRequestHandler implements RequestHandler {
         if (connectedDevices.size() == 0) {
             return "2";  // No devices connected
         }
-        for (UARTConnection conn : connectedDevices.values()) {
-            if (!conn.isConnected()) {
-                return "0";
+        for (Hummingbird device : connectedDevices.values()) {
+            if (!device.isConnected()) {
+                return "0";  // Some device is disconnected
             }
         }
         return "1";  // All devices are OK
