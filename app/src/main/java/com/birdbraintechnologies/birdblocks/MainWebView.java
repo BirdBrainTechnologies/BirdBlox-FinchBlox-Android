@@ -46,5 +46,6 @@ public class MainWebView extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         webView.destroy();
+        stopService(new Intent(this, HttpService.class));
     }
 }
