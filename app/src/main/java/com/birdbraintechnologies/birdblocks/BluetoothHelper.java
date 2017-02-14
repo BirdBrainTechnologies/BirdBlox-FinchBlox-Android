@@ -2,7 +2,6 @@ package com.birdbraintechnologies.birdblocks;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
@@ -16,7 +15,6 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -25,7 +23,7 @@ import java.util.List;
 
 public class BluetoothHelper {
     private static final String TAG = "BluetoothHelper";
-    private static final int SCAN_PERIOD = 500;
+    private static final int SCAN_PERIOD = 400;
 
     private BluetoothAdapter btAdapter;
     private Handler handler;
@@ -81,7 +79,6 @@ public class BluetoothHelper {
         } catch (InterruptedException e) {
             Log.e(TAG, e.toString());
         }
-
         return new ArrayList<>(deviceList.values());
     }
 
@@ -100,8 +97,9 @@ public class BluetoothHelper {
     private ScanCallback populateDevices = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
-            super.onScanResult(callbackType, result);
-            deviceList.put(result.getDevice().getAddress(), result.getDevice());
+            synchronized (deviceList) {
+                deviceList.put(result.getDevice().getAddress(), result.getDevice());
+            }
         }
     };
 }
