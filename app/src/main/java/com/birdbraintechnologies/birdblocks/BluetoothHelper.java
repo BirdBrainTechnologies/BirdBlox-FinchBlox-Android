@@ -30,6 +30,14 @@ public class BluetoothHelper {
     private boolean btScanning;
     private Context context;
     private HashMap<String, BluetoothDevice> deviceList;
+    private ScanCallback populateDevices = new ScanCallback() {
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            synchronized (deviceList) {
+                deviceList.put(result.getDevice().getAddress(), result.getDevice());
+            }
+        }
+    };
 
     public BluetoothHelper(Context context) {
         this.context = context;
@@ -92,14 +100,4 @@ public class BluetoothHelper {
 
         return conn;
     }
-
-
-    private ScanCallback populateDevices = new ScanCallback() {
-        @Override
-        public void onScanResult(int callbackType, ScanResult result) {
-            synchronized (deviceList) {
-                deviceList.put(result.getDevice().getAddress(), result.getDevice());
-            }
-        }
-    };
 }
