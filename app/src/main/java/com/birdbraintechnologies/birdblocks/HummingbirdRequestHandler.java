@@ -110,7 +110,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 conn.disconnect();
             }
         }
-        
+
         return "";
     }
 
@@ -130,6 +130,14 @@ public class HummingbirdRequestHandler implements RequestHandler {
     }
 
     private String getTotalStatus() {
-        return "2";  // TODO: Make this actual total status
+        if (connectedDevices.size() == 0) {
+            return "2";  // No devices connected
+        }
+        for (UARTConnection conn : connectedDevices.values()) {
+            if (!conn.isConnected()) {
+                return "0";
+            }
+        }
+        return "1";  // All devices are OK
     }
 }
