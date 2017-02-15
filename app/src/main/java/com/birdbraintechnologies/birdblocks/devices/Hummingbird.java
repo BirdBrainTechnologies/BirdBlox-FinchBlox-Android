@@ -5,7 +5,7 @@ import com.birdbraintechnologies.birdblocks.util.HummingbirdUtil;
 
 /**
  * Represents a Hummingbird device and all of its functionality: Setting outputs, reading sensors
- * 
+ *
  * @author Terence Sun (tsun1215)
  */
 public class Hummingbird {
