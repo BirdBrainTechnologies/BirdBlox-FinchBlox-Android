@@ -9,8 +9,13 @@ import android.webkit.WebView;
 
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 
+/**
+ * Displays the webview
+ *
+ * @author Terence Sun (tsun1215)
+ */
 public class MainWebView extends AppCompatActivity {
-
+    private static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
     private WebView webView;
 
     @Override
@@ -18,11 +23,12 @@ public class MainWebView extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_web_view);
 
-        HttpService service = new HttpService();
+        // Start service
         startService(new Intent(this, HttpService.class));
 
+        // Create webview
         webView = (WebView) findViewById(R.id.main_webview);
-        webView.loadUrl("file:///android_asset/frontend/HummingbirdDragAndDrop.html");
+        webView.loadUrl(PAGE_URL);
         webView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN);
         WebSettings webSettings = webView.getSettings();

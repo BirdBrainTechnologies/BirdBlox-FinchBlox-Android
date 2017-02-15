@@ -23,11 +23,14 @@ import java.util.regex.Pattern;
 import fi.iki.elonen.NanoHTTPD;
 
 /**
- * Created by tsun on 2/12/17.
+ * Class for handling requests from the router to Hummingbird devices
+ *
+ * @author Terence Sun (tsun1215)
  */
-
 public class HummingbirdRequestHandler implements RequestHandler {
     private static final String TAG = "HBRequestHandler";
+
+    /* UUIDs for different Hummingbird features */
     private static final String HUMMINGBIRD_DEVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
     private final static UUID UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
     private static final UUID TX_UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
@@ -45,6 +48,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
         this.btHelper = service.getBluetoothHelper();
         this.connectedDevices = new HashMap<>();
 
+        // Build UART settings
         this.hbUARTSettings = (new UARTSettings.Builder())
                 .setUARTServiceUUID(UART_UUID)
                 .setRxCharacteristicUUID(RX_UUID)
@@ -57,6 +61,8 @@ public class HummingbirdRequestHandler implements RequestHandler {
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
+
+        // Generate response body
         String responseBody = "";
         if (path.length == 1) {
             switch (path[0]) {
@@ -76,18 +82,26 @@ public class HummingbirdRequestHandler implements RequestHandler {
                     responseBody = disconnectFromDevice(path[0]);
                     break;
                 case "out":
-                    getDeviceFromId(path[0]).setOutput(path[2], Arrays.copyOfRange(path, 2, path.length));
+                    getDeviceFromId(path[0]).setOutput(path[2],
+                            Arrays.copyOfRange(path, 2, path.length));
                     break;
                 case "in":
                     responseBody = getDeviceFromId(path[0]).readSensor(path[2], path[3]);
                     break;
             }
         }
+
+        // Create response from the responseBody
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
         return r;
     }
 
+    /**
+     * Lists the Hummingbird devices that are seen
+     *
+     * @return List of Hummingbird devices
+     */
     private String listDevices() {
         List<BluetoothDevice> deviceList = btHelper.scanDevices(generateDeviceFilter());
         // TODO: Change this behavior to display correctly on device
@@ -98,6 +112,12 @@ public class HummingbirdRequestHandler implements RequestHandler {
         return devices.trim();
     }
 
+    /**
+     * Extracts the MAC address from the deviceId
+     *
+     * @param deviceId Id of the device
+     * @return MAC address of the device
+     */
     private String extractMAC(String deviceId) {
         Matcher match = Pattern.compile("^.*\\(([\\w\\:]+)\\)").matcher(deviceId);
         if (match.matches()) {
@@ -106,15 +126,28 @@ public class HummingbirdRequestHandler implements RequestHandler {
         return "";
     }
 
+    /**
+     * Finds a deviceId in the list of connected devices. Null if it does not exist.
+     *
+     * @param deviceId Device ID to find
+     * @return The connected device if it exists, null otherwise
+     */
     private Hummingbird getDeviceFromId(String deviceId) {
         String deviceMAC = extractMAC(deviceId);
         return connectedDevices.get(deviceMAC);
     }
 
+    /**
+     * Connects to the device and creates a Hummingbird instance in the list of connected devices
+     *
+     * @param deviceId Device ID to connect to
+     * @return No Response
+     */
     private String connectToDevice(String deviceId) {
         String deviceMAC = extractMAC(deviceId);
 
         // Create hummingbird
+        // TODO: Handle errors when connecting to device
         UARTConnection conn = btHelper.connectToDeviceUART(deviceMAC, this.hbUARTSettings);
         Hummingbird device = new Hummingbird(conn);
         connectedDevices.put(deviceMAC, device);
@@ -122,6 +155,12 @@ public class HummingbirdRequestHandler implements RequestHandler {
         return "";
     }
 
+    /**
+     * Disconnects from a given device
+     *
+     * @param deviceId Device ID of the device to disconnect from
+     * @return No Response
+     */
     private String disconnectFromDevice(String deviceId) {
         Hummingbird device = getDeviceFromId(deviceId);
         if (device != null) {
@@ -133,7 +172,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
     }
 
     /**
-     * Creatse a bluetooth scan device filter that only matches Hummingbird devices
+     * Creates a bluetooth scan device filter that only matches Hummingbird devices
      *
      * @return List of scan filters
      */
@@ -147,6 +186,12 @@ public class HummingbirdRequestHandler implements RequestHandler {
         return hummingbirdDeviceFilters;
     }
 
+    /**
+     * Returns the aggregated status of all connected Hummingbirds. 0 means at least 1 device is
+     * disconnected; 1 means that all devices are OK, 2 means that no devices are connected.
+     *
+     * @return 0, 1, or 2 depending on the aggregate status of all the devices
+     */
     private String getTotalStatus() {
         if (connectedDevices.size() == 0) {
             return "2";  // No devices connected

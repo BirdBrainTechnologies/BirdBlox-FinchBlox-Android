@@ -11,14 +11,16 @@ import java.io.IOException;
 
 import fi.iki.elonen.NanoHTTPD;
 
+/**
+ * Service that bundles the HTTP server and bluetooth
+ *
+ * @author Terence Sun (tsun1215)
+ */
 public class HttpService extends Service {
     public static final String TAG = "HTTPService";
     public static final int DEFAULT_PORT = 22179;
     private Server server;
     private BluetoothHelper btService;
-
-    public HttpService() {
-    }
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -29,6 +31,7 @@ public class HttpService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         try {
             btService = new BluetoothHelper(this);
+            // TODO: Handle errors in getting the Bluetooth service
             server = new Server(DEFAULT_PORT, this);
         } catch (IOException e) {
             Log.d(TAG, "Unable to start service " + e);
@@ -44,11 +47,18 @@ public class HttpService extends Service {
         }
     }
 
+    /**
+     * Gets the bluetooth helper object
+     * @return Bluetooth helper object
+     */
     public BluetoothHelper getBluetoothHelper() {
         return this.btService;
     }
 
 
+    /**
+     * HTTP server that serves all requests to this service
+     */
     private static class Server extends NanoHTTPD {
         public static final String TAG = "NanoHTTPServer";
         private RequestRouter router;

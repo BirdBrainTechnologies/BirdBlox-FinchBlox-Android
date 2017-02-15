@@ -3,9 +3,11 @@ package com.birdbraintechnologies.birdblocks.bluetooth;
 import java.util.UUID;
 
 /**
- * Created by tsun on 2/13/17.
+ * Encapsulates all the settings of a UART connection. Use UARTSettings.Builder to create
+ * UARTSetting objects.
+ *
+ * @author Terence Sun (tsun1215)
  */
-
 public class UARTSettings {
     private UUID uart;
     private UUID tx;
@@ -19,6 +21,8 @@ public class UARTSettings {
         this.rx = rxCharId;
         this.rxConfig = rxConfigId;
     }
+
+    /* Getters */
 
     public UUID getRxCharacteristicUUID() {
         return rx;
@@ -36,6 +40,9 @@ public class UARTSettings {
         return rxConfig;
     }
 
+    /**
+     * Builder for UARTSettings
+     */
     public static class Builder {
         private UUID uart, tx, rx, rxConfig;
 
