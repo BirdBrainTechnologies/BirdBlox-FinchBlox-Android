@@ -1,7 +1,11 @@
 package com.birdbraintechnologies.birdblocks.util;
 
 /**
- * Created by Brandon on 6/24/2015.
+ * Utility class for the Hummingbird. Contains library functions for converting from raw sensor
+ * values to different units.
+ *
+ * @author Brandon Price
+ * @author Terence Sun (tsun1215)
  */
 public class HummingbirdUtil {
 
