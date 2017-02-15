@@ -4,9 +4,10 @@ import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.util.HummingbirdUtil;
 
 /**
- * Created by tsun on 2/14/17.
+ * Represents a Hummingbird device and all of its functionality: Setting outputs, reading sensors
+ * 
+ * @author Terence Sun (tsun1215)
  */
-
 public class Hummingbird {
     /*
      * Command prefixes for the Hummingbird according to spec
