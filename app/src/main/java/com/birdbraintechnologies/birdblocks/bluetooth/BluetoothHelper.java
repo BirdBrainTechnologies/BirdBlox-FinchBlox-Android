@@ -18,18 +18,21 @@ import java.util.HashMap;
 import java.util.List;
 
 /**
- * Created by tsun on 2/13/17.
+ * Helper class for basic bluetooth connectivity
+ *
+ * @author Terence Sun (tsun1215)
  */
-
 public class BluetoothHelper {
     private static final String TAG = "BluetoothHelper";
-    private static final int SCAN_PERIOD = 400;
+    private static final int SCAN_DURATION = 400;  /* Length of time to perform a scan */
 
     private BluetoothAdapter btAdapter;
     private Handler handler;
     private boolean btScanning;
     private Context context;
     private HashMap<String, BluetoothDevice> deviceList;
+
+    /* Callback for populating the device list */
     private ScanCallback populateDevices = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
@@ -39,18 +42,23 @@ public class BluetoothHelper {
         }
     };
 
+    /**
+     * Initializes a Bluetooth helper
+     *
+     * @param context Context that bluetooth is being used by
+     */
     public BluetoothHelper(Context context) {
         this.context = context;
         this.btScanning = false;
         this.handler = new Handler();
         this.deviceList = new HashMap<>();
 
-        // Acquire bluetooth
+        // Acquire Bluetooth service
         final BluetoothManager btManager =
                 (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         this.btAdapter = btManager.getAdapter();
 
-        // Enable bt if disabled
+        // Ask to enable Bluetooth if disabled
         if (!btAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             enableBtIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -58,21 +66,28 @@ public class BluetoothHelper {
         }
     }
 
+    /**
+     * Scans for Bluetooth devices that matches the filter.
+     *
+     * @param scanFilters List of bluetooth.le.ScanFilter to filter by
+     * @return List of devices that matches the filters
+     */
     synchronized public List<BluetoothDevice> scanDevices(List<ScanFilter> scanFilters) {
         final BluetoothLeScanner scanner = btAdapter.getBluetoothLeScanner();
 
-        // Schedule thread to stop scanning after SCAN_PERIOD
+        // Schedule thread to stop scanning after SCAN_DURATION
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 btScanning = false;
                 scanner.stopScan(populateDevices);
             }
-        }, SCAN_PERIOD);
+        }, SCAN_DURATION);
 
         // Start scanning for devices
         btScanning = true;
 
+        // Build scan settings (scan as fast as possible)
         ScanSettings scanSettings = (new ScanSettings.Builder())
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .build();
@@ -81,15 +96,21 @@ public class BluetoothHelper {
         // Wait until scanning is complete
         try {
             while (btScanning) {
-                Thread.sleep(SCAN_PERIOD);
+                Thread.sleep(SCAN_DURATION);
             }
-            ;
         } catch (InterruptedException e) {
             Log.e(TAG, e.toString());
         }
         return new ArrayList<>(deviceList.values());
     }
 
+    /**
+     * Connects to a device and returns the resulting connection
+     *
+     * @param addr     MAC Address of the device to connect to
+     * @param settings Settings to define the UART connection's TX and RX lines
+     * @return Result connection, null if the given MAC Address doesn't match any scanned device
+     */
     synchronized public UARTConnection connectToDeviceUART(String addr, UARTSettings settings) {
         BluetoothDevice device = deviceList.get(addr);
         if (device == null) {
