@@ -112,5 +112,6 @@ public class UARTConnection extends BluetoothGattCallback {
 
     public void disconnect() {
         btGatt.disconnect();
+        btGatt.close();
     }
 }
