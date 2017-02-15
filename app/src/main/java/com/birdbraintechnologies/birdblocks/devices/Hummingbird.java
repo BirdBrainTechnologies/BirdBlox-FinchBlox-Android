@@ -1,6 +1,7 @@
 package com.birdbraintechnologies.birdblocks.devices;
 
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
+import com.birdbraintechnologies.birdblocks.util.HummingbirdUtil;
 
 /**
  * Created by tsun on 2/14/17.
@@ -53,8 +54,19 @@ public class Hummingbird {
 
         // Trigger a read of all sensor values
         byte[] values = conn.writeBytesWithResponse(new byte[]{READ_ALL_CMD, '3'});
-        int sensorValue = (values[port] & 0xFF);  // Get unsigned value from byte
-        return Double.toString((sensorValue)/2.55);
+        byte rawSensor = values[port];
+
+        switch (sensorType) {
+            case "distance":
+                return Double.toString(HummingbirdUtil.RawToDist(rawSensor));
+            case "temperature":
+                return Double.toString(HummingbirdUtil.RawToTemp(rawSensor));
+            case "sound":
+            case "light":
+            case "sensor":
+            default:
+                return Double.toString(HummingbirdUtil.RawToPercent(rawSensor));
+        }
     }
 
     public boolean setServo(int port, int angle) {
