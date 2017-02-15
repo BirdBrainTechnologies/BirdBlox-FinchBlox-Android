@@ -13,22 +13,36 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * Created by tsun on 2/13/17.
+ * Represents a UART connection established via Bluetooth Low Energy. Communicates using the RX and
+ * TX lines.
+ *
+ * @author Terence Sun (tsun1215)
  */
-
 public class UARTConnection extends BluetoothGattCallback {
     private static final String TAG = UARTConnection.class.getName();
-    private int connectionState;
+
+    /* Latches to handle serialization of async reads/writes */
     private CountDownLatch startLatch = new CountDownLatch(1);
     private CountDownLatch doneLatch = new CountDownLatch(1);
     private CountDownLatch resultLatch = new CountDownLatch(1);
-    private UUID uartUUID, txUUID, rxUUID, rxConfigUUID;
-    private BluetoothGatt btGatt;
 
+    /* UUIDs for the communication lines */
+    private UUID uartUUID, txUUID, rxUUID, rxConfigUUID;
+
+    private int connectionState;
+    private BluetoothGatt btGatt;
     private BluetoothGattCharacteristic tx;
     private BluetoothGattCharacteristic rx;
 
 
+    /**
+     * Initializes a UARTConnection. This needs to know the context the bluetooth connection is
+     * being made from (Activity, Service, etc)
+     *
+     * @param context  Context that the connection is begin made from
+     * @param device   Device to connect to
+     * @param settings Settings for connecting via UART
+     */
     public UARTConnection(Context context, BluetoothDevice device, UARTSettings settings) {
         this.uartUUID = settings.getUARTServiceUUID();
         this.txUUID = settings.getTxCharacteristicUUID();
@@ -41,6 +55,7 @@ public class UARTConnection extends BluetoothGattCallback {
 
     /**
      * Sends a byte array to the device across TX
+     *
      * @param bytes byte array to send
      * @return True on success, false otherwise
      */
@@ -65,6 +80,7 @@ public class UARTConnection extends BluetoothGattCallback {
 
     /**
      * Sends a byte array across TX, expecting a response on the RX line. Returns the response.
+     *
      * @param bytes Byte array to send to the device
      * @return Response from the device
      */
@@ -93,8 +109,19 @@ public class UARTConnection extends BluetoothGattCallback {
         return new byte[]{};
     }
 
+    /**
+     * Establishes a UARTConnection by connecting to the device and registering a characteristic
+     * notification on the RX line
+     *
+     * @param context Context that this connection is being made in
+     * @param device  Bluetooth device being connected to
+     * @return True if a connection was successfully established, false otherwise
+     */
     private boolean establishUARTConnection(Context context, BluetoothDevice device) {
+        // Connect to device
         this.btGatt = device.connectGatt(context, false, this);
+
+        // Initialize serialization
         startLatch.countDown();
         try {
             doneLatch.await();
@@ -103,7 +130,7 @@ public class UARTConnection extends BluetoothGattCallback {
             return false;
         }
 
-        // Enable rx notification
+        // Enable RX notification
         if (!btGatt.setCharacteristicNotification(rx, true)) {
             Log.e(TAG, "Unable to set characteristic notification");
             return false;
@@ -116,7 +143,6 @@ public class UARTConnection extends BluetoothGattCallback {
         }
 
         Log.d(TAG, "Successfully established connection to " + device);
-
         return true;
     }
 
@@ -135,6 +161,7 @@ public class UARTConnection extends BluetoothGattCallback {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             tx = gatt.getService(uartUUID).getCharacteristic(txUUID);
             rx = gatt.getService(uartUUID).getCharacteristic(rxUUID);
+            // Notify that the setup process is completed
             doneLatch.countDown();
         }
     }
@@ -177,10 +204,18 @@ public class UARTConnection extends BluetoothGattCallback {
         resultLatch.countDown();
     }
 
+    /**
+     * Returns whether or not this connection is connected
+     *
+     * @return True if connected, false otherwise
+     */
     public boolean isConnected() {
         return this.connectionState == BluetoothGatt.STATE_CONNECTED;
     }
 
+    /**
+     * Disconnects and closes the connection with the device
+     */
     public void disconnect() {
         btGatt.disconnect();
         btGatt.close();
