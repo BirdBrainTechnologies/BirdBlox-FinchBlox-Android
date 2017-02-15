@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.content.Context;
 import android.util.Log;
 
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
@@ -32,6 +33,22 @@ public class UARTConnection extends BluetoothGattCallback {
         this.rxUUID = settings.getRxCharacteristicUUID();
 
         establishUARTConnection(context, device);
+    }
+
+    synchronized public boolean writeBytes(byte[] bytes) {
+        startLatch = new CountDownLatch(1);
+        doneLatch = new CountDownLatch(1);
+
+        // Serialize callback
+        tx.setValue(bytes);
+        startLatch.countDown();
+        boolean res = btGatt.writeCharacteristic(tx);
+        try {
+            doneLatch.await();
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Error: " + e);
+        }
+        return res;
     }
 
     private boolean establishUARTConnection(Context context, BluetoothDevice device) {
@@ -66,6 +83,27 @@ public class UARTConnection extends BluetoothGattCallback {
             rx = gatt.getService(uartUUID).getCharacteristic(rxUUID);
             doneLatch.countDown();
         }
+    }
+
+    @Override
+    public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+        // For serializing write operations
+        try {
+            startLatch.await();
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Error: " + e);
+        }
+
+        if (status == BluetoothGatt.GATT_SUCCESS) {
+            Log.d(TAG, "Successfully wrote " + Arrays.toString(characteristic.getValue()) + " to TX");
+        } else {
+            Log.d(TAG, "Error writing " + Arrays.toString(characteristic.getValue()) + " to TX");
+        }
+
+        // TODO: Inidcate write success/failure to main thread
+
+        // For serializing write operations
+        doneLatch.countDown();
     }
 
     public boolean isConnected() {

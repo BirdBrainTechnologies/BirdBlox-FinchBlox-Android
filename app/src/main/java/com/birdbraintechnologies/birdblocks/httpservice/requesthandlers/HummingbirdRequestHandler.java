@@ -13,6 +13,7 @@ import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -71,6 +72,9 @@ public class HummingbirdRequestHandler implements RequestHandler {
                     break;
                 case "disconnect":
                     responseBody = disconnectFromDevice(path[0]);
+                    break;
+                case "out":
+                    getDeviceFromId(path[0]).setOutput(path[2], Arrays.copyOfRange(path, 2, path.length));
                     break;
             }
         }
