@@ -32,6 +32,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
     private final static UUID UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
     private static final UUID TX_UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
     private static final UUID RX_UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+    private static final UUID RX_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
     private HttpService service;
     private UARTSettings hbUARTSettings;
@@ -48,6 +49,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 .setUARTServiceUUID(UART_UUID)
                 .setRxCharacteristicUUID(RX_UUID)
                 .setTxCharacteristicUUID(TX_UUID)
+                .setRxConfigUUID(RX_CONFIG_UUID)
                 .build();
     }
 
@@ -75,6 +77,9 @@ public class HummingbirdRequestHandler implements RequestHandler {
                     break;
                 case "out":
                     getDeviceFromId(path[0]).setOutput(path[2], Arrays.copyOfRange(path, 2, path.length));
+                    break;
+                case "in":
+                    responseBody = getDeviceFromId(path[0]).readSensor(path[2], path[3]);
                     break;
             }
         }

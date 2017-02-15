@@ -12,8 +12,8 @@ public class Hummingbird {
     private static final byte MOTOR_CMD = 'M';
     private static final byte VIB_MOTOR_CMD = 'V';
     private static final byte SERVO_CMD = 'S';
-    private static final byte READ_PORT_CMD = 's';
-    private static final byte STATE_CMD = 'G';
+    private static final byte READ_SENSOR_CMD = 's';
+    private static final byte READ_ALL_CMD = 'G';
     private static final byte STOP_PERIPH_CMD = 'X';
     private static final byte TERMINATE_CMD = 'R';
     private static final byte PING_CMD = 'z';
@@ -46,6 +46,15 @@ public class Hummingbird {
         }
 
         return false;
+    }
+
+    public String readSensor(String sensorType, String portString) {
+        int port = Integer.parseInt(portString) - 1;
+
+        // Trigger a read of all sensor values
+        byte[] values = conn.writeBytesWithResponse(new byte[]{READ_ALL_CMD, '3'});
+        int sensorValue = (values[port] & 0xFF);  // Get unsigned value from byte
+        return Double.toString((sensorValue)/2.55);
     }
 
     public boolean setServo(int port, int angle) {

@@ -7,13 +7,17 @@ import java.util.UUID;
  */
 
 public class UARTSettings {
-    private UUID uart, tx, rx;
+    private UUID uart;
+    private UUID tx;
+    private UUID rx;
+    private UUID rxConfig;
 
 
-    protected UARTSettings(UUID uartServiceId, UUID txCharId, UUID rxCharId) {
+    protected UARTSettings(UUID uartServiceId, UUID txCharId, UUID rxCharId, UUID rxConfigId) {
         this.uart = uartServiceId;
         this.tx = txCharId;
         this.rx = rxCharId;
+        this.rxConfig = rxConfigId;
     }
 
     public UUID getRxCharacteristicUUID() {
@@ -28,8 +32,12 @@ public class UARTSettings {
         return tx;
     }
 
+    public UUID getRxConfig() {
+        return rxConfig;
+    }
+
     public static class Builder {
-        private UUID uart, tx, rx;
+        private UUID uart, tx, rx, rxConfig;
 
         public Builder setUARTServiceUUID(UUID id) {
             this.uart = id;
@@ -46,8 +54,13 @@ public class UARTSettings {
             return this;
         }
 
+        public Builder setRxConfigUUID(UUID id) {
+            this.rxConfig = id;
+            return this;
+        }
+
         public UARTSettings build() {
-            return new UARTSettings(uart, tx, rx);
+            return new UARTSettings(uart, tx, rx, rxConfig);
         }
     }
 }
