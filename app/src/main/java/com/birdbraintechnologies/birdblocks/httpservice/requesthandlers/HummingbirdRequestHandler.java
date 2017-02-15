@@ -122,6 +122,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
         if (device != null) {
             Log.d(TAG, "Disconnecting from device: " + deviceId);
             device.disconnect();
+            connectedDevices.remove(extractMAC(deviceId));
         }
         return "";
     }
