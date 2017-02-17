@@ -32,9 +32,20 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private static final String TAG = HostDeviceHandler.class.getName();
     private static final int LOCATION_UPDATE_MILLIS = 100;
     private static final float LOCATION_UPDATE_THRESHOLD = 0.0f;  // in meters
-    HttpService service;
+    private static final int FORCE_THRESHOLD = 350;  // How forceful a shake movement needs to be
+    private static final int SAMPLE_THRESHOLD = 100;  // Threshold for detecting shake events
+    private static final int SHAKE_TIMEOUT = 500;  // Timeout between movements to count as a shake
+    private static final int SHAKE_DURATION = 1000;  // Duration between shake events
+    private static final int SHAKE_COUNT = 3;  // Number of successful shakes to count as "shaken"
 
+    /* For shake detection */
+    private long lastForcefulMovement, lastShake, lastSampleTime;
+    private float lastAccelX = -1.0f, lastAccelY = -1.0f, lastAccelZ = -1.0f;
+    private int shakeCount;
+
+    HttpService service;
     private double longitude, latitude, altitude, pressure;
+    private boolean shaken = false;
 
     public HostDeviceHandler(HttpService service) {
         this.service = service;
@@ -45,6 +56,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private void initSensors() {
         SensorManager manager = (SensorManager) service.getSystemService(Context.SENSOR_SERVICE);
         manager.registerListener(this, manager.getDefaultSensor(Sensor.TYPE_PRESSURE),
+                SensorManager.SENSOR_DELAY_UI);
+        manager.registerListener(this, manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
                 SensorManager.SENSOR_DELAY_UI);
     }
 
@@ -74,6 +87,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         String responseBody = "";
         switch (path[0]) {
             case "shake":
+                responseBody = getShaken();
                 break;
             case "location":
                 responseBody = getDeviceLocation();
@@ -104,7 +118,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     }
 
     private String getDeviceSSID() {
-        WifiManager wifiManager = (WifiManager) service.getSystemService (Context.WIFI_SERVICE);
+        WifiManager wifiManager = (WifiManager) service.getSystemService(Context.WIFI_SERVICE);
         WifiInfo info = wifiManager.getConnectionInfo();
         String result = info.getSSID();
         result = result.replace("\"", "");
@@ -115,6 +129,15 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
 
     private String getPressure() {
         return Double.toString(pressure);
+    }
+
+    private String getShaken() {
+        if (shaken) {
+            shaken = false;
+            return "1";
+        } else {
+            return "0";
+        }
     }
 
     @Override
@@ -143,6 +166,29 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType() == Sensor.TYPE_PRESSURE) {
             pressure = event.values[0];
+        } else if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            long now = System.currentTimeMillis();
+
+            if ((now - lastForcefulMovement) > SHAKE_TIMEOUT) {
+                shakeCount = 0;
+            }
+
+            if ((now - lastSampleTime) > SAMPLE_THRESHOLD) {
+                long diff = now - lastSampleTime;
+                float speed = Math.abs(event.values[0] + event.values[1] + event.values[2] - lastAccelX - lastAccelY - lastAccelZ) / diff * 10000;
+                if (speed > FORCE_THRESHOLD) {
+                    if ((++shakeCount >= SHAKE_COUNT) && (now - lastShake > SHAKE_DURATION)) {
+                        lastShake = now;
+                        shakeCount = 0;
+                        shaken = true;
+                    }
+                    lastForcefulMovement = now;
+                }
+                lastSampleTime = now;
+                lastAccelX = event.values[0];
+                lastAccelY = event.values[1];
+                lastAccelZ = event.values[2];
+            }
         }
     }
 
