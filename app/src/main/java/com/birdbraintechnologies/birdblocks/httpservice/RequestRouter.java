@@ -1,5 +1,6 @@
 package com.birdbraintechnologies.birdblocks.httpservice;
 
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HummingbirdRequestHandler;
 
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ public class RequestRouter {
     private void initRoutes() {
         // TODO: Make this have a match ordering
         addRoute("^/hummingbird/(.*)$", new HummingbirdRequestHandler(service));
+        addRoute("^/iPad/(.*)$", new HostDeviceHandler());
     }
 
     /**
