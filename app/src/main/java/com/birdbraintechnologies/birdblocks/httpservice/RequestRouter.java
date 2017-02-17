@@ -35,7 +35,7 @@ public class RequestRouter {
     private void initRoutes() {
         // TODO: Make this have a match ordering
         addRoute("^/hummingbird/(.*)$", new HummingbirdRequestHandler(service));
-        addRoute("^/iPad/(.*)$", new HostDeviceHandler());
+        addRoute("^/iPad/(.*)$", new HostDeviceHandler(service));
     }
 
     /**
