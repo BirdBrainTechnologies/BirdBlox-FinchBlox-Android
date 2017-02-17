@@ -16,6 +16,9 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
+import android.view.Display;
+import android.view.Surface;
+import android.view.WindowManager;
 
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
@@ -102,6 +105,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 responseBody = getDeviceAltitude();
                 break;
             case "orientation":
+                responseBody = getDeviceOrientation();
                 break;
         }
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
@@ -137,6 +141,25 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             return "1";
         } else {
             return "0";
+        }
+    }
+
+    private String getDeviceOrientation() {
+        Display display = ((WindowManager) service
+                .getSystemService(Context.WINDOW_SERVICE))
+                .getDefaultDisplay();
+        int rotation = display.getRotation();
+        switch (rotation) {
+            case Surface.ROTATION_0:
+                return "Portrait: home button on bottom";
+            case Surface.ROTATION_90:
+                return "Landscape: home button on left";
+            case Surface.ROTATION_180:
+                return "Portrait: home button on top";
+            case Surface.ROTATION_270:
+                return "Landscape: home button on right";
+            default:
+                return "In Between";
         }
     }
 
