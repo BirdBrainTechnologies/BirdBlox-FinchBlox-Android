@@ -3,6 +3,10 @@ package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -24,16 +28,24 @@ import fi.iki.elonen.NanoHTTPD;
  * Created by tsun on 2/17/17.
  */
 
-public class HostDeviceHandler implements RequestHandler, LocationListener {
+public class HostDeviceHandler implements RequestHandler, LocationListener, SensorEventListener {
     private static final String TAG = HostDeviceHandler.class.getName();
-    private static final int LOCATION_UPDATE_MILLIS = 500;
-    private static final float LOCATION_UPDATE_THRESHOLD = 0.5f;  // in meters
+    private static final int LOCATION_UPDATE_MILLIS = 100;
+    private static final float LOCATION_UPDATE_THRESHOLD = 0.0f;  // in meters
     HttpService service;
-    private double longitude, latitude, altitude;
+
+    private double longitude, latitude, altitude, pressure;
 
     public HostDeviceHandler(HttpService service) {
         this.service = service;
         initLocationListener();
+        initSensors();
+    }
+
+    private void initSensors() {
+        SensorManager manager = (SensorManager) service.getSystemService(Context.SENSOR_SERVICE);
+        manager.registerListener(this, manager.getDefaultSensor(Sensor.TYPE_PRESSURE),
+                SensorManager.SENSOR_DELAY_UI);
     }
 
     private void initLocationListener() {
@@ -48,6 +60,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener {
         } else {
             Criteria criteria = new Criteria();
             criteria.setAccuracy(Criteria.ACCURACY_FINE);
+            criteria.setAltitudeRequired(true);
+            criteria.setPowerRequirement(Criteria.POWER_HIGH);
             String provider = locationManager.getBestProvider(criteria, true);
             locationManager.requestLocationUpdates(provider,
                     LOCATION_UPDATE_MILLIS, LOCATION_UPDATE_THRESHOLD, this);
@@ -68,6 +82,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener {
                 responseBody = getDeviceSSID();
                 break;
             case "pressure":
+                responseBody = getPressure();
                 break;
             case "altitude":
                 responseBody = getDeviceAltitude();
@@ -98,6 +113,10 @@ public class HostDeviceHandler implements RequestHandler, LocationListener {
         return result;
     }
 
+    private String getPressure() {
+        return Double.toString(pressure);
+    }
+
     @Override
     public void onLocationChanged(Location location) {
         longitude = location.getLongitude();
@@ -117,6 +136,18 @@ public class HostDeviceHandler implements RequestHandler, LocationListener {
 
     @Override
     public void onProviderDisabled(String provider) {
+
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_PRESSURE) {
+            pressure = event.values[0];
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
 }
