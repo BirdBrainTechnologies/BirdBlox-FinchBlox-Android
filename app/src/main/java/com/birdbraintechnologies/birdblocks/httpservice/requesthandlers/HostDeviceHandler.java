@@ -7,6 +7,8 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
@@ -63,6 +65,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener {
                 responseBody = getDeviceLocation();
                 break;
             case "ssid":
+                responseBody = getDeviceSSID();
                 break;
             case "pressure":
                 break;
@@ -83,6 +86,16 @@ public class HostDeviceHandler implements RequestHandler, LocationListener {
 
     private String getDeviceAltitude() {
         return Double.toString(altitude);
+    }
+
+    private String getDeviceSSID() {
+        WifiManager wifiManager = (WifiManager) service.getSystemService (Context.WIFI_SERVICE);
+        WifiInfo info = wifiManager.getConnectionInfo();
+        String result = info.getSSID();
+        result = result.replace("\"", "");
+        if (result.trim().equals("<unknown ssid>"))
+            result = "null";
+        return result;
     }
 
     @Override
