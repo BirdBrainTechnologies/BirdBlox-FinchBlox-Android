@@ -59,13 +59,7 @@ public class RequestRouter {
      * @return Response to the request
      */
     public NanoHTTPD.Response routeAndDispatch(NanoHTTPD.IHTTPSession session) {
-        String uri = session.getUri();
-        String path = uri;
-        // Remove GET parameters in case they exist
-        int paramsIndex = uri.indexOf("?");
-        if (paramsIndex != -1) {
-            path = path.substring(0, paramsIndex);
-        }
+        String path = session.getUri();
 
         // Route the request
         for (Map.Entry<Pattern, RequestHandler> e : routes.entrySet()) {
