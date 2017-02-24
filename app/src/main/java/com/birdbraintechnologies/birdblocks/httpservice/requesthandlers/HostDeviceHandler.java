@@ -1,7 +1,10 @@
 package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -15,15 +18,19 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.Display;
 import android.view.Surface;
 import android.view.WindowManager;
 
+import com.birdbraintechnologies.birdblocks.MainWebView;
+import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -50,10 +57,28 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private double longitude, latitude, altitude, pressure;
     private boolean shaken = false;
 
+    /* For dialogs */
+    public static final String DIALOG_RESPONSE = "com.birdbraintechnologies.birdblocks.DIALOG_RESPONSE";
+    private String dialogResponse = null;
+    private BroadcastReceiver bReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(intent.getAction().equals(DIALOG_RESPONSE)) {
+                dialogResponse = intent.getStringExtra("response");
+            }
+        }
+    };
+    LocalBroadcastManager bManager;
+
     public HostDeviceHandler(HttpService service) {
         this.service = service;
         initLocationListener();
         initSensors();
+
+        bManager = LocalBroadcastManager.getInstance(service);
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(DIALOG_RESPONSE);
+        bManager.registerReceiver(bReceiver, intentFilter);
     }
 
     private void initSensors() {
@@ -107,6 +132,18 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             case "orientation":
                 responseBody = getDeviceOrientation();
                 break;
+            case "dialog":
+                showDialog(path[1], path[2], path[3]);
+                break;
+            case "choice":
+                showChoice(path[1], path[2], path[3], path[4]);
+                break;
+            case "dialog_response":
+                responseBody = getDialogResponse();
+                break;
+            case "choice_response":
+                responseBody = getChoiceResponse();
+                break;
         }
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
@@ -142,6 +179,51 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         } else {
             return "0";
         }
+    }
+
+    private void showDialog(String title, String question, String hint) {
+        dialogResponse = null;
+        Intent showDialog = new Intent(MainWebView.SHOW_DIALOG);
+        showDialog.putExtra("type", BirdblocksDialog.DialogType.INPUT.toString());
+        showDialog.putExtra("title", title);
+        showDialog.putExtra("message", question);
+        showDialog.putExtra("hint", hint);
+        LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+    }
+
+    private void showChoice(String title, String question, String option1, String option2) {
+        dialogResponse = null;
+        Intent showDialog = new Intent(MainWebView.SHOW_DIALOG);
+        showDialog.putExtra("type", BirdblocksDialog.DialogType.CHOICE.toString());
+        showDialog.putExtra("title", title);
+        showDialog.putExtra("message", question);
+        showDialog.putExtra("button1", option1);
+        showDialog.putExtra("button2", option2);
+        LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+    }
+
+    private String getDialogResponse() {
+        String response;
+        if (dialogResponse == null) {
+            response = "No Response";
+        } else {
+            response = dialogResponse;
+        }
+
+        dialogResponse = null;
+        return response;
+    }
+
+    private String getChoiceResponse() {
+        String response;
+        if (dialogResponse == null) {
+            response = "0";
+        } else {
+            response = dialogResponse;
+        }
+
+        dialogResponse = null;
+        return response;
     }
 
     private String getDeviceOrientation() {
