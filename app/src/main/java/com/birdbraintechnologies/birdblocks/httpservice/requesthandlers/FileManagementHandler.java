@@ -1,8 +1,14 @@
 package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Environment;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblocks.MainWebView;
+import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
+import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
 import java.io.BufferedReader;
@@ -28,6 +34,12 @@ public class FileManagementHandler implements RequestHandler {
     private static final String BIRDBLOCKS_SAVE_DIR = "Birdblocks";
     private static final String FILE_NOT_FOUND_RESPONSE = "File Not Found";
 
+    private HttpService service;
+
+    public FileManagementHandler(HttpService service) {
+        this.service = service;
+    }
+
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
@@ -51,6 +63,8 @@ public class FileManagementHandler implements RequestHandler {
                 responseBody = listFiles();
                 break;
             case "export":
+                exportFile(path[1], session);
+                break;
         }
 
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
@@ -127,6 +141,16 @@ public class FileManagementHandler implements RequestHandler {
             response += files[i].getName() + "\n";
         }
         return response;
+    }
+
+    private void exportFile(String filename, NanoHTTPD.IHTTPSession session) {
+        saveFile(filename, session);
+        File file = new File(getBirdblocksDir(), filename);
+        if (file.exists()) {
+            Intent showDialog = new Intent(MainWebView.SHARE_FILE);
+            showDialog.putExtra("file_uri", Uri.fromFile(file));
+            LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+        }
     }
 
     private File getBirdblocksDir() {

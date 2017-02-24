@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
@@ -25,11 +26,14 @@ public class MainWebView extends AppCompatActivity {
 
     /* Broadcast receiver for displaying dialogs */
     public static final String SHOW_DIALOG = "com.birdbraintechnologies.birdblocks.DIALOG";
+    public static final String SHARE_FILE = "com.birdbraintechnologies.birdblocks.SHARE_FILE";
     private BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent.getAction().equals(SHOW_DIALOG)) {
                 showDialog(intent.getExtras());
+            } else if (intent.getAction().equals(SHARE_FILE)) {
+                showShareDialog(intent.getExtras());
             }
         }
     };
@@ -56,6 +60,7 @@ public class MainWebView extends AppCompatActivity {
         bManager = LocalBroadcastManager.getInstance(this);
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(SHOW_DIALOG);
+        intentFilter.addAction(SHARE_FILE);
         bManager.registerReceiver(bReceiver, intentFilter);
     }
 
@@ -85,5 +90,13 @@ public class MainWebView extends AppCompatActivity {
         BirdblocksDialog dialog = new BirdblocksDialog();
         dialog.setArguments(b);
         dialog.show(getFragmentManager(), "prompt_question");
+    }
+
+    private void showShareDialog(Bundle b) {
+        Intent sendIntent = new Intent();
+        sendIntent.setAction(Intent.ACTION_SEND);
+        sendIntent.putExtra(Intent.EXTRA_STREAM, (Uri) b.get("file_uri"));
+        sendIntent.setType("text/xml");
+        startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.send_to)));
     }
 }

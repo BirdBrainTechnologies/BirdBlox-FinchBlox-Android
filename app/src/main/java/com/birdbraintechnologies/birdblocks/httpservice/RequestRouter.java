@@ -39,7 +39,7 @@ public class RequestRouter {
         addRoute("^/hummingbird/(.*)$", new HummingbirdRequestHandler(service));
         addRoute("^/iPad/(.*)$", new HostDeviceHandler(service));
         addRoute("^/settings/(.*)$", new SettingsHandler(service));
-        addRoute("^/data/(.*)$", new FileManagementHandler());
+        addRoute("^/data/(.*)$", new FileManagementHandler(service));
     }
 
     /**
