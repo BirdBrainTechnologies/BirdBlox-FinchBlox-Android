@@ -96,6 +96,7 @@ public class MainWebView extends AppCompatActivity {
         Intent sendIntent = new Intent();
         sendIntent.setAction(Intent.ACTION_SEND);
         sendIntent.putExtra(Intent.EXTRA_STREAM, (Uri) b.get("file_uri"));
+        // TODO: Change to bbx
         sendIntent.setType("text/xml");
         startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.send_to)));
     }
