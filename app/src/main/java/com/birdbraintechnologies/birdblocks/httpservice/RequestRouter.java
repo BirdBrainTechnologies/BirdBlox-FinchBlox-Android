@@ -1,5 +1,6 @@
 package com.birdbraintechnologies.birdblocks.httpservice;
 
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HummingbirdRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SettingsHandler;
@@ -38,6 +39,7 @@ public class RequestRouter {
         addRoute("^/hummingbird/(.*)$", new HummingbirdRequestHandler(service));
         addRoute("^/iPad/(.*)$", new HostDeviceHandler(service));
         addRoute("^/settings/(.*)$", new SettingsHandler(service));
+        addRoute("^/data/(.*)$", new FileManagementHandler());
     }
 
     /**
