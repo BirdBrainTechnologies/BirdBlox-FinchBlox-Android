@@ -45,6 +45,8 @@ public class FileManagementHandler implements RequestHandler {
                 renameFile(path[1], path[2]);
                 break;
             case "delete":
+                deleteFile(path[1]);
+                break;
             case "files":
                 responseBody = listFiles();
                 break;
@@ -105,6 +107,14 @@ public class FileManagementHandler implements RequestHandler {
             return;
         }
         file.renameTo(new File(getBirdblocksDir(), newFilename));
+    }
+
+    private void deleteFile(String filename) {
+        File file = new File(getBirdblocksDir(), filename);
+        if (!file.exists()) {
+            return;
+        }
+        file.delete();
     }
 
     private String listFiles() {
