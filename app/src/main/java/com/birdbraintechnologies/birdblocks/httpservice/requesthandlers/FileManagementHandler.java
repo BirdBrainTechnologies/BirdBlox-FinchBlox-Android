@@ -7,6 +7,8 @@ import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,6 +26,7 @@ import fi.iki.elonen.NanoHTTPD;
 public class FileManagementHandler implements RequestHandler {
     private static final String TAG = FileManagementHandler.class.getName();
     private static final String BIRDBLOCKS_SAVE_DIR = "Birdblocks";
+    private static final String FILE_NOT_FOUND_RESPONSE = "File Not Found";
 
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
@@ -36,6 +39,8 @@ public class FileManagementHandler implements RequestHandler {
                 saveFile(path[1], session);
                 break;
             case "load":
+                responseBody = loadFile(path[1]);
+                break;
             case "rename":
             case "delete":
             case "files":
@@ -72,17 +77,36 @@ public class FileManagementHandler implements RequestHandler {
         }
     }
 
+    private String loadFile(String filename) {
+        File file = new File(getBirdblocksDir(), filename);
+        if (!file.exists()) {
+            return FILE_NOT_FOUND_RESPONSE;
+        }
+        StringBuilder response = new StringBuilder();
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String line;
+            while((line = reader.readLine()) != null) {
+                response.append(line + "\n");
+            }
+        } catch (FileNotFoundException e) {
+            return FILE_NOT_FOUND_RESPONSE;
+        } catch (IOException e) {
+            Log.d(TAG, "Error reading saved file: " + e.toString());
+        }
+        return response.toString().trim();
+    }
+
     private String listFiles() {
         File[] files = getBirdblocksDir().listFiles();
-        if (files == null) {
-            return "";
-        }
         String response = "";
+        if (files == null) {
+            return response;
+        }
         for (int i = 0; i < files.length; i++) {
             response += files[i].getName() + "\n";
         }
-        Log.d(TAG, "Files: " + response);
-        return response.trim();
+        return response;
     }
 
     private File getBirdblocksDir() {
