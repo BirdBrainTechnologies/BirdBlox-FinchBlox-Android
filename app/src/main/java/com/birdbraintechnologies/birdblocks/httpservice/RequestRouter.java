@@ -4,6 +4,7 @@ import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileMana
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HummingbirdRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SettingsHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SoundHandler;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,6 +41,7 @@ public class RequestRouter {
         addRoute("^/iPad/(.*)$", new HostDeviceHandler(service));
         addRoute("^/settings/(.*)$", new SettingsHandler(service));
         addRoute("^/data/(.*)$", new FileManagementHandler(service));
+        addRoute("^/sound/(.*)$", new SoundHandler(service));
     }
 
     /**
