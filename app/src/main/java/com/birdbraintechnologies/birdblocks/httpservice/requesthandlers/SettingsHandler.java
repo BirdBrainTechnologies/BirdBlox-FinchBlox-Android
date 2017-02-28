@@ -10,9 +10,10 @@ import java.util.List;
 import fi.iki.elonen.NanoHTTPD;
 
 /**
- * Created by tsun on 2/23/17.
+ * Handler for handling getting and setting of arbitrary settings
+ *
+ * @author Terence Sun (tsun1215)
  */
-
 public class SettingsHandler implements RequestHandler {
     public static final String PREFS_NAME = "Settings";
     private static final String DEFAULT_VALUE = "Default";
@@ -42,9 +43,22 @@ public class SettingsHandler implements RequestHandler {
         return r;
     }
 
+    /**
+     * Gets the value of a setting by its key
+     *
+     * @param key Key of the setting
+     * @return Value of the setting
+     */
     private String getSetting(String key) {
         return settings.getString(key, DEFAULT_VALUE);
     }
+
+    /**
+     * Sets a new value for the setting
+     *
+     * @param key   Key of the setting to set
+     * @param value New value of the setting
+     */
     private void putSetting(String key, String value) {
         SharedPreferences.Editor editor = settings.edit();
         editor.putString(key, value);
