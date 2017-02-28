@@ -114,6 +114,7 @@ public class BluetoothHelper {
     synchronized public UARTConnection connectToDeviceUART(String addr, UARTSettings settings) {
         BluetoothDevice device = deviceList.get(addr);
         if (device == null) {
+            Log.e(TAG, "Unable to connect to device: " + addr);
             return null;
         }
 

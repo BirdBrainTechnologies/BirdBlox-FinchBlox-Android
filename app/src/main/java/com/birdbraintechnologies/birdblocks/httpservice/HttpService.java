@@ -42,6 +42,7 @@ public class HttpService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        Log.d(TAG, "HttpService destroyed");
         if (server != null) {
             server.stop();
         }

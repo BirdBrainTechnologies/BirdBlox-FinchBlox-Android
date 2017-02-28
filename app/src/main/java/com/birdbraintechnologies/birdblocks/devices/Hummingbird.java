@@ -1,14 +1,18 @@
 package com.birdbraintechnologies.birdblocks.devices;
 
+import android.util.Log;
+
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.util.HummingbirdUtil;
+
+import java.util.Arrays;
 
 /**
  * Represents a Hummingbird device and all of its functionality: Setting outputs, reading sensors
  *
  * @author Terence Sun (tsun1215)
  */
-public class Hummingbird {
+public class Hummingbird implements UARTConnection.RXDataListener {
     /*
      * Command prefixes for the Hummingbird according to spec
      * More info: http://www.hummingbirdkit.com/learning/hummingbird-duo-usb-protocol
@@ -23,8 +27,11 @@ public class Hummingbird {
     private static final byte STOP_PERIPH_CMD = 'X';
     private static final byte TERMINATE_CMD = 'R';
     private static final byte PING_CMD = 'z';
+    private static final String RENAME_CMD = "AT+GAPDEVNAME";
 
     private UARTConnection conn;
+    private byte[] rawSensorValues;
+    private Object rawSensorValuesLock = new Object();
 
     /**
      * Initializes a Hummingbird device
@@ -77,23 +84,35 @@ public class Hummingbird {
      * @return A string reprsenting the value of the sensor
      */
     public String readSensor(String sensorType, String portString) {
-        int port = Integer.parseInt(portString) - 1;
-
-        // Trigger a read of all sensor values
-        byte[] values = conn.writeBytesWithResponse(new byte[]{READ_ALL_CMD, '3'});
-        byte rawSensor = values[port];
+        byte rawSensorValue;
+        synchronized (rawSensorValuesLock) {
+            if (rawSensorValues == null) {
+                rawSensorValues = startPollingSensors();
+                conn.addRxDataListener(this);
+            }
+            int port = Integer.parseInt(portString) - 1;
+            rawSensorValue = rawSensorValues[port];
+        }
 
         switch (sensorType) {
             case "distance":
-                return Double.toString(HummingbirdUtil.RawToDist(rawSensor));
+                return Double.toString(HummingbirdUtil.RawToDist(rawSensorValue));
             case "temperature":
-                return Double.toString(HummingbirdUtil.RawToTemp(rawSensor));
+                return Double.toString(HummingbirdUtil.RawToTemp(rawSensorValue));
             case "sound":
             case "light":
             case "sensor":
             default:
-                return Double.toString(HummingbirdUtil.RawToPercent(rawSensor));
+                return Double.toString(HummingbirdUtil.RawToPercent(rawSensorValue));
         }
+    }
+
+    private byte[] startPollingSensors() {
+        return conn.writeBytesWithResponse(new byte[]{READ_ALL_CMD, '5'});
+    }
+
+    private void stopPollingSensors() {
+        conn.writeBytes(new byte[]{READ_ALL_CMD, '6'});
     }
 
     /**
@@ -219,11 +238,43 @@ public class Hummingbird {
         return conn.isConnected();
     }
 
+    public void rename(String newName) {
+        String cmd = "+++" + "\r" + "\n";
+        Log.d("RENAME", "Request: " + Arrays.toString(cmd.getBytes()));
+        byte[] response = conn.writeBytesWithResponse(cmd.getBytes());
+        Log.d("RENAME", "Response: " + new String(response));
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Log.e("RENAME", e.toString());
+        }
+        cmd = RENAME_CMD + "=";
+        conn.writeBytes(cmd.getBytes());
+        cmd = newName + "\r\n";
+        conn.writeBytes(cmd.getBytes());
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Log.e("RENAME", e.toString());
+        }
+        cmd = "ATZ\r\n";
+        conn.writeBytes(cmd.getBytes());
+    }
+
     /**
      * Disconnects the device
      */
     public void disconnect() {
+        conn.removeRxDataListener(this);
+        stopPollingSensors();
         conn.writeBytes(new byte[]{TERMINATE_CMD});
         conn.disconnect();
+    }
+
+    @Override
+    public void onRXData(byte[] newData) {
+        synchronized (rawSensorValuesLock) {
+            this.rawSensorValues = newData;
+        }
     }
 }

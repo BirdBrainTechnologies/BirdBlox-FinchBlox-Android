@@ -8,7 +8,9 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.content.Context;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
@@ -20,6 +22,7 @@ import java.util.concurrent.CountDownLatch;
  */
 public class UARTConnection extends BluetoothGattCallback {
     private static final String TAG = UARTConnection.class.getName();
+    private static final int MAX_RETRIES = 100;
 
     /* Latches to handle serialization of async reads/writes */
     private CountDownLatch startLatch = new CountDownLatch(1);
@@ -28,6 +31,8 @@ public class UARTConnection extends BluetoothGattCallback {
 
     /* UUIDs for the communication lines */
     private UUID uartUUID, txUUID, rxUUID, rxConfigUUID;
+
+    private List<RXDataListener> rxListeners = new ArrayList<>();
 
     private int connectionState;
     private BluetoothGatt btGatt;
@@ -64,7 +69,14 @@ public class UARTConnection extends BluetoothGattCallback {
         doneLatch = new CountDownLatch(1);
 
         tx.setValue(bytes);
-        boolean res = btGatt.writeCharacteristic(tx);
+        boolean res;
+        int retryCount = 0;
+        while (!(res = btGatt.writeCharacteristic(tx))) {
+            if (retryCount > MAX_RETRIES) {
+                break;
+            }
+            retryCount++;
+        }
 
         // Wait for operation to complete
         startLatch.countDown();
@@ -90,7 +102,14 @@ public class UARTConnection extends BluetoothGattCallback {
         resultLatch = new CountDownLatch(1);
 
         tx.setValue(bytes);
-        boolean success = btGatt.writeCharacteristic(tx);
+        boolean success;
+        int retryCount = 0;
+        while (!(success = btGatt.writeCharacteristic(tx))) {
+            if (retryCount > MAX_RETRIES) {
+                break;
+            }
+            retryCount++;
+        }
         if (success) {
             // Wait for a successful write and a response
             startLatch.countDown();
@@ -106,6 +125,7 @@ public class UARTConnection extends BluetoothGattCallback {
             byte[] res = rx.getValue();
             return Arrays.copyOf(res, res.length);
         }
+        Log.e(TAG, "Unable to write bytes to tx");
         return new byte[]{};
     }
 
@@ -176,9 +196,9 @@ public class UARTConnection extends BluetoothGattCallback {
         }
 
         if (status == BluetoothGatt.GATT_SUCCESS) {
-            Log.d(TAG, "Successfully wrote " + Arrays.toString(characteristic.getValue()) + " to TX");
+            Log.v(TAG, "Successfully wrote " + Arrays.toString(characteristic.getValue()) + " to TX");
         } else {
-            Log.d(TAG, "Error writing " + Arrays.toString(characteristic.getValue()) + " to TX");
+            Log.e(TAG, "Error writing " + Arrays.toString(characteristic.getValue()) + " to TX");
         }
 
         // TODO: Inidcate write success/failure to main thread
@@ -195,8 +215,11 @@ public class UARTConnection extends BluetoothGattCallback {
         } catch (InterruptedException e) {
             Log.e(TAG, "Error: " + e);
         }
-
-        Log.d(TAG, "Got response " + Arrays.toString(characteristic.getValue()) + " from RX");
+        byte[] newValue = characteristic.getValue();
+        Log.v(TAG, "Got response " + Arrays.toString(newValue) + " from RX");
+        for (RXDataListener l : rxListeners) {
+            l.onRXData(newValue);
+        }
 
         // TODO: Inidcate write success/failure to main thread
 
@@ -219,5 +242,25 @@ public class UARTConnection extends BluetoothGattCallback {
     public void disconnect() {
         btGatt.disconnect();
         btGatt.close();
+    }
+
+    public void addRxDataListener(RXDataListener l) {
+        rxListeners.add(l);
+    }
+
+    public void removeRxDataListener(RXDataListener l) {
+        rxListeners.remove(l);
+    }
+
+    /**
+     * Listener for new data coming in on RX
+     */
+    public interface RXDataListener {
+        /**
+         * Called when new data arrives on the RX line
+         *
+         * @param newData Data that arrived
+         */
+        void onRXData(byte[] newData);
     }
 }
