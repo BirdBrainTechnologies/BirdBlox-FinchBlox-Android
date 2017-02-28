@@ -59,7 +59,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private boolean shaken = false;
 
     HttpService service;
-    private double longitude, latitude, altitude, pressure;
+    private double longitude, latitude, altitude, pressure,
+            deviceAccelX, deviceAccelY, deviceAccelZ;
 
     /* For dialogs */
     public static final String DIALOG_RESPONSE = "com.birdbraintechnologies.birdblocks.DIALOG_RESPONSE";
@@ -152,6 +153,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             case "orientation":
                 responseBody = getDeviceOrientation();
                 break;
+            case "acceleration":
+                responseBody = getDeviceAcceleration();
+                break;
             case "dialog":
                 showDialog(path[1], path[2], path[3]);
                 break;
@@ -210,6 +214,15 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      */
     private String getPressure() {
         return Double.toString(pressure);
+    }
+
+    /**
+     * Gets the device's acceleration
+     *
+     * @return Each axis' acceleration separated by spaces
+     */
+    private String getDeviceAcceleration() {
+        return deviceAccelX + " " + deviceAccelY + " " + deviceAccelZ;
     }
 
     /**
@@ -311,13 +324,13 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         int rotation = display.getRotation();
         switch (rotation) {
             case Surface.ROTATION_0:
-                return "Portrait: home button on bottom";
+                return "Portrait: camera on top";
             case Surface.ROTATION_90:
-                return "Landscape: home button on left";
+                return "Landscape: camera on left";
             case Surface.ROTATION_180:
-                return "Portrait: home button on top";
+                return "Portrait: camera on bottom";
             case Surface.ROTATION_270:
-                return "Landscape: home button on right";
+                return "Landscape: camera on right";
             default:
                 return "In Between";
         }
@@ -375,6 +388,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 lastAccelY = event.values[1];
                 lastAccelZ = event.values[2];
             }
+            deviceAccelX = event.values[0];
+            deviceAccelY = event.values[1];
+            deviceAccelZ = event.values[2];
         }
     }
 
