@@ -30,32 +30,36 @@ import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 
 import fi.iki.elonen.NanoHTTPD;
 
 /**
- * Created by tsun on 2/17/17.
+ * Handler for getting sensor data from the host device and showing dialogs
+ *
+ * @author Terence Sun (tsun1215)
  */
-
 public class HostDeviceHandler implements RequestHandler, LocationListener, SensorEventListener {
     private static final String TAG = HostDeviceHandler.class.getName();
+
+    /* Constants for location */
     private static final int LOCATION_UPDATE_MILLIS = 100;
     private static final float LOCATION_UPDATE_THRESHOLD = 0.0f;  // in meters
+
+    /* Constants for shake detection */
     private static final int FORCE_THRESHOLD = 350;  // How forceful a shake movement needs to be
     private static final int SAMPLE_THRESHOLD = 100;  // Threshold for detecting shake events
     private static final int SHAKE_TIMEOUT = 500;  // Timeout between movements to count as a shake
     private static final int SHAKE_DURATION = 1000;  // Duration between shake events
     private static final int SHAKE_COUNT = 3;  // Number of successful shakes to count as "shaken"
 
-    /* For shake detection */
+    /* Variables for shake detection */
     private long lastForcefulMovement, lastShake, lastSampleTime;
     private float lastAccelX = -1.0f, lastAccelY = -1.0f, lastAccelZ = -1.0f;
     private int shakeCount;
+    private boolean shaken = false;
 
     HttpService service;
     private double longitude, latitude, altitude, pressure;
-    private boolean shaken = false;
 
     /* For dialogs */
     public static final String DIALOG_RESPONSE = "com.birdbraintechnologies.birdblocks.DIALOG_RESPONSE";
@@ -63,7 +67,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if(intent.getAction().equals(DIALOG_RESPONSE)) {
+            // Handles getting a dialog response from the main activity (see showDialog/showChoice)
+            if (intent.getAction().equals(DIALOG_RESPONSE)) {
                 dialogResponse = intent.getStringExtra("response");
             }
         }
@@ -74,13 +79,23 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         this.service = service;
         initLocationListener();
         initSensors();
+        initBroadcastManager();
+    }
 
+    /**
+     * Initializes the broadcast manager endpoint for dialogs
+     */
+    private void initBroadcastManager() {
         bManager = LocalBroadcastManager.getInstance(service);
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(DIALOG_RESPONSE);
         bManager.registerReceiver(bReceiver, intentFilter);
+
     }
 
+    /**
+     * Initializes the sensor manager with sensors that BirdBlocks uses
+     */
     private void initSensors() {
         SensorManager manager = (SensorManager) service.getSystemService(Context.SENSOR_SERVICE);
         manager.registerListener(this, manager.getDefaultSensor(Sensor.TYPE_PRESSURE),
@@ -89,6 +104,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 SensorManager.SENSOR_DELAY_UI);
     }
 
+    /**
+     * Initializes the location manager to obtain location
+     */
     private void initLocationListener() {
         LocationManager locationManager =
                 (LocationManager) service.getSystemService(Context.LOCATION_SERVICE);
@@ -97,7 +115,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 && ActivityCompat.checkSelfPermission(service,
                 Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "Unable to obtain location");
-            // TODO: Handler error
+            // TODO: Handler error and API 25+ permissions
+            // See: https://developer.android.com/training/permissions/requesting.html
+            // Probably should setup another BroadcastReceiver on the MainWebView
         } else {
             Criteria criteria = new Criteria();
             criteria.setAccuracy(Criteria.ACCURACY_FINE);
@@ -150,14 +170,29 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         return r;
     }
 
+    /**
+     * Gets the longitude and latitude of the device
+     *
+     * @return Longitude and latitude separated by a space
+     */
     private String getDeviceLocation() {
         return Double.toString(longitude) + " " + Double.toString(latitude);
     }
 
+    /**
+     * Gets the altitude of the device
+     *
+     * @return Altitute of device from gps
+     */
     private String getDeviceAltitude() {
         return Double.toString(altitude);
     }
 
+    /**
+     * Gets the device's wireless SSID, or "null" if there is not one
+     *
+     * @return Device's SSID or "null" if there is not one
+     */
     private String getDeviceSSID() {
         WifiManager wifiManager = (WifiManager) service.getSystemService(Context.WIFI_SERVICE);
         WifiInfo info = wifiManager.getConnectionInfo();
@@ -168,10 +203,20 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         return result;
     }
 
+    /**
+     * Gets the atmospheric pressure of the device's environment
+     *
+     * @return Atmospheric pressure (mPa or mbar, depending on device)
+     */
     private String getPressure() {
         return Double.toString(pressure);
     }
 
+    /**
+     * Gets the shaken status of the device and resets the shaken status
+     *
+     * @return True if the device was shaken since the last check, False otherwise
+     */
     private String getShaken() {
         if (shaken) {
             shaken = false;
@@ -181,8 +226,16 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         }
     }
 
+    /**
+     * Shows a text input dialog with a question
+     *
+     * @param title    Title of the dialog
+     * @param question Text to show to the user
+     * @param hint     Placeholder text for the text input
+     */
     private void showDialog(String title, String question, String hint) {
         dialogResponse = null;
+        // Send broadcast to MainWebView
         Intent showDialog = new Intent(MainWebView.SHOW_DIALOG);
         showDialog.putExtra("type", BirdblocksDialog.DialogType.INPUT.toString());
         showDialog.putExtra("title", title);
@@ -191,8 +244,17 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
     }
 
+    /**
+     * Shows a 2 button dialog with a question
+     *
+     * @param title    Title of the dialog
+     * @param question Text to show to the user
+     * @param option1  Left button text
+     * @param option2  Right button text
+     */
     private void showChoice(String title, String question, String option1, String option2) {
         dialogResponse = null;
+        // Send broadcast to MainWebView
         Intent showDialog = new Intent(MainWebView.SHOW_DIALOG);
         showDialog.putExtra("type", BirdblocksDialog.DialogType.CHOICE.toString());
         showDialog.putExtra("title", title);
@@ -202,6 +264,11 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
     }
 
+    /**
+     * Gets the response to the text dialog
+     *
+     * @return Response for the dialog or "No Response" if there was not a response
+     */
     private String getDialogResponse() {
         String response;
         if (dialogResponse == null) {
@@ -214,6 +281,11 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         return response;
     }
 
+    /**
+     * Gets the response made to the choice dialog
+     *
+     * @return Response for the dialog or "0" if there was not a response
+     */
     private String getChoiceResponse() {
         String response;
         if (dialogResponse == null) {
@@ -226,7 +298,13 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         return response;
     }
 
+    /**
+     * Gets the orientation of the device
+     *
+     * @return String representing the orientation of the device
+     */
     private String getDeviceOrientation() {
+        // TODO: Make this behavior identical to iPad
         Display display = ((WindowManager) service
                 .getSystemService(Context.WINDOW_SERVICE))
                 .getDefaultDisplay();
@@ -272,12 +350,15 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         if (event.sensor.getType() == Sensor.TYPE_PRESSURE) {
             pressure = event.values[0];
         } else if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            // Compute whether or not the device was shaken
             long now = System.currentTimeMillis();
 
+            // Timeout count if there was not enough movement
             if ((now - lastForcefulMovement) > SHAKE_TIMEOUT) {
                 shakeCount = 0;
             }
 
+            // See if this movement was enough to be a shake
             if ((now - lastSampleTime) > SAMPLE_THRESHOLD) {
                 long diff = now - lastSampleTime;
                 float speed = Math.abs(event.values[0] + event.values[1] + event.values[2] - lastAccelX - lastAccelY - lastAccelZ) / diff * 10000;
