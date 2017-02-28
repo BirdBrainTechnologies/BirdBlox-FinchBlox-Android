@@ -31,8 +31,10 @@ public class MainWebView extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent.getAction().equals(SHOW_DIALOG)) {
+                // Handles showing Choice and Text dialogs
                 showDialog(intent.getExtras());
             } else if (intent.getAction().equals(SHARE_FILE)) {
+                // Handles opening a share dialog
                 showShareDialog(intent.getExtras());
             }
         }
