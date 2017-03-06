@@ -8,11 +8,12 @@ import android.util.Log;
 import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTSettings;
-import com.birdbraintechnologies.birdblocks.devices.Hummingbird;
+import com.birdbraintechnologies.birdblocks.devices.Flutter;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -22,13 +23,14 @@ import java.util.regex.Pattern;
 import fi.iki.elonen.NanoHTTPD;
 
 /**
- * Created by tsun on 3/5/17.
+ * Class for handling requests from the router to Flutter devices
+ *
+ * @author Terence Sun (tsun1215)
  */
-
 public class FlutterRequestHandler implements RequestHandler {
     private static final String TAG = FlutterRequestHandler.class.getName();
 
-    /* UUIDs for different Hummingbird features */
+    /* UUIDs for different Flutter features */
     private static final String FLUTTER_DEVICE_UUID = "BC2F4CC6-AAEF-4351-9034-D66268E328F0";
     private static final UUID UART_UUID = UUID.fromString("BC2F4CC6-AAEF-4351-9034-D66268E328F0");
     private static final UUID TX_UUID = UUID.fromString("06D1E5E7-79AD-4A71-8FAA-373789F7D93C");
@@ -39,7 +41,7 @@ public class FlutterRequestHandler implements RequestHandler {
     private HttpService service;
     private UARTSettings flutterUARTSettings;
     private BluetoothHelper btHelper;
-    private HashMap<String, Hummingbird> connectedDevices;
+    private HashMap<String, Flutter> connectedDevices;
 
 
     public FlutterRequestHandler(HttpService service) {
@@ -66,28 +68,28 @@ public class FlutterRequestHandler implements RequestHandler {
                 case "discover":
                     responseBody = listDevices();
                     break;
-//                case "totalStatus":
-//                    responseBody = getTotalStatus();
-//                    break;
+                case "totalStatus":
+                    responseBody = getTotalStatus();
+                    break;
             }
         } else {
             switch (path[1]) {
                 case "connect":
                     responseBody = connectToDevice(path[0]);
                     break;
-//                case "disconnect":
-//                    responseBody = disconnectFromDevice(path[0]);
-//                    break;
-//                case "out":
-//                    getDeviceFromId(path[0]).setOutput(path[2],
-//                            Arrays.copyOfRange(path, 2, path.length));
-//                    break;
-//                case "in":
-//                    responseBody = getDeviceFromId(path[0]).readSensor(path[2], path[3]);
-//                    break;
-//                case "rename":
-//                    responseBody = renameDevice(path[0], path[2]);
-//                    break;
+                case "disconnect":
+                    responseBody = disconnectFromDevice(path[0]);
+                    break;
+                case "out":
+                    getDeviceFromId(path[0]).setOutput(path[2],
+                            Arrays.copyOfRange(path, 2, path.length));
+                    break;
+                case "in":
+                    responseBody = getDeviceFromId(path[0]).readSensor(path[2], path[3]);
+                    break;
+                case "rename":
+                    responseBody = renameDevice(path[0], path[2]);
+                    break;
             }
         }
 
@@ -99,9 +101,9 @@ public class FlutterRequestHandler implements RequestHandler {
 
 
     /**
-     * Lists the Hummingbird devices that are seen
+     * Lists the Flutter devices that are seen
      *
-     * @return List of Hummingbird devices
+     * @return List of Flutter devices
      */
     private String listDevices() {
         List<BluetoothDevice> deviceList = btHelper.scanDevices(generateDeviceFilter());
@@ -114,7 +116,7 @@ public class FlutterRequestHandler implements RequestHandler {
     }
 
     /**
-     * Creates a bluetooth scan device filter that only matches Hummingbird devices
+     * Creates a bluetooth scan device filter that only matches Flutter devices
      *
      * @return List of scan filters
      */
@@ -122,10 +124,10 @@ public class FlutterRequestHandler implements RequestHandler {
         ScanFilter hbScanFilter = (new ScanFilter.Builder())
                 .setServiceUuid(ParcelUuid.fromString(FLUTTER_DEVICE_UUID))
                 .build();
-        List<ScanFilter> hummingbirdDeviceFilters = new ArrayList<>();
-        hummingbirdDeviceFilters.add(hbScanFilter);
+        List<ScanFilter> flutterDeviceFilters = new ArrayList<>();
+        flutterDeviceFilters.add(hbScanFilter);
 
-        return hummingbirdDeviceFilters;
+        return flutterDeviceFilters;
     }
 
     /**
@@ -148,13 +150,13 @@ public class FlutterRequestHandler implements RequestHandler {
      * @param deviceId Device ID to find
      * @return The connected device if it exists, null otherwise
      */
-    private Hummingbird getDeviceFromId(String deviceId) {
+    private Flutter getDeviceFromId(String deviceId) {
         String deviceMAC = extractMAC(deviceId);
         return connectedDevices.get(deviceMAC);
     }
 
     /**
-     * Connects to the device and creates a Hummingbird instance in the list of connected devices
+     * Connects to the device and creates a Flutter instance in the list of connected devices
      *
      * @param deviceId Device ID to connect to
      * @return No Response
@@ -162,12 +164,61 @@ public class FlutterRequestHandler implements RequestHandler {
     private String connectToDevice(String deviceId) {
         String deviceMAC = extractMAC(deviceId);
 
-        // Create hummingbird
+        // Create Flutter
         // TODO: Handle errors when connecting to device
         UARTConnection conn = btHelper.connectToDeviceUART(deviceMAC, this.flutterUARTSettings);
-        Hummingbird device = new Hummingbird(conn);
+        Flutter device = new Flutter(conn);
         connectedDevices.put(deviceMAC, device);
 
         return "";
+    }
+
+    /**
+     * Renames a device
+     * @param deviceId Device ID to rename
+     * @param newName New name to give to the device
+     * @return No Response
+     */
+    private String renameDevice(String deviceId, String newName) {
+        Flutter device = getDeviceFromId(deviceId);
+        if (device != null) {
+            device.rename(newName);
+        }
+        return "";
+    }
+
+
+    /**
+     * Disconnects from a given device
+     *
+     * @param deviceId Device ID of the device to disconnect from
+     * @return No Response
+     */
+    private String disconnectFromDevice(String deviceId) {
+        Flutter device = getDeviceFromId(deviceId);
+        if (device != null) {
+            Log.d(TAG, "Disconnecting from device: " + deviceId);
+            device.disconnect();
+            connectedDevices.remove(extractMAC(deviceId));
+        }
+        return "";
+    }
+
+    /**
+     * Returns the aggregated status of all connected Flutters. 0 means at least 1 device is
+     * disconnected; 1 means that all devices are OK, 2 means that no devices are connected.
+     *
+     * @return 0, 1, or 2 depending on the aggregate status of all the devices
+     */
+    private String getTotalStatus() {
+        if (connectedDevices.size() == 0) {
+            return "2";  // No devices connected
+        }
+        for (Flutter device : connectedDevices.values()) {
+            if (!device.isConnected()) {
+                return "0";  // Some device is disconnected
+            }
+        }
+        return "1";  // All devices are OK
     }
 }
