@@ -1,6 +1,7 @@
 package com.birdbraintechnologies.birdblocks.httpservice;
 
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FlutterRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HummingbirdRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SettingsHandler;
@@ -38,6 +39,7 @@ public class RequestRouter {
     private void initRoutes() {
         // TODO: Make this have a match ordering
         addRoute("^/hummingbird/(.*)$", new HummingbirdRequestHandler(service));
+        addRoute("^/flutter/(.*)$", new FlutterRequestHandler(service));
         addRoute("^/tablet/(.*)$", new HostDeviceHandler(service));
         addRoute("^/settings/(.*)$", new SettingsHandler(service));
         addRoute("^/data/(.*)$", new FileManagementHandler(service));
