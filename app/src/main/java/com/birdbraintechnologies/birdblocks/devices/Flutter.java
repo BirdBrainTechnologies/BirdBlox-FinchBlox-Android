@@ -3,6 +3,7 @@ package com.birdbraintechnologies.birdblocks.devices;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
+import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
 
 import java.util.Arrays;
 
@@ -12,8 +13,16 @@ import java.util.Arrays;
  * @author Terence Sun (tsun1215)
  */
 public class Flutter implements UARTConnection.RXDataListener {
+
+    private static final byte SET_CMD = 's';
+    private static final byte COMMA = ',';
+    private static final byte SERVO_CMD = 's';
+    private static final byte TRI_LED_R_CMD = 'r';
+    private static final byte TRI_LED_G_CMD = 'g';
+    private static final byte TRI_LED_B_CMD = 'b';
+    private static final byte READ_CMD = 'r';
+
     private static final String TAG = Flutter.class.getName();
-    // TODO: Flutter command constants
 
     private UARTConnection conn;
 
@@ -26,7 +35,6 @@ public class Flutter implements UARTConnection.RXDataListener {
         this.conn = conn;
     }
 
-
     /**
      * Sets the output of the given output type according to args
      *
@@ -35,10 +43,57 @@ public class Flutter implements UARTConnection.RXDataListener {
      * @return True if the output was successfully set, false otherwise
      */
     public boolean setOutput(String outputType, String[] args) {
-        // TODO: Implement flutter output functions
-        Log.e(TAG, "Call to unimplemented function: setOutput(" + outputType + ", "
-                + Arrays.toString(args) + ")");
+        int port = Integer.parseInt(args[1]);
+        switch (outputType) {
+            case "servo":
+                return setServo(port, Integer.parseInt(args[2]));
+            case "triled":
+                return setTriLED(port, Integer.parseInt(args[2]), Integer.parseInt(args[3]),
+                        Integer.parseInt(args[4]));
+        }
         return false;
+    }
+
+    /**
+     * Sets the RGB values of a tri-color LED connected to the given port
+     *
+     * @param port     Port number that the LED is connected to
+     * @param rPercent Percentage [0,100] to set R to
+     * @param gPercent Percentage [0,100] to set G to
+     * @param bPercent Percentage [0,100] to set B to
+     * @return True if the command succeeded, false otherwise
+     */
+    private boolean setTriLED(int port, int rPercent, int gPercent, int bPercent) {
+        Log.v("Flutter", "Setting TriLED");
+        byte r = clampToBounds(Math.round(rPercent), 0, 100);
+        byte g = clampToBounds(Math.round(gPercent), 0, 100);
+        byte b = clampToBounds(Math.round(bPercent), 0, 100);
+        boolean check = conn.writeBytes(new byte[]{SET_CMD, TRI_LED_R_CMD, computePort(port), COMMA , r});
+        try {
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        check &= conn.writeBytes(new byte[]{SET_CMD, TRI_LED_G_CMD, computePort(port), COMMA , g});
+        try {
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        check &= conn.writeBytes(new byte[]{SET_CMD, TRI_LED_B_CMD, computePort(port), COMMA , b});
+        return check;
+    }
+
+    /**
+     * Sets the angle of the servo connected to the given port
+     *
+     * @param port  Port number that the servo is connected to
+     * @param angle Percentage [0,100] to set the intensity to
+     * @return True if the command succeeded, false otherwise
+     */
+    private boolean setServo(int port, int angle) {
+        byte angleByte = clampToBounds(Math.round(angle * 1.25), 0, 225);
+        return conn.writeBytes(new byte[]{SET_CMD, SERVO_CMD, computePort(port), COMMA, angleByte});
     }
 
     /**
@@ -51,10 +106,51 @@ public class Flutter implements UARTConnection.RXDataListener {
      * @return A string representing the value of the sensor
      */
     public String readSensor(String sensorType, String portString) {
-        // TODO: Implement flutter sensor reading functions
-        Log.e(TAG, "Call to unimplemented function: readSensor(" + sensorType + ", "
-                + portString + ")");
-        return "";
+        byte[] response = conn.writeBytesWithResponse(new byte[]{READ_CMD});
+        int port = Integer.parseInt(portString);
+        byte rawSensorValue = response[port];
+
+        switch (sensorType) {
+            case "distance":
+                return Double.toString(DeviceUtil.RawToDist(rawSensorValue));
+            case "temperature":
+                return Double.toString(DeviceUtil.RawToTemp(rawSensorValue));
+            case "sound":
+            case "light":
+            case "sensor":
+            default:
+                return Double.toString(DeviceUtil.RawToPercent(rawSensorValue));
+        }
+    }
+
+    /**
+     * Computes the ascii byte of the port number
+     *
+     * @param port Integer port to convert
+     * @return Ascii representation of the port
+     */
+    private byte computePort(int port) {
+        // TODO: Error handling for invalid ports
+        // Adding 48 to a number 0-9 makes it ascii
+        return (byte) ((port) + 48);
+    }
+
+    /**
+     * Returns a value that is bounded by min and max
+     *
+     * @param value Value to be clamped
+     * @param min   Minimum that this value can be
+     * @param max   Maximum that this value can be
+     * @return Clamped value
+     */
+    private byte clampToBounds(long value, int min, int max) {
+        if (value > max) {
+            return (byte) max;
+        } else if (value < min) {
+            return (byte) min;
+        } else {
+            return (byte) value;
+        }
     }
 
     /**
