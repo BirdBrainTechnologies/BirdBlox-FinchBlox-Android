@@ -109,7 +109,7 @@ public class Flutter implements UARTConnection.RXDataListener {
      */
     private boolean setServo(int port, int angle) {
         byte angleByte = clampToBounds(Math.round(angle * 1.25), 0, 225);
-        return conn.writeBytes(new byte[]{SET_CMD, SERVO_CMD, computePort(port), COMMA, angleByte});
+        return writeAndWaitOK(new byte[]{SET_CMD, SERVO_CMD, computePort(port), COMMA, angleByte});
     }
 
     /**
