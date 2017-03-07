@@ -13,10 +13,13 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Created by tsun on 3/7/17.
- */
 
+/**
+ * Represents a connection established via Bluetooth Low Energy to a MelodySmart BTLE Adapter.
+ * Communicates using the dataBus line.
+ *
+ * @author Terence Sun (tsun1215)
+ */
 public class MelodySmartConnection extends BluetoothGattCallback {
     private static final String TAG = MelodySmartConnection.class.getName();
     private static final int MAX_RETRIES = 100;
@@ -101,7 +104,7 @@ public class MelodySmartConnection extends BluetoothGattCallback {
 
 
     /**
-     * Sends a byte array to the device across TX
+     * Sends a byte array to the device across the data bus
      *
      * @param bytes byte array to send
      * @return True on success, false otherwise
@@ -118,7 +121,8 @@ public class MelodySmartConnection extends BluetoothGattCallback {
     }
 
     /**
-     * Sends a byte array across TX, expecting a response on the RX line. Returns the response.
+     * Sends a byte array across data bus, expecting a response on the same line. Returns the
+     * response.
      *
      * @param bytes Byte array to send to the device
      * @return Response from the device
@@ -159,7 +163,7 @@ public class MelodySmartConnection extends BluetoothGattCallback {
             // TODO: Potential data race -> change to blocking queue
             return Arrays.copyOf(res, res.length);
         }
-        Log.e(TAG, "Unable to write bytes to tx");
+        Log.e(TAG, "Unable to write bytes");
         return new byte[]{};
     }
 
