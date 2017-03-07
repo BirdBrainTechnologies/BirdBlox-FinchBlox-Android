@@ -20,6 +20,11 @@ public class DeviceUtil {
     }
 
     /**
+     * Converts percent readings [0,100] to raw [0,255]
+     */
+    public static byte PercentToRaw(double percent) { return (byte) (percent * 2.55); }
+
+    /**
      * Converts raw readings from sensors [0,255] into temperature
      *
      * @param raw Raw reading from sensor

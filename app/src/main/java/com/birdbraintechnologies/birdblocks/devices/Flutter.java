@@ -2,21 +2,19 @@ package com.birdbraintechnologies.birdblocks.devices;
 
 import android.util.Log;
 
-import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
+import com.birdbraintechnologies.birdblocks.bluetooth.MelodySmartConnection;
 import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
 
 import java.util.Arrays;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Represents a Flutter device and all of its functionality: Setting outputs, reading sensors
  *
  * @author Terence Sun (tsun1215)
  */
-public class Flutter implements UARTConnection.RXDataListener {
-    /* Time to wait before erroring out for the countdown latch */
-    private static int AWAIT_TIMEOUT = 5;
+public class Flutter {
+    private static final String TAG = Flutter.class.getName();
+
     /* Commands for Flutter */
     private static final byte SET_CMD = 's';
     private static final byte COMMA = ',';
@@ -25,19 +23,15 @@ public class Flutter implements UARTConnection.RXDataListener {
     private static final byte TRI_LED_G_CMD = 'g';
     private static final byte TRI_LED_B_CMD = 'b';
     private static final byte READ_CMD = 'r';
-    private static final String OK_RESPONSE = new String(new byte[]{'O','K','\n','\r'});
 
-    private static final String TAG = Flutter.class.getName();
-    private CountDownLatch rcvLatch = new CountDownLatch(1);
-
-    private UARTConnection conn;
+    private MelodySmartConnection conn;
 
     /**
      * Initializes a Flutter device
      *
      * @param conn Connection established with the Flutter device
      */
-    public Flutter(UARTConnection conn) {
+    public Flutter(MelodySmartConnection conn) {
         this.conn = conn;
     }
 
@@ -74,30 +68,13 @@ public class Flutter implements UARTConnection.RXDataListener {
         byte r = clampToBounds(Math.round(rPercent), 0, 100);
         byte g = clampToBounds(Math.round(gPercent), 0, 100);
         byte b = clampToBounds(Math.round(bPercent), 0, 100);
-        boolean check = writeAndWaitOK(new byte[]{SET_CMD, TRI_LED_R_CMD, computePort(port), COMMA , r});
-        check &= writeAndWaitOK(new byte[]{SET_CMD, TRI_LED_G_CMD, computePort(port), COMMA , g});
-        check &= writeAndWaitOK(new byte[]{SET_CMD, TRI_LED_B_CMD, computePort(port), COMMA , b});
+        boolean check = conn.writeBytes(new byte[]{SET_CMD, TRI_LED_R_CMD, computePort(port),
+                COMMA, r, '\n', '\r'});
+        check &= conn.writeBytes(new byte[]{SET_CMD, TRI_LED_G_CMD, computePort(port),
+                COMMA, g, '\n', '\r'});
+        check &= conn.writeBytes(new byte[]{SET_CMD, TRI_LED_B_CMD, computePort(port),
+                COMMA, b, '\n', '\r'});
         return check;
-    }
-
-    /**
-     * Writes a command and waits for an OK response from the Flutter
-     * @param cmd Command to write
-     * @return True if the command was successfully written, False otherwise.
-     */
-    private synchronized boolean writeAndWaitOK(byte[] cmd) {
-        conn.addRxDataListener(this);
-        rcvLatch = new CountDownLatch(1);
-        boolean response = conn.writeBytes(cmd);
-        try {
-            if (!rcvLatch.await(AWAIT_TIMEOUT, TimeUnit.SECONDS)) {
-                response = false;
-            }
-        } catch (InterruptedException e) {
-            Log.e(TAG, "Unable to wait for latch: " + e);
-        }
-        conn.removeRxDataListener(this);
-        return response;
     }
 
     /**
@@ -109,7 +86,7 @@ public class Flutter implements UARTConnection.RXDataListener {
      */
     private boolean setServo(int port, int angle) {
         byte angleByte = clampToBounds(Math.round(angle * 1.25), 0, 225);
-        return writeAndWaitOK(new byte[]{SET_CMD, SERVO_CMD, computePort(port), COMMA, angleByte});
+        return conn.writeBytes(new byte[]{SET_CMD, SERVO_CMD, computePort(port), COMMA, angleByte, '\n', '\r'});
     }
 
     /**
@@ -122,9 +99,18 @@ public class Flutter implements UARTConnection.RXDataListener {
      * @return A string representing the value of the sensor
      */
     public String readSensor(String sensorType, String portString) {
-        byte[] response = conn.writeBytesWithResponse(new byte[]{READ_CMD});
+        byte[] responseBytes = conn.writeBytesWithResponse(new byte[]{READ_CMD});
+        if (responseBytes[0] != READ_CMD) {
+            Log.e(TAG, "Received invalid response to read command: " + Arrays.toString(responseBytes));
+        }
         int port = Integer.parseInt(portString);
-        byte rawSensorValue = response[port];
+
+        // Response is given in percent
+        String[] response = new String(responseBytes).split(",");
+        String sensorPercent = response[port];
+
+        // Convert so that it is backward compatible with conversion library
+        byte rawSensorValue = DeviceUtil.PercentToRaw(Double.parseDouble(sensorPercent));
 
         switch (sensorType) {
             case "distance":
@@ -135,7 +121,7 @@ public class Flutter implements UARTConnection.RXDataListener {
             case "light":
             case "sensor":
             default:
-                return Double.toString(DeviceUtil.RawToPercent(rawSensorValue));
+                return sensorPercent;
         }
     }
 
@@ -187,19 +173,6 @@ public class Flutter implements UARTConnection.RXDataListener {
      * Disconnects the device
      */
     public void disconnect() {
-        conn.removeRxDataListener(this);
         conn.disconnect();
-    }
-
-    @Override
-    public void onRXData(byte[] newData) {
-        if (newData.length == 4) {
-            String cmd = new String(newData);
-            if (cmd.equals(OK_RESPONSE)) {
-                rcvLatch.countDown();
-            }
-        }
-        // TODO: Implement listener for getting new RX data
-
     }
 }

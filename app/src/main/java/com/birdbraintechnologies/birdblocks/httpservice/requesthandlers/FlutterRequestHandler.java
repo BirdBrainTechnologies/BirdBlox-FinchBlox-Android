@@ -6,6 +6,7 @@ import android.os.ParcelUuid;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
+import com.birdbraintechnologies.birdblocks.bluetooth.MelodySmartConnection;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTSettings;
 import com.birdbraintechnologies.birdblocks.devices.Flutter;
@@ -166,7 +167,7 @@ public class FlutterRequestHandler implements RequestHandler {
 
         // Create Flutter
         // TODO: Handle errors when connecting to device
-        UARTConnection conn = btHelper.connectToDeviceUART(deviceMAC, this.flutterUARTSettings);
+        MelodySmartConnection conn = btHelper.connectToDeviceMelodySmart(deviceMAC, this.flutterUARTSettings);
         Flutter device = new Flutter(conn);
         connectedDevices.put(deviceMAC, device);
 

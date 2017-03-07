@@ -117,4 +117,23 @@ public class BluetoothHelper {
 
         return conn;
     }
+
+    /**
+     * Connects to a device and returns the resulting connection
+     *
+     * @param addr     MAC Address of the device to connect to
+     * @param settings Settings to define the UART connection's TX and RX lines
+     * @return Result connection, null if the given MAC Address doesn't match any scanned device
+     */
+    synchronized public MelodySmartConnection connectToDeviceMelodySmart(String addr, UARTSettings settings) {
+        BluetoothDevice device = deviceList.get(addr);
+        if (device == null) {
+            Log.e(TAG, "Unable to connect to device: " + addr);
+            return null;
+        }
+
+        MelodySmartConnection conn = new MelodySmartConnection(context, device, settings);
+
+        return conn;
+    }
 }
