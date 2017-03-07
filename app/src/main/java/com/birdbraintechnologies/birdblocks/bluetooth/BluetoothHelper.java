@@ -24,13 +24,14 @@ import java.util.List;
  */
 public class BluetoothHelper {
     private static final String TAG = "BluetoothHelper";
-    private static final int SCAN_DURATION = 900;  /* Length of time to perform a scan */
+    private static final int SCAN_DURATION = 5000;  /* Length of time to perform a scan */
 
     private BluetoothAdapter btAdapter;
     private Handler handler;
     private boolean btScanning;
     private Context context;
     private HashMap<String, BluetoothDevice> deviceList;
+    private BluetoothLeScanner scanner;
 
     /* Callback for populating the device list */
     private ScanCallback populateDevices = new ScanCallback() {
@@ -73,35 +74,29 @@ public class BluetoothHelper {
      * @return List of devices that matches the filters
      */
     synchronized public List<BluetoothDevice> scanDevices(List<ScanFilter> scanFilters) {
-        final BluetoothLeScanner scanner = btAdapter.getBluetoothLeScanner();
-
-        // Schedule thread to stop scanning after SCAN_DURATION
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                btScanning = false;
-                scanner.stopScan(populateDevices);
-            }
-        }, SCAN_DURATION);
-
-        // Start scanning for devices
-        btScanning = true;
-
-        // Build scan settings (scan as fast as possible)
-        ScanSettings scanSettings = (new ScanSettings.Builder())
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-                .build();
-        scanner.startScan(scanFilters, scanSettings, populateDevices);
-
-        // Wait until scanning is complete
-        try {
-            while (btScanning) {
-                Thread.sleep(SCAN_DURATION);
-            }
-        } catch (InterruptedException e) {
-            Log.e(TAG, e.toString());
+        if (scanner == null) {
+            // Start scanning for devices
+            scanner = btAdapter.getBluetoothLeScanner();
+            // Schedule thread to stop scanning after SCAN_DURATION
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    btScanning = false;
+                    scanner.stopScan(populateDevices);
+                    scanner = null;
+                }
+            }, SCAN_DURATION);
+            btScanning = true;
+            // Build scan settings (scan as fast as possible)
+            ScanSettings scanSettings = (new ScanSettings.Builder())
+                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                    .build();
+            scanner.startScan(scanFilters, scanSettings, populateDevices);
         }
-        return new ArrayList<>(deviceList.values());
+
+        synchronized (deviceList) {
+            return new ArrayList<>(deviceList.values());
+        }
     }
 
     /**
