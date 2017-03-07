@@ -7,7 +7,7 @@ package com.birdbraintechnologies.birdblocks.util;
  * @author Brandon Price
  * @author Terence Sun (tsun1215)
  */
-public class HummingbirdUtil {
+public class DeviceUtil {
 
     /**
      * Converts raw readings from sensors [0,255] into percentage [0,100]

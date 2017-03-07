@@ -3,7 +3,7 @@ package com.birdbraintechnologies.birdblocks.devices;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
-import com.birdbraintechnologies.birdblocks.util.HummingbirdUtil;
+import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
 
 import java.util.Arrays;
 
@@ -96,14 +96,14 @@ public class Hummingbird implements UARTConnection.RXDataListener {
 
         switch (sensorType) {
             case "distance":
-                return Double.toString(HummingbirdUtil.RawToDist(rawSensorValue));
+                return Double.toString(DeviceUtil.RawToDist(rawSensorValue));
             case "temperature":
-                return Double.toString(HummingbirdUtil.RawToTemp(rawSensorValue));
+                return Double.toString(DeviceUtil.RawToTemp(rawSensorValue));
             case "sound":
             case "light":
             case "sensor":
             default:
-                return Double.toString(HummingbirdUtil.RawToPercent(rawSensorValue));
+                return Double.toString(DeviceUtil.RawToPercent(rawSensorValue));
         }
     }
 
