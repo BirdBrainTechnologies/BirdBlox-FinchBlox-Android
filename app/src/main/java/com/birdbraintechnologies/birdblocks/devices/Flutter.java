@@ -16,13 +16,16 @@ public class Flutter {
     private static final String TAG = Flutter.class.getName();
 
     /* Commands for Flutter */
-    private static final byte SET_CMD = 's';
-    private static final byte COMMA = ',';
-    private static final byte SERVO_CMD = 's';
-    private static final byte TRI_LED_R_CMD = 'r';
-    private static final byte TRI_LED_G_CMD = 'g';
-    private static final byte TRI_LED_B_CMD = 'b';
+    private static final String SET_CMD = "s";
     private static final byte READ_CMD = 'r';
+    private static final String SERVO_OUTPUT = "s";
+    private static final String TRI_LED_R_OUTPUT = "r";
+    private static final String TRI_LED_G_OUTPUT = "g";
+    private static final String TRI_LED_B_OUTPUT = "b";
+    private static final String SET_SERVO_CMD = SET_CMD + SERVO_OUTPUT + "%d,%x";
+    private static final String SET_TRI_R_CMD = SET_CMD + TRI_LED_R_OUTPUT + "%d,%x";
+    private static final String SET_TRI_G_CMD = SET_CMD + TRI_LED_G_OUTPUT + "%d,%x";
+    private static final String SET_TRI_B_CMD = SET_CMD + TRI_LED_B_OUTPUT + "%d,%x";
 
     private MelodySmartConnection conn;
 
@@ -64,16 +67,13 @@ public class Flutter {
      * @return True if the command succeeded, false otherwise
      */
     private boolean setTriLED(int port, int rPercent, int gPercent, int bPercent) {
-        Log.v("Flutter", "Setting TriLED");
         byte r = clampToBounds(Math.round(rPercent), 0, 100);
         byte g = clampToBounds(Math.round(gPercent), 0, 100);
         byte b = clampToBounds(Math.round(bPercent), 0, 100);
-        boolean check = conn.writeBytes(new byte[]{SET_CMD, TRI_LED_R_CMD, computePort(port),
-                COMMA, r, '\n', '\r'});
-        check &= conn.writeBytes(new byte[]{SET_CMD, TRI_LED_G_CMD, computePort(port),
-                COMMA, g, '\n', '\r'});
-        check &= conn.writeBytes(new byte[]{SET_CMD, TRI_LED_B_CMD, computePort(port),
-                COMMA, b, '\n', '\r'});
+
+        boolean check = conn.writeBytes(String.format(SET_TRI_R_CMD, port, r).getBytes());
+        check &= conn.writeBytes(String.format(SET_TRI_G_CMD, port, g).getBytes());
+        check &= conn.writeBytes(String.format(SET_TRI_B_CMD, port, b).getBytes());
         return check;
     }
 
@@ -86,7 +86,7 @@ public class Flutter {
      */
     private boolean setServo(int port, int angle) {
         byte angleByte = clampToBounds(Math.round(angle * 1.25), 0, 225);
-        return conn.writeBytes(new byte[]{SET_CMD, SERVO_CMD, computePort(port), COMMA, angleByte, '\n', '\r'});
+        return conn.writeBytes(String.format(SET_SERVO_CMD, port, angleByte).getBytes());
     }
 
     /**
