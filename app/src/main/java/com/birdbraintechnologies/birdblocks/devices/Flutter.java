@@ -117,6 +117,8 @@ public class Flutter {
                 return Double.toString(DeviceUtil.RawToDist(rawSensorValue));
             case "temperature":
                 return Double.toString(DeviceUtil.RawToTemp(rawSensorValue));
+            case "soil":
+                return Double.toString(clampToBounds(Double.parseDouble(sensorPercent), 0.0, 90.0));
             case "sound":
             case "light":
             case "sensor":
@@ -152,6 +154,16 @@ public class Flutter {
             return (byte) min;
         } else {
             return (byte) value;
+        }
+    }
+
+    private double clampToBounds(double value, double min, double max) {
+        if (value > max) {
+            return max;
+        } else if (value < min) {
+            return min;
+        } else {
+            return value;
         }
     }
 
