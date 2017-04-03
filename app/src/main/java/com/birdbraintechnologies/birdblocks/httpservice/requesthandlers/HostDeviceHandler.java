@@ -168,6 +168,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             case "choice_response":
                 responseBody = getChoiceResponse();
                 break;
+            case "exit":
+                exitApp();
+                break;
         }
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
@@ -334,6 +337,14 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             default:
                 return "In Between";
         }
+    }
+
+    /**
+     * Programatically exits the app
+     */
+    private void exitApp() {
+        Intent showDialog = new Intent(MainWebView.EXIT);
+        LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
     }
 
     @Override

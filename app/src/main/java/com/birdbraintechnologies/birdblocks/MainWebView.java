@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -27,6 +28,7 @@ public class MainWebView extends AppCompatActivity {
     /* Broadcast receiver for displaying dialogs */
     public static final String SHOW_DIALOG = "com.birdbraintechnologies.birdblocks.DIALOG";
     public static final String SHARE_FILE = "com.birdbraintechnologies.birdblocks.SHARE_FILE";
+    public static final String EXIT = "com.birdbraintechnologies.birdblocks.EXIT";
     private BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -36,6 +38,8 @@ public class MainWebView extends AppCompatActivity {
             } else if (intent.getAction().equals(SHARE_FILE)) {
                 // Handles opening a share dialog
                 showShareDialog(intent.getExtras());
+            } else if (intent.getAction().equals(EXIT)) {
+                exitApp();
             }
         }
     };
@@ -67,6 +71,7 @@ public class MainWebView extends AppCompatActivity {
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(SHOW_DIALOG);
         intentFilter.addAction(SHARE_FILE);
+        intentFilter.addAction(EXIT);
         bManager.registerReceiver(bReceiver, intentFilter);
     }
 
@@ -118,5 +123,10 @@ public class MainWebView extends AppCompatActivity {
         // TODO: Change to bbx
         sendIntent.setType("text/xml");
         startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.send_to)));
+    }
+    private void exitApp() {
+        Log.d("APP", "Exiting");
+        this.stopService(getIntent());
+        this.finishAndRemoveTask();
     }
 }
