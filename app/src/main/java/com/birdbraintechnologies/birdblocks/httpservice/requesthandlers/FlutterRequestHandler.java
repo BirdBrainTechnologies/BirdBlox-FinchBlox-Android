@@ -12,6 +12,7 @@ import com.birdbraintechnologies.birdblocks.bluetooth.UARTSettings;
 import com.birdbraintechnologies.birdblocks.devices.Flutter;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
+import com.birdbraintechnologies.birdblocks.util.NamingHandler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,12 +44,14 @@ public class FlutterRequestHandler implements RequestHandler {
     private UARTSettings flutterUARTSettings;
     private BluetoothHelper btHelper;
     private HashMap<String, Flutter> connectedDevices;
+    private HashMap<String, String> macAddrsByName;
 
 
     public FlutterRequestHandler(HttpService service) {
         this.service = service;
         this.btHelper = service.getBluetoothHelper();
         this.connectedDevices = new HashMap<>();
+        this.macAddrsByName = new HashMap<>();
 
         // Build UART settings
         this.flutterUARTSettings = (new UARTSettings.Builder())
@@ -111,7 +114,9 @@ public class FlutterRequestHandler implements RequestHandler {
         // TODO: Change this behavior to display correctly on device
         String devices = "";
         for (BluetoothDevice device : deviceList) {
-            devices = devices + device.getName() + " (" + device.getAddress() + ")\n";
+            String name = NamingHandler.GenerateName(service.getApplicationContext(), device.getAddress());
+            macAddrsByName.put(name, device.getAddress());
+            devices = devices + name + "\n";
         }
         return devices.trim();
     }
@@ -131,18 +136,8 @@ public class FlutterRequestHandler implements RequestHandler {
         return flutterDeviceFilters;
     }
 
-    /**
-     * Extracts the MAC address from the deviceId
-     *
-     * @param deviceId Id of the device
-     * @return MAC address of the device
-     */
-    private String extractMAC(String deviceId) {
-        Matcher match = Pattern.compile("^.*\\(([\\w\\:]+)\\)").matcher(deviceId);
-        if (match.matches()) {
-            return match.group(1);
-        }
-        return "";
+    private String getAddrFromName(String name) {
+        return macAddrsByName.get(name);
     }
 
     /**
@@ -152,7 +147,7 @@ public class FlutterRequestHandler implements RequestHandler {
      * @return The connected device if it exists, null otherwise
      */
     private Flutter getDeviceFromId(String deviceId) {
-        String deviceMAC = extractMAC(deviceId);
+        String deviceMAC = getAddrFromName(deviceId);
         return connectedDevices.get(deviceMAC);
     }
 
@@ -163,7 +158,7 @@ public class FlutterRequestHandler implements RequestHandler {
      * @return No Response
      */
     private String connectToDevice(String deviceId) {
-        String deviceMAC = extractMAC(deviceId);
+        String deviceMAC = getAddrFromName(deviceId);
 
         // Create Flutter
         // TODO: Handle errors when connecting to device
@@ -181,10 +176,7 @@ public class FlutterRequestHandler implements RequestHandler {
      * @return No Response
      */
     private String renameDevice(String deviceId, String newName) {
-        Flutter device = getDeviceFromId(deviceId);
-        if (device != null) {
-            device.rename(newName);
-        }
+        Log.e(TAG, "Call to deprecated function: renameDevice");
         return "";
     }
 
@@ -200,7 +192,7 @@ public class FlutterRequestHandler implements RequestHandler {
         if (device != null) {
             Log.d(TAG, "Disconnecting from device: " + deviceId);
             device.disconnect();
-            connectedDevices.remove(extractMAC(deviceId));
+            connectedDevices.remove(getAddrFromName(deviceId));
         }
         return "";
     }
