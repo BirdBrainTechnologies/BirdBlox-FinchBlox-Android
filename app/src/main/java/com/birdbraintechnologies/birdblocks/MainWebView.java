@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
@@ -24,6 +25,10 @@ import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 public class MainWebView extends AppCompatActivity {
     private static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
     private WebView webView;
+
+    /* For double back exit */
+    private static final int DOUBLE_BACK_DELAY = 2000;
+    private long back_pressed;
 
     /* Broadcast receiver for displaying dialogs */
     public static final String SHOW_DIALOG = "com.birdbraintechnologies.birdblocks.DIALOG";
@@ -108,6 +113,19 @@ public class MainWebView extends AppCompatActivity {
         bManager.unregisterReceiver(bReceiver);
         webView.destroy();
         stopService(new Intent(this, HttpService.class));
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (back_pressed + DOUBLE_BACK_DELAY > System.currentTimeMillis()) {
+            webView.evaluateJavascript("SaveManager.checkPromptSave(function() {\n" +
+                    "\t\tHtmlServer.sendRequest(\"tablet/exit\");\n" +
+                    "\t});", null);
+        } else {
+            Toast.makeText(getBaseContext(), "Press again to exit",
+                    Toast.LENGTH_SHORT).show();
+        }
+        back_pressed = System.currentTimeMillis();
     }
 
     private void showDialog(Bundle b) {
