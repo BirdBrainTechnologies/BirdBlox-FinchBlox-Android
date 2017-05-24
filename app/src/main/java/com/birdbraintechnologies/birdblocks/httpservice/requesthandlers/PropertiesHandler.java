@@ -1,5 +1,6 @@
 package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
+import android.os.Build;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
@@ -33,6 +34,9 @@ public class PropertiesHandler implements RequestHandler {
             case "dims":
                 responseBody = getDeviceScreenSize();
                 break;
+            case "os":
+                responseBody = getDeviceOSVersion();
+                break;
             default:
                 break;
         }
@@ -52,6 +56,25 @@ public class PropertiesHandler implements RequestHandler {
         double screen_height_in_mm = (metrics.heightPixels*25.4)/(mXDpi);
         double screen_width_in_mm = (metrics.widthPixels*25.4)/(mXDpi);
         return Double.toString(screen_width_in_mm) + "," + Double.toString(screen_height_in_mm);
+    }
+
+    /**
+     * Gets the screen size of the device
+     *
+     * @return String representing the Manufacturer and OS Version
+     *         "Manufacturer (OS Version)" of the device
+     */
+    private String getDeviceOSVersion() {
+        // Get device manufacturer
+        String res;
+        Log.e("OS", Build.MANUFACTURER + " " + Build.MODEL);
+        if (Build.MANUFACTURER.equals("Amazon")) {
+            res = "Kindle (";
+        } else {
+            res = "Android (";
+        }
+        res += Build.VERSION.RELEASE + ")";
+        return res;
     }
 
 }
