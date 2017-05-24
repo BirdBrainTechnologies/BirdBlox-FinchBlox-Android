@@ -4,6 +4,7 @@ import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileMana
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FlutterRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HummingbirdRequestHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SettingsHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SoundHandler;
 
@@ -44,6 +45,7 @@ public class RequestRouter {
         addRoute("^/settings/(.*)$", new SettingsHandler(service));
         addRoute("^/data/(.*)$", new FileManagementHandler(service));
         addRoute("^/sound/(.*)$", new SoundHandler(service));
+        addRoute("^/properties/(.*)$", new PropertiesHandler(service));
     }
 
     /**

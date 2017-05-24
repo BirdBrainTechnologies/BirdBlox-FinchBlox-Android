@@ -20,8 +20,8 @@
         android:theme="@style/AppTheme">
         <activity
             android:name=".MainWebView"
-            android:screenOrientation="landscape"
-            android:configChanges="orientation|screenSize">
+            android:configChanges="orientation|screenSize"
+            android:screenOrientation="landscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -32,7 +32,10 @@
         <service
             android:name=".httpservice.HttpService"
             android:enabled="true"
-            android:exported="true"></service>
+            android:exported="true" />
+        <service
+            android:name=".FileDownloadService"
+            android:exported="false"></service>
     </application>
 
 </manifest>

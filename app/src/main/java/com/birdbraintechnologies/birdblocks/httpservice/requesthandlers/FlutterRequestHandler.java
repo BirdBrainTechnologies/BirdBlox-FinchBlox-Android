@@ -165,7 +165,6 @@ public class FlutterRequestHandler implements RequestHandler {
         MelodySmartConnection conn = btHelper.connectToDeviceMelodySmart(deviceMAC, this.flutterUARTSettings);
         Flutter device = new Flutter(conn);
         connectedDevices.put(deviceMAC, device);
-
         return "";
     }
 
@@ -214,4 +213,5 @@ public class FlutterRequestHandler implements RequestHandler {
         }
         return "1";  // All devices are OK
     }
+
 }

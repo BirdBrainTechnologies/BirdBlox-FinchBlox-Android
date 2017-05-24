@@ -10,7 +10,7 @@ import java.util.Arrays;
 /**
  * Represents a Flutter device and all of its functionality: Setting outputs, reading sensors
  *
- * @author Terence Sun (tsun1215)
+ * @author Terence Sun (tsun1215), Shreyan Bakshi (AppyFizz)
  */
 public class Flutter {
     private static final String TAG = Flutter.class.getName();
@@ -22,10 +22,12 @@ public class Flutter {
     private static final String TRI_LED_R_OUTPUT = "r";
     private static final String TRI_LED_G_OUTPUT = "g";
     private static final String TRI_LED_B_OUTPUT = "b";
+    private static final String BUZZER_OUTPUT = "z";
     private static final String SET_SERVO_CMD = SET_CMD + SERVO_OUTPUT + "%d,%x";
     private static final String SET_TRI_R_CMD = SET_CMD + TRI_LED_R_OUTPUT + "%d,%x";
     private static final String SET_TRI_G_CMD = SET_CMD + TRI_LED_G_OUTPUT + "%d,%x";
     private static final String SET_TRI_B_CMD = SET_CMD + TRI_LED_B_OUTPUT + "%d,%x";
+    private static final String SET_BUZZER_CMD = SET_CMD + BUZZER_OUTPUT + "%x,%x";
 
     private MelodySmartConnection conn;
 
@@ -53,6 +55,8 @@ public class Flutter {
             case "triled":
                 return setTriLED(port, Integer.parseInt(args[2]), Integer.parseInt(args[3]),
                         Integer.parseInt(args[4]));
+            case "buzzer":
+                return setBuzzer(Integer.parseInt(args[1]), Integer.parseInt(args[2]));
         }
         return false;
     }
@@ -87,6 +91,19 @@ public class Flutter {
     private boolean setServo(int port, int angle) {
         byte angleByte = clampToBounds(Math.round(angle * 1.25), 0, 225);
         return conn.writeBytes(String.format(SET_SERVO_CMD, port, angleByte).getBytes());
+    }
+
+    /**
+     * BUZZER
+     *
+     * @param volume Percentage [0,100] to set the volume to
+     * @param frequency Percentage [0,20000] to set the frequency to
+     * @return True if the command succeeded, false otherwise
+     */
+    private boolean setBuzzer(int volume, int frequency) {
+        byte volumeByte = clampToBounds(Math.round(volume), 0, 100);
+        short frequencyByte = clampToBounds(Math.round(frequency), 0, 20000);
+        return conn.writeBytes(String.format(SET_BUZZER_CMD, volumeByte, frequencyByte).getBytes());
     }
 
     /**

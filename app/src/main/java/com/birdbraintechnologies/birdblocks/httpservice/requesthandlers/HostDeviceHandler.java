@@ -1,6 +1,7 @@
 package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -19,6 +20,7 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.Surface;
@@ -32,6 +34,8 @@ import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 import java.util.List;
 
 import fi.iki.elonen.NanoHTTPD;
+
+import static java.security.AccessController.getContext;
 
 /**
  * Handler for getting sensor data from the host device and showing dialogs
@@ -61,6 +65,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     HttpService service;
     private double longitude, latitude, altitude, pressure,
             deviceAccelX, deviceAccelY, deviceAccelZ;
+
 
     /* For dialogs */
     public static final String DIALOG_RESPONSE = "com.birdbraintechnologies.birdblocks.DIALOG_RESPONSE";

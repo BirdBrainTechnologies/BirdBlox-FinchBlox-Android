@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.InputType;
+import android.util.Log;
 import android.widget.EditText;
 
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
@@ -33,6 +34,7 @@ public class BirdblocksDialog extends DialogFragment {
             String hint = getArguments().getString("hint");
             final EditText input = new EditText(getActivity());
             input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_NORMAL);
+            Log.d("Input", "hi");
             input.setHint(hint);
             builder.setView(input)
                     .setPositiveButton("Done", new DialogInterface.OnClickListener() {
