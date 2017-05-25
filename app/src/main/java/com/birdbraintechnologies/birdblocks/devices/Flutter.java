@@ -23,11 +23,12 @@ public class Flutter {
     private static final String TRI_LED_G_OUTPUT = "g";
     private static final String TRI_LED_B_OUTPUT = "b";
     private static final String BUZZER_OUTPUT = "z";
+    public final static char CR  = (char) 0x0D;
     private static final String SET_SERVO_CMD = SET_CMD + SERVO_OUTPUT + "%d,%x";
     private static final String SET_TRI_R_CMD = SET_CMD + TRI_LED_R_OUTPUT + "%d,%x";
     private static final String SET_TRI_G_CMD = SET_CMD + TRI_LED_G_OUTPUT + "%d,%x";
     private static final String SET_TRI_B_CMD = SET_CMD + TRI_LED_B_OUTPUT + "%d,%x";
-    private static final String SET_BUZZER_CMD = SET_CMD + BUZZER_OUTPUT + "%x,%x";
+    private static final String SET_BUZZER_CMD = SET_CMD + BUZZER_OUTPUT + ",%x,%x" + CR;
 
     private MelodySmartConnection conn;
 
@@ -74,7 +75,6 @@ public class Flutter {
         byte r = clampToBounds(Math.round(rPercent), 0, 100);
         byte g = clampToBounds(Math.round(gPercent), 0, 100);
         byte b = clampToBounds(Math.round(bPercent), 0, 100);
-
         boolean check = conn.writeBytes(String.format(SET_TRI_R_CMD, port, r).getBytes());
         check &= conn.writeBytes(String.format(SET_TRI_G_CMD, port, g).getBytes());
         check &= conn.writeBytes(String.format(SET_TRI_B_CMD, port, b).getBytes());
@@ -102,8 +102,8 @@ public class Flutter {
      */
     private boolean setBuzzer(int volume, int frequency) {
         byte volumeByte = clampToBounds(Math.round(volume), 0, 100);
-        short frequencyByte = clampToBounds(Math.round(frequency), 0, 20000);
-        return conn.writeBytes(String.format(SET_BUZZER_CMD, volumeByte, frequencyByte).getBytes());
+        short frequency2Bytes = clampShortToBounds(Math.round(frequency), 0, 20000);
+        return conn.writeBytes(String.format(SET_BUZZER_CMD, volumeByte, frequency2Bytes).getBytes());
     }
 
     /**
@@ -181,6 +181,24 @@ public class Flutter {
             return min;
         } else {
             return value;
+        }
+    }
+
+    /**
+     * Returns a value that is bounded by min and max, as a short
+     *
+     * @param value Value to be clamped
+     * @param min   Minimum that this value can be
+     * @param max   Maximum that this value can be
+     * @return Clamped value
+     */
+    private short clampShortToBounds(long value, int min, int max) {
+        if (value > max) {
+            return (short) max;
+        } else if (value < min) {
+            return (short) min;
+        } else {
+            return (short) value;
         }
     }
 
