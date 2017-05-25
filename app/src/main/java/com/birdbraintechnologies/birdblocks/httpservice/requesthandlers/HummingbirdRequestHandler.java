@@ -89,9 +89,9 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 case "in":
                     responseBody = getDeviceFromId(path[0]).readSensor(path[2], path[3]);
                     break;
-                case "rename":
-                    responseBody = renameDevice(path[0], path[2]);
-                    break;
+//                case "rename":
+//                    responseBody = renameDevice(path[0], path[2]);
+//                    break;
             }
         }
 
@@ -159,13 +159,13 @@ public class HummingbirdRequestHandler implements RequestHandler {
         return "";
     }
 
-    private String renameDevice(String deviceId, String newName) {
-        Hummingbird device = getDeviceFromId(deviceId);
-        if (device != null) {
-            device.rename(newName);
-        }
-        return "";
-    }
+//    private String renameDevice(String deviceId, String newName) {
+//        Hummingbird device = getDeviceFromId(deviceId);
+//        if (device != null) {
+//            device.rename(newName);
+//        }
+//        return "";
+//    }
 
     /**
      * Disconnects from a given device

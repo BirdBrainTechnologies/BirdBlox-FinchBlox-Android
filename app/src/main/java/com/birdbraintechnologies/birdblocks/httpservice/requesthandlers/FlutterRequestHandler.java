@@ -88,9 +88,9 @@ public class FlutterRequestHandler implements RequestHandler {
                 case "in":
                     responseBody = getDeviceFromId(path[0]).readSensor(path[2], path[3]);
                     break;
-                case "rename":
-                    responseBody = renameDevice(path[0], path[2]);
-                    break;
+//                case "rename":
+//                    responseBody = renameDevice(path[0], path[2]);
+//                    break;
             }
         }
 
@@ -171,10 +171,10 @@ public class FlutterRequestHandler implements RequestHandler {
      * @param newName New name to give to the device
      * @return No Response
      */
-    private String renameDevice(String deviceId, String newName) {
-        Log.e(TAG, "Call to deprecated function: renameDevice");
-        return "";
-    }
+//    private String renameDevice(String deviceId, String newName) {
+//        Log.e(TAG, "Call to deprecated function: renameDevice");
+//        return "";
+//    }
 
 
     /**

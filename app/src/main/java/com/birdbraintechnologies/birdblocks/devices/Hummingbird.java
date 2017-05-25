@@ -238,28 +238,28 @@ public class Hummingbird implements UARTConnection.RXDataListener {
         return conn.isConnected();
     }
 
-    public void rename(String newName) {
-        String cmd = "+++" + "\r" + "\n";
-        Log.d("RENAME", "Request: " + Arrays.toString(cmd.getBytes()));
-        byte[] response = conn.writeBytesWithResponse(cmd.getBytes());
-        Log.d("RENAME", "Response: " + new String(response));
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            Log.e("RENAME", e.toString());
-        }
-        cmd = RENAME_CMD + "=";
-        conn.writeBytes(cmd.getBytes());
-        cmd = newName + "\r\n";
-        conn.writeBytes(cmd.getBytes());
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            Log.e("RENAME", e.toString());
-        }
-        cmd = "ATZ\r\n";
-        conn.writeBytes(cmd.getBytes());
-    }
+//    public void rename(String newName) {
+//        String cmd = "+++" + "\r" + "\n";
+//        Log.d("RENAME", "Request: " + Arrays.toString(cmd.getBytes()));
+//        byte[] response = conn.writeBytesWithResponse(cmd.getBytes());
+//        Log.d("RENAME", "Response: " + new String(response));
+//        try {
+//            Thread.sleep(500);
+//        } catch (InterruptedException e) {
+//            Log.e("RENAME", e.toString());
+//        }
+//        cmd = RENAME_CMD + "=";
+//        conn.writeBytes(cmd.getBytes());
+//        cmd = newName + "\r\n";
+//        conn.writeBytes(cmd.getBytes());
+//        try {
+//            Thread.sleep(500);
+//        } catch (InterruptedException e) {
+//            Log.e("RENAME", e.toString());
+//        }
+//        cmd = "ATZ\r\n";
+//        conn.writeBytes(cmd.getBytes());
+//    }
 
     /**
      * Disconnects the device
