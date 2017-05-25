@@ -33,9 +33,6 @@
             android:name=".httpservice.HttpService"
             android:enabled="true"
             android:exported="true" />
-        <service
-            android:name=".FileDownloadService"
-            android:exported="false"></service>
     </application>
 
 </manifest>

@@ -7,7 +7,6 @@ import android.util.Log;
 
 import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblocks.bluetooth.MelodySmartConnection;
-import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTSettings;
 import com.birdbraintechnologies.birdblocks.devices.Flutter;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
@@ -19,8 +18,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import fi.iki.elonen.NanoHTTPD;
 
