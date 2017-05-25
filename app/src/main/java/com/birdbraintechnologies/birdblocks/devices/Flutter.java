@@ -25,10 +25,12 @@ public class Flutter {
     private static final String BUZZER_OUTPUT = "z";
     public final static char CR  = (char) 0x0D;
     private static final String SET_SERVO_CMD = SET_CMD + SERVO_OUTPUT + "%d,%x";
-    private static final String SET_TRI_R_CMD = SET_CMD + TRI_LED_R_OUTPUT + "%d,%x";
-    private static final String SET_TRI_G_CMD = SET_CMD + TRI_LED_G_OUTPUT + "%d,%x";
-    private static final String SET_TRI_B_CMD = SET_CMD + TRI_LED_B_OUTPUT + "%d,%x";
+//    private static final String SET_TRI_R_CMD = SET_CMD + TRI_LED_R_OUTPUT + "%d,%x";
+//    private static final String SET_TRI_G_CMD = SET_CMD + TRI_LED_G_OUTPUT + "%d,%x";
+//    private static final String SET_TRI_B_CMD = SET_CMD + TRI_LED_B_OUTPUT + "%d,%x";
     private static final String SET_BUZZER_CMD = SET_CMD + BUZZER_OUTPUT + ",%x,%x" + CR;
+
+    private static final String SET_TRI_CMD = SET_CMD + "l" + "%d,%x,%x,%x" + CR;
 
     private MelodySmartConnection conn;
 
@@ -75,9 +77,15 @@ public class Flutter {
         byte r = clampToBounds(Math.round(rPercent), 0, 100);
         byte g = clampToBounds(Math.round(gPercent), 0, 100);
         byte b = clampToBounds(Math.round(bPercent), 0, 100);
-        boolean check = conn.writeBytes(String.format(SET_TRI_R_CMD, port, r).getBytes());
-        check &= conn.writeBytes(String.format(SET_TRI_G_CMD, port, g).getBytes());
-        check &= conn.writeBytes(String.format(SET_TRI_B_CMD, port, b).getBytes());
+
+        /* OLDER VERSION OF TRILED COMMAND, WHICH USED TO SET EACH OF THE LEDs SEQUENTIALLY */
+//        boolean check = conn.writeBytes(String.format(SET_TRI_R_CMD, port, r).getBytes());
+//        check &= conn.writeBytes(String.format(SET_TRI_G_CMD, port, g).getBytes());
+//        check &= conn.writeBytes(String.format(SET_TRI_B_CMD, port, b).getBytes());
+
+        /* NEWER VERSION OF TRILED COMMAND, WHICH SETS ALL THRRE LEDs AT ONCE */
+        boolean check = conn.writeBytes(String.format(SET_TRI_CMD, port, r, g, b).getBytes());
+
         return check;
     }
 
