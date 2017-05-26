@@ -27,7 +27,7 @@ public class SettingsHandler implements RequestHandler {
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
 
-        // Generate response body
+        // Generate response bodys
         String responseBody = "";
         switch (path[0]) {
             case "get":
