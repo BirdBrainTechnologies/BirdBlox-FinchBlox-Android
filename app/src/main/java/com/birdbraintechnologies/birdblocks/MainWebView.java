@@ -93,7 +93,7 @@ public class MainWebView extends AppCompatActivity {
 
                 // Download the layout from github
                 try {
-                    downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                    downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
                 } catch (Exception e) {
                     Log.e("Download", "Error ocurred while downloading file: " + e);
                     return;
