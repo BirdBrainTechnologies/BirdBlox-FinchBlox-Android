@@ -206,7 +206,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @return Device's SSID or "null" if there is not one
      */
     private String getDeviceSSID() {
-        WifiManager wifiManager = (WifiManager) service.getSystemService(Context.WIFI_SERVICE);
+        WifiManager wifiManager = (WifiManager) service.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         WifiInfo info = wifiManager.getConnectionInfo();
         String result = info.getSSID();
         result = result.replace("\"", "");
