@@ -155,74 +155,6 @@ public class MainWebView extends AppCompatActivity {
         bManager.registerReceiver(bReceiver, intentFilter);
     }
 
-    /**
-     * Downloads the file at the given URL to the given location
-     *
-     * @param url The URL of the file to be downloaded
-     * @param outputFile The location where the required file is to be downlaoded,
-     *                   passed in as a 'File' object
-     */
-    private static void downloadFile(String url, File outputFile) {
-        try {
-            URL u = new URL(url);
-            URLConnection conn = u.openConnection();
-            int contentLength = conn.getContentLength();
-            DataInputStream stream = new DataInputStream(u.openStream());
-            byte[] buffer = new byte[contentLength];
-            stream.readFully(buffer);
-            stream.close();
-            DataOutputStream fos = new DataOutputStream(new FileOutputStream(outputFile));
-            fos.write(buffer);
-            fos.flush();
-            fos.close();
-            Log.d("Download", "File Downloaded Successfully!!");
-        } catch (Exception e) {
-            Log.e("Download", "Exception thrown: " + e.toString());
-            return;
-        }
-    }
-
-    /**
-     * Unzips the file at the given location, and stores the unzipped file at
-     * the given target directory.
-     *
-     * @param zipFile The location of the zip file (which is to be unzipped),
-     *                passed in as a 'File' object
-     * @param targetDirectory The location (target directory) where the required file
-     *                        is to be unzipped to, passed in as a 'File' object.
-     */
-    public static void unzip(File zipFile, File targetDirectory) throws IOException {
-        ZipInputStream zis = new ZipInputStream(
-                new BufferedInputStream(new FileInputStream(zipFile)));
-        try {
-            ZipEntry ze;
-            int count;
-            byte[] buffer = new byte[8192];
-            while ((ze = zis.getNextEntry()) != null) {
-                File file = new File(targetDirectory, ze.getName());
-                File dir = ze.isDirectory() ? file : file.getParentFile();
-                if (!dir.isDirectory() && !dir.mkdirs())
-                    throw new FileNotFoundException("Failed to ensure directory: " +
-                            dir.getAbsolutePath());
-                if (ze.isDirectory())
-                    continue;
-                FileOutputStream fout = new FileOutputStream(file);
-                try {
-                    while ((count = zis.read(buffer)) != -1)
-                        fout.write(buffer, 0, count);
-                } finally {
-                    fout.close();
-                }
-            Log.d("Unzip", "File Unzipped Successfully!!");
-            }
-        } catch (Exception e) {
-            Log.e("Unzip", "Exception thrown while unzipping: " + e.toString());
-        } finally {
-            zis.close();
-        }
-        Log.d("Unzip", "File Unzipped Successfully!!");
-    }
-
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
@@ -271,10 +203,79 @@ public class MainWebView extends AppCompatActivity {
         back_pressed = System.currentTimeMillis();
     }
 
+    /**
+     * Downloads the file at the given URL to the given location
+     *
+     * @param url The URL of the file to be downloaded
+     * @param outputFile The location where the required file is to be downlaoded,
+     *                   passed in as a 'File' object
+     */
+    private static void downloadFile(String url, File outputFile) {
+        try {
+            URL u = new URL(url);
+            URLConnection conn = u.openConnection();
+            int contentLength = conn.getContentLength();
+            DataInputStream stream = new DataInputStream(u.openStream());
+            byte[] buffer = new byte[contentLength];
+            stream.readFully(buffer);
+            stream.close();
+            DataOutputStream fos = new DataOutputStream(new FileOutputStream(outputFile));
+            fos.write(buffer);
+            fos.flush();
+            fos.close();
+            Log.d("Download", "File Downloaded Successfully!!");
+        } catch (Exception e) {
+            Log.e("Download", "Exception thrown: " + e.toString());
+            return;
+        }
+    }
+
+    /**
+     * Unzips the file at the given location, and stores the unzipped file at
+     * the given target directory.
+     *
+     * @param zipFile The location of the zip file (which is to be unzipped),
+     *                passed in as a 'File' object
+     * @param targetDirectory The location (target directory) where the required file
+     *                        is to be unzipped to, passed in as a 'File' object.
+     */
+    private static void unzip(File zipFile, File targetDirectory) throws IOException {
+        ZipInputStream zis = new ZipInputStream(
+                new BufferedInputStream(new FileInputStream(zipFile)));
+        try {
+            ZipEntry ze;
+            int count;
+            byte[] buffer = new byte[8192];
+            while ((ze = zis.getNextEntry()) != null) {
+                File file = new File(targetDirectory, ze.getName());
+                File dir = ze.isDirectory() ? file : file.getParentFile();
+                if (!dir.isDirectory() && !dir.mkdirs())
+                    throw new FileNotFoundException("Failed to ensure directory: " +
+                            dir.getAbsolutePath());
+                if (ze.isDirectory())
+                    continue;
+                FileOutputStream fout = new FileOutputStream(file);
+                try {
+                    while ((count = zis.read(buffer)) != -1)
+                        fout.write(buffer, 0, count);
+                } finally {
+                    fout.close();
+                }
+                Log.d("Unzip", "File Unzipped Successfully!!");
+            }
+        } catch (Exception e) {
+            Log.e("Unzip", "Exception thrown while unzipping: " + e.toString());
+        } finally {
+            zis.close();
+        }
+        Log.d("Unzip", "File Unzipped Successfully!!");
+    }
+
     private void showDialog(Bundle b) {
         BirdblocksDialog dialog = new BirdblocksDialog();
         dialog.setArguments(b);
         dialog.show(getFragmentManager(), "prompt_question");
+        // dialog.setCancelable(true);
     }
 
     private void showShareDialog(Bundle b) {

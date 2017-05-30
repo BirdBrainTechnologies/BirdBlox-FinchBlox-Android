@@ -1,5 +1,7 @@
 package com.birdbraintechnologies.birdblocks.httpservice;
 
+import android.util.Log;
+
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FlutterRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
@@ -65,7 +67,10 @@ public class RequestRouter {
      * @return Response to the request
      */
     public NanoHTTPD.Response routeAndDispatch(NanoHTTPD.IHTTPSession session) {
+
         String path = session.getUri();
+
+        Log.d("parametersURI", path);
 
         // Route the request
         for (Map.Entry<Pattern, RequestHandler> e : routes.entrySet()) {

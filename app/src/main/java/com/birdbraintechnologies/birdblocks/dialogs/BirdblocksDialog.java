@@ -58,6 +58,8 @@ public class BirdblocksDialog extends DialogFragment {
                     sendResponseBroadcast("2");
                 }
             });
+            // builder.setCancelable(true);
+            // builder.setCanceledOnTouchOutside(true);
         }
 
         return builder.create();

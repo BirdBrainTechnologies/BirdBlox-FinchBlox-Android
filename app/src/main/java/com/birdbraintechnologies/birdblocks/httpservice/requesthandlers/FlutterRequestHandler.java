@@ -68,6 +68,7 @@ public class FlutterRequestHandler implements RequestHandler {
             switch (path[0]) {
                 case "discover":
                     responseBody = listDevices();
+                    Log.d("DNameFlutter", "Discover Flutters");
                     break;
                 case "totalStatus":
                     responseBody = getTotalStatus();
@@ -112,6 +113,7 @@ public class FlutterRequestHandler implements RequestHandler {
         String devices = "";
         for (BluetoothDevice device : deviceList) {
             String name = NamingHandler.GenerateName(service.getApplicationContext(), device.getAddress());
+            Log.d("DNameFlutter", name);
             macAddrsByName.put(name, device.getAddress());
             devices = devices + name + "\n";
         }
@@ -123,7 +125,7 @@ public class FlutterRequestHandler implements RequestHandler {
      *
      * @return List of scan filters
      */
-    private List<ScanFilter> generateDeviceFilter() {
+    private static List<ScanFilter> generateDeviceFilter() {
         ScanFilter hbScanFilter = (new ScanFilter.Builder())
                 .setServiceUuid(ParcelUuid.fromString(FLUTTER_DEVICE_UUID))
                 .build();
@@ -156,7 +158,11 @@ public class FlutterRequestHandler implements RequestHandler {
      */
     private String connectToDevice(String deviceId) {
         String deviceMAC = getAddrFromName(deviceId);
-
+        List<ScanFilter> L = FlutterRequestHandler.generateDeviceFilter();
+        int flag = 0;
+//        for(ScanFilter l :L) {
+//            if (l.getServiceUuid().equals(getDeviceFromId(deviceId).))
+//        }
         // Create Flutter
         // TODO: Handle errors when connecting to device
         MelodySmartConnection conn = btHelper.connectToDeviceMelodySmart(deviceMAC, this.flutterUARTSettings);

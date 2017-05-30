@@ -74,6 +74,9 @@ public class HttpService extends Service {
         @Override
         public Response serve(IHTTPSession session) {
             String requestPath = session.getUri();
+
+            Log.d("parameters", session.getParameters().toString());
+
             Method requestMethod = session.getMethod();
             Log.d(TAG, session.getRemoteIpAddress() + " " + requestMethod + " " + requestPath);
 

@@ -2,6 +2,7 @@ package com.birdbraintechnologies.birdblocks.util;
 
 
 import android.content.Context;
+import android.util.Log;
 
 import com.birdbraintechnologies.birdblocks.R;
 
@@ -18,7 +19,7 @@ public class NamingHandler {
     public static String GenerateName(Context context, String mac) {
         String result = "unknown";
         long mid;
-        int i,j,k,offset;
+        int i, j, k, offset;
         String[] firstNames,middleNames,lastNames;
         firstNames = context.getResources().getStringArray(R.array.first_names);
         middleNames = context.getResources().getStringArray(R.array.middle_names);

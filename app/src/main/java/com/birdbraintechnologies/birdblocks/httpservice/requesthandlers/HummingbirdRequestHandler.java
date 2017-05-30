@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -68,6 +69,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
         if (path.length == 1) {
             switch (path[0]) {
                 case "discover":
+                    Log.d("DNameHummingBird", "Discover Hummingbirds");
                     responseBody = listDevices();
                     break;
                 case "totalStatus":
@@ -111,9 +113,15 @@ public class HummingbirdRequestHandler implements RequestHandler {
         // TODO: Change this behavior to display correctly on device
         String devices = "";
         for (BluetoothDevice device : deviceList) {
+            Log.d("DNameHummingbird", device.getName());
             devices = devices + device.getName() + " (" + device.getAddress() + ")\n";
         }
+        Log.d("Hippogriff", devices.trim());
         return devices.trim();
+
+//        Map<String, String>[] arr = new Map<String, String>[deviceList.size()];
+//        int[] arr2 = new int
+
     }
 
     /**
@@ -214,5 +222,13 @@ public class HummingbirdRequestHandler implements RequestHandler {
             }
         }
         return "1";  // All devices are OK
+    }
+
+    /**
+     *
+     *
+     */
+    private String stopDiscover() {
+        return "";
     }
 }

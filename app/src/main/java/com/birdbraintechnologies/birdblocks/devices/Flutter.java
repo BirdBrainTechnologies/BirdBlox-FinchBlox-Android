@@ -14,6 +14,7 @@ import java.util.Arrays;
  */
 public class Flutter {
     private static final String TAG = Flutter.class.getName();
+//    private static final String asd = Flutter
 
     /* Commands for Flutter */
     private static final String SET_CMD = "s";

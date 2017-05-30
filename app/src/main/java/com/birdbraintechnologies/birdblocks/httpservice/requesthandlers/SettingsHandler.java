@@ -6,6 +6,7 @@ import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
 import java.util.List;
+import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -26,7 +27,6 @@ public class SettingsHandler implements RequestHandler {
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
-
         // Generate response bodys
         String responseBody = "";
         switch (path[0]) {

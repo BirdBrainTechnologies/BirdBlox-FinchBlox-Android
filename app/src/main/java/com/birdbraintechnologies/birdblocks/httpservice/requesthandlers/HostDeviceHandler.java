@@ -32,6 +32,7 @@ import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
 import java.util.List;
+import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -139,6 +140,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         String responseBody = "";
+        // Map<String, List<String>> m = session.getParameters();
         switch (path[0]) {
             case "shake":
                 responseBody = getShaken();
