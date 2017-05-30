@@ -140,7 +140,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         String responseBody = "";
-        // Map<String, List<String>> m = session.getParameters();
+        Map<String, List<String>> m = session.getParameters();
         switch (path[0]) {
             case "shake":
                 responseBody = getShaken();
@@ -164,10 +164,12 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 responseBody = getDeviceAcceleration();
                 break;
             case "dialog":
-                showDialog(path[1], path[2], path[3]);
+                // showDialog(path[1], path[2], path[3]);
+                showDialog(m.get("title").get(0), m.get("question").get(0), m.get("holder").get(0));
                 break;
             case "choice":
-                showChoice(path[1], path[2], path[3], path[4]);
+                // showChoice(path[1], path[2], path[3], path[4]);
+                showChoice(m.get("title").get(0), m.get("question").get(0), m.get("button1").get(0), m.get("button2").get(0));
                 break;
             case "dialog_response":
                 responseBody = getDialogResponse();

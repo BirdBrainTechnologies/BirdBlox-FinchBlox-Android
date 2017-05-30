@@ -75,6 +75,9 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 case "totalStatus":
                     responseBody = getTotalStatus();
                     break;
+                case "stopDiscover":
+                    responseBody = stopDiscover();
+                    break;
             }
         } else {
             switch (path[1]) {

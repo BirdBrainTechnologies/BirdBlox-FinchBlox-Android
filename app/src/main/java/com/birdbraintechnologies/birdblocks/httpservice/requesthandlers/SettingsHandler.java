@@ -27,14 +27,17 @@ public class SettingsHandler implements RequestHandler {
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
+        Map<String, List<String>> m = session.getParameters();
         // Generate response bodys
         String responseBody = "";
         switch (path[0]) {
             case "get":
-                responseBody = getSetting(path[1]);
+                // responseBody = getSetting(path[1]);
+                getSetting(m.get("key").get(0));
                 break;
             case "set":
-                putSetting(path[1], path[2]);
+                // putSetting(path[1], path[2]);
+                putSetting(m.get("key").get(0), m.get("value").get(0));
                 break;
         }
 
