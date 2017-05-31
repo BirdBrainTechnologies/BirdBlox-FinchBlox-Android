@@ -24,7 +24,7 @@ import fi.iki.elonen.NanoHTTPD;
 /**
  * Class for handling requests from the router to Flutter devices
  *
- * @author Terence Sun (tsun1215)
+ * @author Terence Sun (tsun1215), Shreyan Bakshi (AppyFizz)
  */
 public class FlutterRequestHandler implements RequestHandler {
     private static final String TAG = FlutterRequestHandler.class.getName();

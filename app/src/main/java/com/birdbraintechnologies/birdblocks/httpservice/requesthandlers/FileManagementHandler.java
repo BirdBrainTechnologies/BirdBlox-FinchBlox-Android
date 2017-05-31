@@ -25,7 +25,7 @@ import fi.iki.elonen.NanoHTTPD;
 /**
  * Request handler for managing files on the device.
  *
- * @author Terence Sun (tsun1215)
+ * @author Terence Sun (tsun1215), Shreyan Bakshi (AppyFizz)
  */
 public class FileManagementHandler implements RequestHandler {
     private static final String TAG = FileManagementHandler.class.getName();
@@ -41,27 +41,27 @@ public class FileManagementHandler implements RequestHandler {
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
-
+        Map<String, List<String>> m = session.getParameters();
         // Generate response body
         String responseBody = "";
         switch (path[0]) {
             case "save":
-                saveFile(path[1], session);
+                saveFile(m.get("filename").get(0), session);
                 break;
             case "load":
-                responseBody = loadFile(path[1]);
+                responseBody = loadFile(m.get("filename").get(0));
                 break;
             case "rename":
-                renameFile(path[1], path[2]);
+                renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0));
                 break;
             case "delete":
-                deleteFile(path[1]);
+                deleteFile(m.get("filename").get(0));
                 break;
             case "files":
                 responseBody = listFiles();
                 break;
             case "export":
-                exportFile(path[1], session);
+                exportFile(m.get("filename").get(0), session);
                 break;
         }
 
@@ -87,10 +87,9 @@ public class FileManagementHandler implements RequestHandler {
         try {
             // Parse POST body to get parameters
             session.parseBody(postFiles);
-
             // Write POST["data"] to file
             FileWriter writer = new FileWriter(newFile);
-            writer.write(session.getParameters().get("data").get(0));
+            writer.write(postFiles.get("postData"));
             writer.close();
         } catch (IOException e) {
             newFile.delete();

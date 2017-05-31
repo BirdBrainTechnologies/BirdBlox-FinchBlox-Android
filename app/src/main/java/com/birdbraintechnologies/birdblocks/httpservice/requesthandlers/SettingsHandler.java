@@ -14,7 +14,7 @@ import fi.iki.elonen.NanoHTTPD;
 /**
  * Handler for handling getting and setting of arbitrary settings
  *
- * @author Terence Sun (tsun1215)
+ * @author Terence Sun (tsun1215), Shreyan Bakshi (AppyFizz)
  */
 public class SettingsHandler implements RequestHandler {
     public static final String PREFS_NAME = "Settings";
@@ -29,7 +29,7 @@ public class SettingsHandler implements RequestHandler {
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         Map<String, List<String>> m = session.getParameters();
-        // Generate response bodys
+        // Generate response body
         String responseBody = "";
         switch (path[0]) {
             case "get":

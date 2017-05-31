@@ -63,7 +63,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
-
+        Map<String, List<String>> m = session.getParameters();
         // Generate response body
         String responseBody = "";
         if (path.length == 1) {
