@@ -1,6 +1,7 @@
 package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
@@ -32,12 +33,10 @@ public class SettingsHandler implements RequestHandler {
         String responseBody = "";
         switch (path[0]) {
             case "get":
-                // responseBody = getSetting(path[1]);
-                getSetting(m.get("key").get(0));
+                responseBody = getSetting(m.get("key").get(0));
                 break;
             case "set":
-                // putSetting(path[1], path[2]);
-                putSetting(m.get("key").get(0), m.get("value").get(0));
+                putSetting(m.get("key").get(0), m.get("value").get(0).toString());
                 break;
         }
 
@@ -65,6 +64,6 @@ public class SettingsHandler implements RequestHandler {
     private void putSetting(String key, String value) {
         SharedPreferences.Editor editor = settings.edit();
         editor.putString(key, value);
-        editor.commit();
+        editor.apply();
     }
 }
