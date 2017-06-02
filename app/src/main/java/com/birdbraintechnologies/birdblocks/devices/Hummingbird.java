@@ -6,6 +6,8 @@ import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a Hummingbird device and all of its functionality: Setting outputs, reading sensors
@@ -49,26 +51,25 @@ public class Hummingbird implements UARTConnection.RXDataListener {
      * @param args       Arguments for setting the output
      * @return True if the output was successfully set, false otherwise
      */
-    public boolean setOutput(String outputType, String[] args) {
+    public boolean setOutput(String outputType, Map<String, List<String>> args) {
         // Handle stop output type (since it doesn't have a port specification)
         if (outputType.equals("stop")) {
             return stopAll();
         }
 
         // All remaining outputs are of the format: /out/<outputType>/<port>/<args>...
-        int port = Integer.parseInt(args[1]);
         switch (outputType) {
             case "servo":
-                return setServo(port, Integer.parseInt(args[2]));
+                return setServo(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("angle").get(0)));
             case "motor":
-                return setMotor(port, Integer.parseInt(args[2]));
+                return setMotor(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("speed").get(0)));
             case "vibration":
-                return setVibrationMotor(port, Integer.parseInt(args[2]));
+                return setVibrationMotor(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("intensity").get(0)));
             case "led":
-                return setLED(port, Integer.parseInt(args[2]));
+                return setLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("intensity").get(0)));
             case "triled":
-                return setTriLED(port, Integer.parseInt(args[2]), Integer.parseInt(args[3]),
-                        Integer.parseInt(args[4]));
+                return setTriLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("red").get(0)), Integer.parseInt(args.get("green").get(0)),
+                        Integer.parseInt(args.get("blue").get(0)));
         }
 
         return false;

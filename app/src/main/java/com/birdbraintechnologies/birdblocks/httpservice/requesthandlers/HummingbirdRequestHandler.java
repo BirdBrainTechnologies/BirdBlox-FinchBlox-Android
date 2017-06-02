@@ -12,8 +12,11 @@ import com.birdbraintechnologies.birdblocks.devices.Hummingbird;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +69,6 @@ public class HummingbirdRequestHandler implements RequestHandler {
         Map<String, List<String>> m = session.getParameters();
         // Generate response body
         String responseBody = "";
-        if (path.length == 1) {
             switch (path[0]) {
                 case "discover":
                     Log.d("DNameHummingBird", "Discover Hummingbirds");
@@ -78,18 +80,17 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 case "stopDiscover":
                     responseBody = stopDiscover();
                     break;
-            }
-        } else {
-            switch (path[1]) {
                 case "connect":
-                    responseBody = connectToDevice(path[0]);
+                    responseBody = connectToDevice(m.get("name").get(0));
+                    // responseBody = connectToDevice(path[0]);
                     break;
                 case "disconnect":
-                    responseBody = disconnectFromDevice(path[0]);
+                    responseBody = disconnectFromDevice(m.get("name").get(0));
+                    // responseBody = disconnectFromDevice(path[0]);
                     break;
                 case "out":
-                    getDeviceFromId(path[0]).setOutput(path[2],
-                            Arrays.copyOfRange(path, 2, path.length));
+                    getDeviceFromId(m.get("name").get(0)).setOutput(path[1],
+                            m);
                     break;
                 case "in":
                     responseBody = getDeviceFromId(path[0]).readSensor(path[2], path[3]);
@@ -98,7 +99,6 @@ public class HummingbirdRequestHandler implements RequestHandler {
 //                    responseBody = renameDevice(path[0], path[2]);
 //                    break;
             }
-        }
 
         // Create response from the responseBody
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
@@ -114,17 +114,19 @@ public class HummingbirdRequestHandler implements RequestHandler {
     private String listDevices() {
         List<BluetoothDevice> deviceList = btHelper.scanDevices(generateDeviceFilter());
         // TODO: Change this behavior to display correctly on device
-        String devices = "";
+        JSONArray devices = new JSONArray();
         for (BluetoothDevice device : deviceList) {
             Log.d("DNameHummingbird", device.getName());
-            devices = devices + device.getName() + " (" + device.getAddress() + ")\n";
+            JSONObject humm = new JSONObject();
+            try {
+                humm.put("id", device.getAddress());
+                humm.put("name", device.getName());
+            } catch (JSONException e) {
+                Log.e("JSON", "JSONException while discovering hummingbirds");
+            };
         }
-        Log.d("Hippogriff", devices.trim());
-        return devices.trim();
-
-//        Map<String, String>[] arr = new Map<String, String>[deviceList.size()];
-//        int[] arr2 = new int
-
+        Log.d("DiscHumm", "Output: " + devices.toString());
+        return devices.toString();
     }
 
     /**

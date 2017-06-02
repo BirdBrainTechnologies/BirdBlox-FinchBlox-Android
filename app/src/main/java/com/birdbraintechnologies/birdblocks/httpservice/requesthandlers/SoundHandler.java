@@ -158,10 +158,15 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
      */
     private void stopSound() {
         try {
+//            if (tone != null) {
+//                tone.stop();
+//                tone = null;
+//            }
             if (mediaPlayer != null && mediaPlayer.isPlaying()) {
                 mediaPlayer.stop();
                 mediaPlayer.release();
             }
+            Log.d("StopSound", "Stop Request Sent");
         } catch (IllegalStateException e) {
 
         }
@@ -176,6 +181,7 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
             tone = null;
         }
         stopSound();
+        Log.d("StopSoundAll", "Stop Request Sent");
     }
 
     @Override

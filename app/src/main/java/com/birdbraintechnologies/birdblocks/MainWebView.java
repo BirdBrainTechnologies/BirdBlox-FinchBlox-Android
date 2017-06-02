@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
@@ -75,6 +76,8 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         // 'Parent' Location where downloaded, unzipped files are to be stored
         // Currently set to our app's 'secret' internal storage location

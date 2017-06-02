@@ -6,6 +6,8 @@ import com.birdbraintechnologies.birdblocks.bluetooth.MelodySmartConnection;
 import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a Flutter device and all of its functionality: Setting outputs, reading sensors
@@ -44,16 +46,15 @@ public class Flutter {
      * @param args       Arguments for setting the output
      * @return True if the output was successfully set, false otherwise
      */
-    public boolean setOutput(String outputType, String[] args) {
-        int port = Integer.parseInt(args[1]);
+    public boolean setOutput(String outputType, Map<String, List<String>> args) {
         switch (outputType) {
             case "servo":
-                return setServo(port, Integer.parseInt(args[2]));
+                return setServo(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("angle").get(0)));
             case "triled":
-                return setTriLED(port, Integer.parseInt(args[2]), Integer.parseInt(args[3]),
-                        Integer.parseInt(args[4]));
+                return setTriLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("red").get(0)), Integer.parseInt(args.get("green").get(0)),
+                        Integer.parseInt(args.get("blue").get(0)));
             case "buzzer":
-                return setBuzzer(Integer.parseInt(args[1]), Integer.parseInt(args[2]));
+                return setBuzzer(Integer.parseInt(args.get("volume").get(0)), Integer.parseInt(args.get("frequency").get(0)));
         }
         return false;
     }

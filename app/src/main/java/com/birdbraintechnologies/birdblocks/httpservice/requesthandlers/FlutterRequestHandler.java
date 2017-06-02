@@ -13,10 +13,14 @@ import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 import com.birdbraintechnologies.birdblocks.util.NamingHandler;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import fi.iki.elonen.NanoHTTPD;
@@ -41,14 +45,13 @@ public class FlutterRequestHandler implements RequestHandler {
     private UARTSettings flutterUARTSettings;
     private BluetoothHelper btHelper;
     private HashMap<String, Flutter> connectedDevices;
-    private HashMap<String, String> macAddrsByName;
+    private HashMap<String, String> nameBymacAddrs;
 
 
     public FlutterRequestHandler(HttpService service) {
         this.service = service;
         this.btHelper = service.getBluetoothHelper();
         this.connectedDevices = new HashMap<>();
-        this.macAddrsByName = new HashMap<>();
 
         // Build UART settings
         this.flutterUARTSettings = (new UARTSettings.Builder())
@@ -61,39 +64,36 @@ public class FlutterRequestHandler implements RequestHandler {
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
-
+        Log.d("ConnFlutt", "Path: " + args.get(0) + "");
+        Map<String, List<String>> m = session.getParameters();
+        Log.d("FluttLogConn", "Connected Devices: " + connectedDevices.toString());
         // Generate response body
         String responseBody = "";
-        if (path.length == 1) {
-            switch (path[0]) {
-                case "discover":
-                    responseBody = listDevices();
-                    Log.d("DNameFlutter", "Discover Flutters");
-                    break;
-                case "totalStatus":
-                    responseBody = getTotalStatus();
-                    break;
-            }
-        } else {
-            switch (path[1]) {
-                case "connect":
-                    responseBody = connectToDevice(path[0]);
-                    break;
-                case "disconnect":
-                    responseBody = disconnectFromDevice(path[0]);
-                    break;
-                case "out":
-                    getDeviceFromId(path[0]).setOutput(path[2],
-                            Arrays.copyOfRange(path, 2, path.length));
-                    break;
-                case "in":
-                    responseBody = getDeviceFromId(path[0]).readSensor(path[2], path[3]);
-                    break;
-//                case "rename":
-//                    responseBody = renameDevice(path[0], path[2]);
-//                    break;
-            }
-        }
+        switch (path[0]) {
+            case "discover":
+                responseBody = listDevices();
+                Log.d("DNameFlutter", "Discover Flutters");
+                break;
+            case "totalStatus":
+                responseBody = getTotalStatus();
+                break;
+            case "connect":
+                responseBody = connectToDevice(m.get("name").get(0));
+                break;
+            case "disconnect":
+                responseBody = disconnectFromDevice(m.get("name").get(0));
+                break;
+            case "out":
+                getDeviceFromId(m.get("name").get(0)).setOutput(path[1], m);
+                responseBody = "successful";
+                break;
+            case "in":
+                responseBody = getDeviceFromId(m.get("name").get(0)).readSensor(m.get("sensor").get(0), m.get("port").get(0));
+                break;
+//            case "rename":
+//                responseBody = renameDevice(path[0], path[2]);
+//                break;
+    }
 
         // Create response from the responseBody
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
@@ -110,14 +110,21 @@ public class FlutterRequestHandler implements RequestHandler {
     private String listDevices() {
         List<BluetoothDevice> deviceList = btHelper.scanDevices(generateDeviceFilter());
         // TODO: Change this behavior to display correctly on device
-        String devices = "";
+        JSONArray devices = new JSONArray();
         for (BluetoothDevice device : deviceList) {
             String name = NamingHandler.GenerateName(service.getApplicationContext(), device.getAddress());
             Log.d("DNameFlutter", name);
-            macAddrsByName.put(name, device.getAddress());
-            devices = devices + name + "\n";
+            JSONObject flutt = new JSONObject();
+            try {
+                flutt.put("id", device.getAddress());
+                flutt.put("name", name);
+            } catch (JSONException e) {
+                Log.e("JSON", "JSONException while discovering flutters");
+            };
+            devices.put(flutt);
         }
-        return devices.trim();
+        Log.d("FluttLogList", "List: " + devices.toString());
+        return devices.toString();
     }
 
     /**
@@ -135,10 +142,6 @@ public class FlutterRequestHandler implements RequestHandler {
         return flutterDeviceFilters;
     }
 
-    private String getAddrFromName(String name) {
-        return macAddrsByName.get(name);
-    }
-
     /**
      * Finds a deviceId in the list of connected devices. Null if it does not exist.
      *
@@ -146,8 +149,7 @@ public class FlutterRequestHandler implements RequestHandler {
      * @return The connected device if it exists, null otherwise
      */
     private Flutter getDeviceFromId(String deviceId) {
-        String deviceMAC = getAddrFromName(deviceId);
-        return connectedDevices.get(deviceMAC);
+        return connectedDevices.get(deviceId);
     }
 
     /**
@@ -157,17 +159,13 @@ public class FlutterRequestHandler implements RequestHandler {
      * @return No Response
      */
     private String connectToDevice(String deviceId) {
-        String deviceMAC = getAddrFromName(deviceId);
-        List<ScanFilter> L = FlutterRequestHandler.generateDeviceFilter();
-        int flag = 0;
-//        for(ScanFilter l :L) {
-//            if (l.getServiceUuid().equals(getDeviceFromId(deviceId).))
-//        }
-        // Create Flutter
+        String deviceMAC = deviceId;
         // TODO: Handle errors when connecting to device
         MelodySmartConnection conn = btHelper.connectToDeviceMelodySmart(deviceMAC, this.flutterUARTSettings);
-        Flutter device = new Flutter(conn);
-        connectedDevices.put(deviceMAC, device);
+        if(conn != null) {
+            Flutter device = new Flutter(conn);
+            connectedDevices.put(deviceMAC, device);
+        }
         return "";
     }
 
@@ -194,7 +192,7 @@ public class FlutterRequestHandler implements RequestHandler {
         if (device != null) {
             Log.d(TAG, "Disconnecting from device: " + deviceId);
             device.disconnect();
-            connectedDevices.remove(getAddrFromName(deviceId));
+            connectedDevices.remove(deviceId);
         }
         return "";
     }
