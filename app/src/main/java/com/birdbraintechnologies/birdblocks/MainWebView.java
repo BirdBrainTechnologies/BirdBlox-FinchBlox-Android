@@ -37,9 +37,9 @@ import java.util.zip.ZipInputStream;
 /**
  * Displays the webview
  *
- * @author Terence Sun (tsun1215), Shreyan Bakshi (AppyFizz)
+ * @author Terence Sun (tsun1215)
+ * @author Shreyan Bakshi (AppyFizz)
  */
-
 
 
 public class MainWebView extends AppCompatActivity {
@@ -61,7 +61,7 @@ public class MainWebView extends AppCompatActivity {
     private BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if(intent.getAction().equals(SHOW_DIALOG)) {
+            if (intent.getAction().equals(SHOW_DIALOG)) {
                 // Handles showing Choice and Text dialogs
                 showDialog(intent.getExtras());
             } else if (intent.getAction().equals(SHARE_FILE)) {
@@ -84,15 +84,23 @@ public class MainWebView extends AppCompatActivity {
         final String parent_dir = getFilesDir().toString();
 
         // Create a new thread to perform download and unzip operations for layout
-       Thread t = new Thread() {
+        Thread t = new Thread() {
             @Override
             public void run() {
                 //Check if the locations to download and unzip already exist in the internal storage
                 // If they don't, create them
                 File f = new File(parent_dir + "/Zipped.zip");
-                if (!f.exists()) try {f.createNewFile();} catch (Exception e) {Log.d("Download", "f");}
+                if (!f.exists()) try {
+                    f.createNewFile();
+                } catch (Exception e) {
+                    Log.d("Download", "f");
+                }
                 File f2 = new File(parent_dir + "/Unzipped");
-                if (!f2.exists()) try {f2.mkdirs();} catch (Exception e) {Log.d("Download", "f2");}
+                if (!f2.exists()) try {
+                    f2.mkdirs();
+                } catch (Exception e) {
+                    Log.d("Download", "f2");
+                }
 
                 // Download the layout from github
                 try {
@@ -105,8 +113,7 @@ public class MainWebView extends AppCompatActivity {
                 // Unzip the downloaded file
                 try {
                     unzip(f, f2);
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     Log.e("Unzip", "Java I/O Error while unzipping file");
                     return;
                 }
@@ -117,11 +124,19 @@ public class MainWebView extends AppCompatActivity {
         t.start();
 
         // Wait for above thread to finish
-        try{t.join();} catch (Exception e) {Log.d("Join Thread", "Exception while joining download thread: " + e);}
+        try {
+            t.join();
+        } catch (Exception e) {
+            Log.d("Join Thread", "Exception while joining download thread: " + e);
+        }
 
         // Get location of downloaded layout as a 'File'
         File lFile = new File(getFilesDir() + "/Unzipped/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
-        if(!lFile.exists()) try {lFile.createNewFile();} catch (Exception e) {Log.d("LocFile", "Problem: " + e);}
+        if (!lFile.exists()) try {
+            lFile.createNewFile();
+        } catch (Exception e) {
+            Log.d("LocFile", "Problem: " + e);
+        }
 
 
         super.onCreate(savedInstanceState);
@@ -209,7 +224,7 @@ public class MainWebView extends AppCompatActivity {
     /**
      * Downloads the file at the given URL to the given location
      *
-     * @param url The URL of the file to be downloaded
+     * @param url        The URL of the file to be downloaded
      * @param outputFile The location where the required file is to be downlaoded,
      *                   passed in as a 'File' object
      */
@@ -237,8 +252,8 @@ public class MainWebView extends AppCompatActivity {
      * Unzips the file at the given location, and stores the unzipped file at
      * the given target directory.
      *
-     * @param zipFile The location of the zip file (which is to be unzipped),
-     *                passed in as a 'File' object
+     * @param zipFile         The location of the zip file (which is to be unzipped),
+     *                        passed in as a 'File' object
      * @param targetDirectory The location (target directory) where the required file
      *                        is to be unzipped to, passed in as a 'File' object.
      */
@@ -289,6 +304,7 @@ public class MainWebView extends AppCompatActivity {
         sendIntent.setType("text/xml");
         startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.send_to)));
     }
+
     private void exitApp() {
         Log.d("APP", "Exiting");
         this.stopService(getIntent());

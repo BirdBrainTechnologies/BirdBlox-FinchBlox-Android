@@ -25,7 +25,8 @@ import fi.iki.elonen.NanoHTTPD;
 /**
  * Request handler for managing files on the device.
  *
- * @author Terence Sun (tsun1215), Shreyan Bakshi (AppyFizz)
+ * @author Terence Sun (tsun1215)
+ * @author Shreyan Bakshi (AppyFizz)
  */
 public class FileManagementHandler implements RequestHandler {
     private static final String TAG = FileManagementHandler.class.getName();

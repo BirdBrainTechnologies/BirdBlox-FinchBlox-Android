@@ -23,6 +23,7 @@ import fi.iki.elonen.NanoHTTPD;
  * Routes requests from the HttpService to the correct RequestHandlers
  *
  * @author Terence Sun (tsun1215)
+ * @author Shreyan Bakshi (AppyFizz)
  */
 public class RequestRouter {
 

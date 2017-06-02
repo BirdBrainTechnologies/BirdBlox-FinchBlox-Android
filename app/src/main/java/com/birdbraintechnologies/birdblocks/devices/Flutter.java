@@ -12,18 +12,18 @@ import java.util.Map;
 /**
  * Represents a Flutter device and all of its functionality: Setting outputs, reading sensors
  *
- * @author Terence Sun (tsun1215), Shreyan Bakshi (AppyFizz)
+ * @author Terence Sun (tsun1215)
+ * @author Shreyan Bakshi (AppyFizz)
  */
 public class Flutter {
     private static final String TAG = Flutter.class.getName();
-//    private static final String asd = Flutter
 
     /* Commands for Flutter */
     private static final String SET_CMD = "s";
     private static final byte READ_CMD = 'r';
     private static final String SERVO_OUTPUT = "s";
     private static final String BUZZER_OUTPUT = "z";
-    private final static char CR  = (char) 0x0D;
+    private final static char CR = (char) 0x0D;
     private static final String SET_SERVO_CMD = SET_CMD + SERVO_OUTPUT + "%d,%x";
     private static final String SET_BUZZER_CMD = SET_CMD + BUZZER_OUTPUT + ",%x,%x" + CR;
     private static final String SET_TRI_CMD = SET_CMD + "l" + "%d,%x,%x,%x" + CR;
@@ -91,7 +91,7 @@ public class Flutter {
     /**
      * BUZZER
      *
-     * @param volume Percentage [0,100] to set the volume to
+     * @param volume    Percentage [0,100] to set the volume to
      * @param frequency Percentage [0,20000] to set the frequency to
      * @return True if the command succeeded, false otherwise
      */

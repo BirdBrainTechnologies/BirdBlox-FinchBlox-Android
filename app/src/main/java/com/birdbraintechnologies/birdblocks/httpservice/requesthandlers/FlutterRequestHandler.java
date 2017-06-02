@@ -28,7 +28,8 @@ import fi.iki.elonen.NanoHTTPD;
 /**
  * Class for handling requests from the router to Flutter devices
  *
- * @author Terence Sun (tsun1215), Shreyan Bakshi (AppyFizz)
+ * @author Terence Sun (tsun1215)
+ * @author Shreyan Bakshi (AppyFizz)
  */
 public class FlutterRequestHandler implements RequestHandler {
     private static final String TAG = FlutterRequestHandler.class.getName();
@@ -61,12 +62,11 @@ public class FlutterRequestHandler implements RequestHandler {
                 .setRxConfigUUID(RX_CONFIG_UUID)
                 .build();
     }
+
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
-        Log.d("ConnFlutt", "Path: " + args.get(0) + "");
         Map<String, List<String>> m = session.getParameters();
-        Log.d("FluttLogConn", "Connected Devices: " + connectedDevices.toString());
         // Generate response body
         String responseBody = "";
         switch (path[0]) {
@@ -85,7 +85,7 @@ public class FlutterRequestHandler implements RequestHandler {
                 break;
             case "out":
                 getDeviceFromId(m.get("name").get(0)).setOutput(path[1], m);
-                responseBody = "successful";
+                responseBody = "Connected to Flutter successfully.";
                 break;
             case "in":
                 responseBody = getDeviceFromId(m.get("name").get(0)).readSensor(m.get("sensor").get(0), m.get("port").get(0));
@@ -93,7 +93,7 @@ public class FlutterRequestHandler implements RequestHandler {
 //            case "rename":
 //                responseBody = renameDevice(path[0], path[2]);
 //                break;
-    }
+        }
 
         // Create response from the responseBody
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
@@ -120,7 +120,7 @@ public class FlutterRequestHandler implements RequestHandler {
                 flutt.put("name", name);
             } catch (JSONException e) {
                 Log.e("JSON", "JSONException while discovering flutters");
-            };
+            }
             devices.put(flutt);
         }
         Log.d("FluttLogList", "List: " + devices.toString());
@@ -162,7 +162,7 @@ public class FlutterRequestHandler implements RequestHandler {
         String deviceMAC = deviceId;
         // TODO: Handle errors when connecting to device
         MelodySmartConnection conn = btHelper.connectToDeviceMelodySmart(deviceMAC, this.flutterUARTSettings);
-        if(conn != null) {
+        if (conn != null) {
             Flutter device = new Flutter(conn);
             connectedDevices.put(deviceMAC, device);
         }

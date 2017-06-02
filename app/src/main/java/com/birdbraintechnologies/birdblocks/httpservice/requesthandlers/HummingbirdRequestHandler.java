@@ -30,6 +30,7 @@ import fi.iki.elonen.NanoHTTPD;
  * Class for handling requests from the router to Hummingbird devices
  *
  * @author Terence Sun (tsun1215)
+ * @author Shreyan Bakshi (AppyFizz)
  */
 public class HummingbirdRequestHandler implements RequestHandler {
     private static final String TAG = "HBRequestHandler";
@@ -69,36 +70,34 @@ public class HummingbirdRequestHandler implements RequestHandler {
         Map<String, List<String>> m = session.getParameters();
         // Generate response body
         String responseBody = "";
-            switch (path[0]) {
-                case "discover":
-                    Log.d("DNameHummingBird", "Discover Hummingbirds");
-                    responseBody = listDevices();
-                    break;
-                case "totalStatus":
-                    responseBody = getTotalStatus();
-                    break;
-                case "stopDiscover":
-                    responseBody = stopDiscover();
-                    break;
-                case "connect":
-                    responseBody = connectToDevice(m.get("name").get(0));
-                    // responseBody = connectToDevice(path[0]);
-                    break;
-                case "disconnect":
-                    responseBody = disconnectFromDevice(m.get("name").get(0));
-                    // responseBody = disconnectFromDevice(path[0]);
-                    break;
-                case "out":
-                    getDeviceFromId(m.get("name").get(0)).setOutput(path[1],
-                            m);
-                    break;
-                case "in":
-                    responseBody = getDeviceFromId(path[0]).readSensor(path[2], path[3]);
-                    break;
+        switch (path[0]) {
+            case "discover":
+                Log.d("DNameHummingBird", "Discover Hummingbirds");
+                responseBody = listDevices();
+                break;
+            case "totalStatus":
+                responseBody = getTotalStatus();
+                break;
+            case "stopDiscover":
+                responseBody = stopDiscover();
+                break;
+            case "connect":
+                responseBody = connectToDevice(m.get("name").get(0));
+                break;
+            case "disconnect":
+                responseBody = disconnectFromDevice(m.get("name").get(0));
+                break;
+            case "out":
+                getDeviceFromId(m.get("name").get(0)).setOutput(path[1], m);
+                responseBody = "Connected to Hummingbird successfully.";
+                break;
+            case "in":
+                responseBody = getDeviceFromId(m.get("name").get(0)).readSensor(m.get("sensor").get(0), m.get("port").get(0));
+                break;
 //                case "rename":
 //                    responseBody = renameDevice(path[0], path[2]);
 //                    break;
-            }
+        }
 
         // Create response from the responseBody
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
@@ -123,7 +122,8 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 humm.put("name", device.getName());
             } catch (JSONException e) {
                 Log.e("JSON", "JSONException while discovering hummingbirds");
-            };
+            }
+            devices.put(humm);
         }
         Log.d("DiscHumm", "Output: " + devices.toString());
         return devices.toString();
@@ -135,13 +135,13 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @param deviceId Id of the device
      * @return MAC address of the device
      */
-    private String extractMAC(String deviceId) {
-        Matcher match = Pattern.compile("^.*\\(([\\w\\:]+)\\)").matcher(deviceId);
-        if (match.matches()) {
-            return match.group(1);
-        }
-        return "";
-    }
+//    private String extractMAC(String deviceId) {
+//        Matcher match = Pattern.compile("^.*\\(([\\w\\:]+)\\)").matcher(deviceId);
+//        if (match.matches()) {
+//            return match.group(1);
+//        }
+//        return "";
+//    }
 
     /**
      * Finds a deviceId in the list of connected devices. Null if it does not exist.
@@ -150,8 +150,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @return The connected device if it exists, null otherwise
      */
     private Hummingbird getDeviceFromId(String deviceId) {
-        String deviceMAC = extractMAC(deviceId);
-        return connectedDevices.get(deviceMAC);
+        return connectedDevices.get(deviceId);
     }
 
     /**
@@ -161,14 +160,13 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @return No Response
      */
     private String connectToDevice(String deviceId) {
-        String deviceMAC = extractMAC(deviceId);
-
-        // Create hummingbird
+        Log.d("HummLogConn", "Id: " + deviceId);
         // TODO: Handle errors when connecting to device
-        UARTConnection conn = btHelper.connectToDeviceUART(deviceMAC, this.hbUARTSettings);
-        Hummingbird device = new Hummingbird(conn);
-        connectedDevices.put(deviceMAC, device);
-
+        UARTConnection conn = btHelper.connectToDeviceUART(deviceId, this.hbUARTSettings);
+        if (conn != null) {
+            Hummingbird device = new Hummingbird(conn);
+            connectedDevices.put(deviceId, device);
+        }
         return "";
     }
 
@@ -191,7 +189,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
         if (device != null) {
             Log.d(TAG, "Disconnecting from device: " + deviceId);
             device.disconnect();
-            connectedDevices.remove(extractMAC(deviceId));
+            connectedDevices.remove(deviceId);
         }
         return "";
     }

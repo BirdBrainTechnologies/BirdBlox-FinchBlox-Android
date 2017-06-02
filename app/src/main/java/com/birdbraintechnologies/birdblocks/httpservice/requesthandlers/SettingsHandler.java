@@ -14,7 +14,8 @@ import fi.iki.elonen.NanoHTTPD;
 /**
  * Handler for handling getting and setting of arbitrary settings
  *
- * @author Terence Sun (tsun1215), Shreyan Bakshi (AppyFizz)
+ * @author Terence Sun (tsun1215)
+ * @author Shreyan Bakshi (AppyFizz)
  */
 public class SettingsHandler implements RequestHandler {
     public static final String PREFS_NAME = "Settings";

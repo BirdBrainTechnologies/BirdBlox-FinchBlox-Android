@@ -22,7 +22,7 @@ public class PropertiesHandler implements RequestHandler {
     HttpService service;
     public static DisplayMetrics metrics;
 
-    public PropertiesHandler (HttpService service) {
+    public PropertiesHandler(HttpService service) {
         this.service = service;
     }
 
@@ -53,8 +53,8 @@ public class PropertiesHandler implements RequestHandler {
     private String getDeviceScreenSize() {
         // Get device screen width and height in mm
         double mXDpi = metrics.xdpi;
-        double screen_height_in_mm = (metrics.heightPixels*25.4)/(mXDpi);
-        double screen_width_in_mm = (metrics.widthPixels*25.4)/(mXDpi);
+        double screen_height_in_mm = (metrics.heightPixels * 25.4) / (mXDpi);
+        double screen_width_in_mm = (metrics.widthPixels * 25.4) / (mXDpi);
         return Double.toString(screen_width_in_mm) + "," + Double.toString(screen_height_in_mm);
     }
 
@@ -62,7 +62,7 @@ public class PropertiesHandler implements RequestHandler {
      * Gets the screen size of the device
      *
      * @return String representing the Manufacturer and OS Version
-     *         "Manufacturer (OS Version)" of the device
+     * "Manufacturer (OS Version)" of the device
      */
     private String getDeviceOSVersion() {
         // Get device manufacturer

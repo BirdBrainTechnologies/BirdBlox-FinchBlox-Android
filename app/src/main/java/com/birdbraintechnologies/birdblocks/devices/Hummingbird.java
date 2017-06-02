@@ -13,6 +13,7 @@ import java.util.Map;
  * Represents a Hummingbird device and all of its functionality: Setting outputs, reading sensors
  *
  * @author Terence Sun (tsun1215)
+ * @author Shreyan Bakshi (AppyFizz)
  */
 public class Hummingbird implements UARTConnection.RXDataListener {
     /*
@@ -187,7 +188,6 @@ public class Hummingbird implements UARTConnection.RXDataListener {
         byte r = clampToBounds(Math.round(rPercent * 2.55), 0, 255);
         byte g = clampToBounds(Math.round(gPercent * 2.55), 0, 255);
         byte b = clampToBounds(Math.round(bPercent * 2.55), 0, 255);
-
         return conn.writeBytes(new byte[]{TRI_LED_CMD, computePort(port), r, g, b});
     }
 
