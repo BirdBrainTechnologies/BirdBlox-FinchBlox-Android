@@ -71,28 +71,18 @@ public class FlutterRequestHandler implements RequestHandler {
         switch (path[0]) {
             case "discover":
                 responseBody = listDevices();
-                Log.d("DNameFlutter", "Discover Flutters");
-                Log.d("BLEIssue", "Discovered Flutters: " + listDevices());
-                Log.d("BLEIssue", "Connected Flutters: " + connectedDevices.toString());
                 break;
             case "stopDiscover":
-                Log.d("DiscFlutt", "Stop Discover");
                 responseBody = stopDiscover();
-                Log.d("BLEIssue", "Discovered Flutters: " + listDevices());
-                Log.d("BLEIssue", "Connected Flutters: " + connectedDevices.toString());
                 break;
             case "totalStatus":
                 responseBody = getTotalStatus();
                 break;
             case "connect":
                 responseBody = connectToDevice(m.get("name").get(0));
-                Log.d("BLEIssue", "Discovered Flutters: " + listDevices());
-                Log.d("BLEIssue", "Connected Flutters: " + connectedDevices.toString());
                 break;
             case "disconnect":
                 responseBody = disconnectFromDevice(m.get("name").get(0));
-                Log.d("BLEIssue", "Discovered Flutters: " + listDevices());
-                Log.d("BLEIssue", "Connected Flutters: " + connectedDevices.toString());
                 break;
             case "out":
                 getDeviceFromId(m.get("name").get(0)).setOutput(path[1], m);
@@ -124,7 +114,6 @@ public class FlutterRequestHandler implements RequestHandler {
         JSONArray devices = new JSONArray();
         for (BluetoothDevice device : deviceList) {
             String name = NamingHandler.GenerateName(service.getApplicationContext(), device.getAddress());
-            Log.d("DNameFlutter", name);
             JSONObject flutt = new JSONObject();
             try {
                 flutt.put("id", device.getAddress());
@@ -134,7 +123,6 @@ public class FlutterRequestHandler implements RequestHandler {
             }
             devices.put(flutt);
         }
-        Log.d("FluttLogList", "List: " + devices.toString());
         return devices.toString();
     }
 
@@ -149,7 +137,7 @@ public class FlutterRequestHandler implements RequestHandler {
                 .build();
         List<ScanFilter> flutterDeviceFilters = new ArrayList<>();
         flutterDeviceFilters.add(flScanFilter);
-
+        Log.d("FlutterList", flutterDeviceFilters.toString());
         return flutterDeviceFilters;
     }
 
@@ -231,7 +219,8 @@ public class FlutterRequestHandler implements RequestHandler {
      *
      */
     private String stopDiscover() {
-        // btHelper.stopScan();
+        if (btHelper != null)
+            btHelper.stopScan();
         return "Bluetooth discovery stopped.";
     }
 

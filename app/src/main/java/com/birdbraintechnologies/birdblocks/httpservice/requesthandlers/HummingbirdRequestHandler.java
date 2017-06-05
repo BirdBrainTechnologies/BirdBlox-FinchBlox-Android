@@ -72,29 +72,19 @@ public class HummingbirdRequestHandler implements RequestHandler {
         String responseBody = "";
         switch (path[0]) {
             case "discover":
-                Log.d("DNameHummingBird", "Discover Hummingbirds");
                 responseBody = listDevices();
-                Log.d("BLEIssue", "Discovered Hummingbirds: " + listDevices());
-                Log.d("BLEIssue", "Connected Hummingbirds: " + connectedDevices.toString());
                 break;
             case "totalStatus":
                 responseBody = getTotalStatus();
                 break;
             case "stopDiscover":
-                Log.d("DiscHumm", "Stop Discover");
                 responseBody = stopDiscover();
-                Log.d("BLEIssue", "Discovered Hummingbirds: " + listDevices());
-                Log.d("BLEIssue", "Connected Hummingbirds: " + connectedDevices.toString());
                 break;
             case "connect":
                 responseBody = connectToDevice(m.get("name").get(0));
-                Log.d("BLEIssue", "Discovered Hummingbirds: " + listDevices());
-                Log.d("BLEIssue", "Connected Hummingbirds: " + connectedDevices.toString());
                 break;
             case "disconnect":
                 responseBody = disconnectFromDevice(m.get("name").get(0));
-                Log.d("BLEIssue", "Discovered Hummingbirds: " + listDevices());
-                Log.d("BLEIssue", "Connected Hummingbirds: " + connectedDevices.toString());
                 break;
             case "out":
                 getDeviceFromId(m.get("name").get(0)).setOutput(path[1], m);
@@ -124,7 +114,6 @@ public class HummingbirdRequestHandler implements RequestHandler {
         // TODO: Change this behavior to display correctly on device
         JSONArray devices = new JSONArray();
         for (BluetoothDevice device : deviceList) {
-            Log.d("DNameHummingbird", device.getName());
             JSONObject humm = new JSONObject();
             try {
                 humm.put("id", device.getAddress());
@@ -242,9 +231,8 @@ public class HummingbirdRequestHandler implements RequestHandler {
      *
      */
     private String stopDiscover() {
-//        if (btHelper != null) {
-//            btHelper.stopScan();
-//        }
+        if (btHelper != null)
+            btHelper.stopScan();
         return "Bluetooth discovery stopped.";
     }
 }

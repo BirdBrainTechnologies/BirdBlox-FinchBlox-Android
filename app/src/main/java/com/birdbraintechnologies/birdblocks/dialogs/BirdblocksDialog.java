@@ -15,6 +15,9 @@ import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDevi
 
 /**
  * Created by tsun on 2/21/17.
+ *
+ * @author Terence Sun (tsun1215)
+ * @author Shreyan Bakshi (AppyFizz)
  */
 
 public class BirdblocksDialog extends DialogFragment {
@@ -62,20 +65,19 @@ public class BirdblocksDialog extends DialogFragment {
             // builder.setCanceledOnTouchOutside(true);
         }
 
-        try { builder.create(); } catch (Exception e) {Log.e("Opt3", "Return Exception: " + e);}
         return builder.create();
     }
 
     @Override
     public void onCancel(DialogInterface dialog) {
         super.onCancel(dialog);
-        sendResponseBroadcast("0");
+        sendResponseBroadcast("Cancelled");
     }
 
     @Override
     public void onDismiss (DialogInterface dialog) {
         super.onDismiss(dialog);
-        sendResponseBroadcast("0");
+        sendResponseBroadcast("Cancelled");
     }
 
     private void sendResponseBroadcast(String response) {

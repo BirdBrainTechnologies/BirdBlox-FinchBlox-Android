@@ -138,17 +138,9 @@ public class BluetoothHelper {
     }
 
     public void stopScan() {
-//        if (scanner != null) {
-//            new Thread() {
-//                @Override
-//                public void run() {
-//                    btScanning = false;
-//                    if(populateDevices != null)
-//                        scanner.stopScan(populateDevices);
-//                    scanner = null;
-//                }
-//            }.run();
-//        }
+        deviceList.clear();
+        if (scanner != null)
+            scanner.stopScan(populateDevices);
     }
 
 }
