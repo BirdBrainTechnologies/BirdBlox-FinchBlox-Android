@@ -1,5 +1,6 @@
 package com.birdbraintechnologies.birdblocks;
 
+import android.accounts.NetworkErrorException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -7,6 +8,7 @@ import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.NetworkOnMainThreadException;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
@@ -92,21 +94,21 @@ public class MainWebView extends AppCompatActivity {
                 File f = new File(parent_dir + "/Zipped.zip");
                 if (!f.exists()) try {
                     f.createNewFile();
-                } catch (Exception e) {
-                    Log.d("Download", "f");
+                } catch (IOException | SecurityException e) {
+                    Log.e("Download", "" + e);
                 }
                 File f2 = new File(parent_dir + "/Unzipped");
                 if (!f2.exists()) try {
                     f2.mkdirs();
-                } catch (Exception e) {
-                    Log.d("Download", "f2");
+                } catch (SecurityException e) {
+                    Log.e("Download", "" + e);
                 }
 
                 // Download the layout from github
                 try {
                     downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
-                } catch (Exception e) {
-                    Log.e("Download", "Error ocurred while downloading file: " + e);
+                } catch (NetworkOnMainThreadException | SecurityException e) {
+                    Log.e("Download", "Error occurred while downloading file: " + e);
                     return;
                 }
 
@@ -114,8 +116,7 @@ public class MainWebView extends AppCompatActivity {
                 try {
                     unzip(f, f2);
                 } catch (IOException e) {
-                    Log.e("Unzip", "Java I/O Error while unzipping file");
-                    return;
+                    Log.e("Unzip", "Java I/O Error while unzipping file: " + e);
                 }
             }
         };
@@ -126,16 +127,16 @@ public class MainWebView extends AppCompatActivity {
         // Wait for above thread to finish
         try {
             t.join();
-        } catch (Exception e) {
-            Log.d("Join Thread", "Exception while joining download thread: " + e);
+        } catch (InterruptedException | NetworkOnMainThreadException e) {
+            Log.e("Join Thread", "Exception while joining download thread: " + e);
         }
 
         // Get location of downloaded layout as a 'File'
         File lFile = new File(getFilesDir() + "/Unzipped/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
         if (!lFile.exists()) try {
             lFile.createNewFile();
-        } catch (Exception e) {
-            Log.d("LocFile", "Problem: " + e);
+        } catch (IOException | SecurityException e) {
+            Log.e("LocFile", "Problem: " + e);
         }
 
 
@@ -242,9 +243,8 @@ public class MainWebView extends AppCompatActivity {
             fos.flush();
             fos.close();
             Log.d("Download", "File Downloaded Successfully!!");
-        } catch (Exception e) {
-            Log.e("Download", "Exception thrown: " + e.toString());
-            return;
+        } catch (IOException e) {
+            Log.e("Download", "" + e);
         }
     }
 
@@ -281,7 +281,7 @@ public class MainWebView extends AppCompatActivity {
                 }
                 Log.d("Unzip", "File Unzipped Successfully!!");
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             Log.e("Unzip", "Exception thrown while unzipping: " + e.toString());
         } finally {
             zis.close();

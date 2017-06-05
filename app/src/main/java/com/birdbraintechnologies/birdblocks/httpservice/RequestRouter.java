@@ -86,7 +86,6 @@ public class RequestRouter {
                 return e.getValue().handleRequest(session, args);
             }
         }
-
         // No match
         return null;
     }

@@ -74,18 +74,27 @@ public class HummingbirdRequestHandler implements RequestHandler {
             case "discover":
                 Log.d("DNameHummingBird", "Discover Hummingbirds");
                 responseBody = listDevices();
+                Log.d("BLEIssue", "Discovered Hummingbirds: " + listDevices());
+                Log.d("BLEIssue", "Connected Hummingbirds: " + connectedDevices.toString());
                 break;
             case "totalStatus":
                 responseBody = getTotalStatus();
                 break;
             case "stopDiscover":
+                Log.d("DiscHumm", "Stop Discover");
                 responseBody = stopDiscover();
+                Log.d("BLEIssue", "Discovered Hummingbirds: " + listDevices());
+                Log.d("BLEIssue", "Connected Hummingbirds: " + connectedDevices.toString());
                 break;
             case "connect":
                 responseBody = connectToDevice(m.get("name").get(0));
+                Log.d("BLEIssue", "Discovered Hummingbirds: " + listDevices());
+                Log.d("BLEIssue", "Connected Hummingbirds: " + connectedDevices.toString());
                 break;
             case "disconnect":
                 responseBody = disconnectFromDevice(m.get("name").get(0));
+                Log.d("BLEIssue", "Discovered Hummingbirds: " + listDevices());
+                Log.d("BLEIssue", "Connected Hummingbirds: " + connectedDevices.toString());
                 break;
             case "out":
                 getDeviceFromId(m.get("name").get(0)).setOutput(path[1], m);
@@ -125,7 +134,6 @@ public class HummingbirdRequestHandler implements RequestHandler {
             }
             devices.put(humm);
         }
-        Log.d("DiscHumm", "Output: " + devices.toString());
         return devices.toString();
     }
 
@@ -160,8 +168,8 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @return No Response
      */
     private String connectToDevice(String deviceId) {
-        Log.d("HummLogConn", "Id: " + deviceId);
         // TODO: Handle errors when connecting to device
+        Log.d("HummLogConn", "Id: " + deviceId);
         UARTConnection conn = btHelper.connectToDeviceUART(deviceId, this.hbUARTSettings);
         if (conn != null) {
             Hummingbird device = new Hummingbird(conn);
@@ -189,9 +197,11 @@ public class HummingbirdRequestHandler implements RequestHandler {
         if (device != null) {
             Log.d(TAG, "Disconnecting from device: " + deviceId);
             device.disconnect();
+            Log.d("TotStat", "Removing device: " + deviceId);
             connectedDevices.remove(deviceId);
         }
-        return "";
+        Log.d("TotStat", "Connected Hummingbirds: " + connectedDevices.toString());
+        return "Hummingbird disconnected successfully.";
     }
 
     /**
@@ -205,7 +215,6 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 .build();
         List<ScanFilter> hummingbirdDeviceFilters = new ArrayList<>();
         hummingbirdDeviceFilters.add(hbScanFilter);
-
         return hummingbirdDeviceFilters;
     }
 
@@ -216,6 +225,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @return 0, 1, or 2 depending on the aggregate status of all the devices
      */
     private String getTotalStatus() {
+        Log.d("TotStat", "Connected Devices: " + connectedDevices.toString());
         if (connectedDevices.size() == 0) {
             return "2";  // No devices connected
         }
@@ -232,6 +242,9 @@ public class HummingbirdRequestHandler implements RequestHandler {
      *
      */
     private String stopDiscover() {
-        return "";
+//        if (btHelper != null) {
+//            btHelper.stopScan();
+//        }
+        return "Bluetooth discovery stopped.";
     }
 }

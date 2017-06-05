@@ -46,7 +46,6 @@ public class FlutterRequestHandler implements RequestHandler {
     private UARTSettings flutterUARTSettings;
     private BluetoothHelper btHelper;
     private HashMap<String, Flutter> connectedDevices;
-    private HashMap<String, String> nameBymacAddrs;
 
 
     public FlutterRequestHandler(HttpService service) {
@@ -73,15 +72,27 @@ public class FlutterRequestHandler implements RequestHandler {
             case "discover":
                 responseBody = listDevices();
                 Log.d("DNameFlutter", "Discover Flutters");
+                Log.d("BLEIssue", "Discovered Flutters: " + listDevices());
+                Log.d("BLEIssue", "Connected Flutters: " + connectedDevices.toString());
+                break;
+            case "stopDiscover":
+                Log.d("DiscFlutt", "Stop Discover");
+                responseBody = stopDiscover();
+                Log.d("BLEIssue", "Discovered Flutters: " + listDevices());
+                Log.d("BLEIssue", "Connected Flutters: " + connectedDevices.toString());
                 break;
             case "totalStatus":
                 responseBody = getTotalStatus();
                 break;
             case "connect":
                 responseBody = connectToDevice(m.get("name").get(0));
+                Log.d("BLEIssue", "Discovered Flutters: " + listDevices());
+                Log.d("BLEIssue", "Connected Flutters: " + connectedDevices.toString());
                 break;
             case "disconnect":
                 responseBody = disconnectFromDevice(m.get("name").get(0));
+                Log.d("BLEIssue", "Discovered Flutters: " + listDevices());
+                Log.d("BLEIssue", "Connected Flutters: " + connectedDevices.toString());
                 break;
             case "out":
                 getDeviceFromId(m.get("name").get(0)).setOutput(path[1], m);
@@ -133,11 +144,11 @@ public class FlutterRequestHandler implements RequestHandler {
      * @return List of scan filters
      */
     private static List<ScanFilter> generateDeviceFilter() {
-        ScanFilter hbScanFilter = (new ScanFilter.Builder())
+        ScanFilter flScanFilter = (new ScanFilter.Builder())
                 .setServiceUuid(ParcelUuid.fromString(FLUTTER_DEVICE_UUID))
                 .build();
         List<ScanFilter> flutterDeviceFilters = new ArrayList<>();
-        flutterDeviceFilters.add(hbScanFilter);
+        flutterDeviceFilters.add(flScanFilter);
 
         return flutterDeviceFilters;
     }
@@ -213,6 +224,15 @@ public class FlutterRequestHandler implements RequestHandler {
             }
         }
         return "1";  // All devices are OK
+    }
+
+    /**
+     *
+     *
+     */
+    private String stopDiscover() {
+        // btHelper.stopScan();
+        return "Bluetooth discovery stopped.";
     }
 
 }

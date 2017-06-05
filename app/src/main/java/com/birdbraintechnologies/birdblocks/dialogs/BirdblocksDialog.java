@@ -62,12 +62,20 @@ public class BirdblocksDialog extends DialogFragment {
             // builder.setCanceledOnTouchOutside(true);
         }
 
+        try { builder.create(); } catch (Exception e) {Log.e("Opt3", "Return Exception: " + e);}
         return builder.create();
     }
 
     @Override
     public void onCancel(DialogInterface dialog) {
-        sendResponseBroadcast("Cancelled");
+        super.onCancel(dialog);
+        sendResponseBroadcast("0");
+    }
+
+    @Override
+    public void onDismiss (DialogInterface dialog) {
+        super.onDismiss(dialog);
+        sendResponseBroadcast("0");
     }
 
     private void sendResponseBroadcast(String response) {
@@ -102,5 +110,6 @@ public class BirdblocksDialog extends DialogFragment {
                     return "";
             }
         }
+
     }
 }
