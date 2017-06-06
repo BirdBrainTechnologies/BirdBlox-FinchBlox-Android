@@ -13,6 +13,7 @@ import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -42,7 +43,7 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
-
+        Map<String, List<String>> m = session.getParameters();
         // Generate response body
         String responseBody = "";
         switch (path[0]) {
@@ -50,18 +51,18 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
                 responseBody = listSounds();
                 break;
             case "duration":
-                responseBody = getDuration(path[1]);
+                responseBody = getDuration(m.get("filename").get(0));
                 break;
             case "play":
-                playSound(path[1]);
+                playSound(m.get("filename").get(0));
                 break;
             case "note":
-                playNote(Integer.valueOf(path[1]), Integer.valueOf(path[2]));
+                playNote(Integer.valueOf(m.get("note").get(0)), Integer.valueOf(m.get("duration").get(0)));
                 break;
             case "stop":
                 stopSound();
                 break;
-            case "stop_all":
+            case "stopAll":
                 stopAll();
                 break;
         }

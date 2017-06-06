@@ -37,7 +37,7 @@ public class BirdblocksDialog extends DialogFragment {
             String hint = getArguments().getString("hint");
             final EditText input = new EditText(getActivity());
             input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_NORMAL);
-            Log.d("Input", "hi");
+            Log.d("Properties3", hint);
             input.setHint(hint);
             builder.setView(input)
                     .setPositiveButton("Done", new DialogInterface.OnClickListener() {
@@ -61,8 +61,6 @@ public class BirdblocksDialog extends DialogFragment {
                     sendResponseBroadcast("2");
                 }
             });
-            // builder.setCancelable(true);
-            // builder.setCanceledOnTouchOutside(true);
         }
 
         return builder.create();

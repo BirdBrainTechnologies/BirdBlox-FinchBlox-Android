@@ -22,6 +22,10 @@ public class HttpService extends Service {
     private Server server;
     private BluetoothHelper btService;
 
+    // To allow external requests (for debugging purposes),
+    // just make the String below null.
+    private static final String HTTPAccessFlag = null;
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
@@ -65,7 +69,7 @@ public class HttpService extends Service {
         private RequestRouter router;
 
         public Server(int port, HttpService service) throws IOException {
-            super(port);
+            super(HTTPAccessFlag, port);
             start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
             router = new RequestRouter(service);
             Log.d(TAG, "Started server on port " + port);
@@ -75,7 +79,7 @@ public class HttpService extends Service {
         public Response serve(IHTTPSession session) {
             String requestPath = session.getUri();
 
-            Log.d("parameters", session.getParameters().toString());
+            Log.d("PropertiesParameters", session.getParameters().toString());
 
             Method requestMethod = session.getMethod();
             Log.d(TAG, session.getRemoteIpAddress() + " " + requestMethod + " " + requestPath);

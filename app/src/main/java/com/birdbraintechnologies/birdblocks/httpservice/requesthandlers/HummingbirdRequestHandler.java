@@ -81,17 +81,17 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 responseBody = stopDiscover();
                 break;
             case "connect":
-                responseBody = connectToDevice(m.get("name").get(0));
+                responseBody = connectToDevice(m.get("id").get(0));
                 break;
             case "disconnect":
-                responseBody = disconnectFromDevice(m.get("name").get(0));
+                responseBody = disconnectFromDevice(m.get("id").get(0));
                 break;
             case "out":
-                getDeviceFromId(m.get("name").get(0)).setOutput(path[1], m);
+                getDeviceFromId(m.get("id").get(0)).setOutput(path[1], m);
                 responseBody = "Connected to Hummingbird successfully.";
                 break;
             case "in":
-                responseBody = getDeviceFromId(m.get("name").get(0)).readSensor(m.get("sensor").get(0), m.get("port").get(0));
+                responseBody = getDeviceFromId(m.get("id").get(0)).readSensor(m.get("sensor").get(0), m.get("port").get(0));
                 break;
 //                case "rename":
 //                    responseBody = renameDevice(path[0], path[2]);
