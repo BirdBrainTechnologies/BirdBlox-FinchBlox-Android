@@ -19,6 +19,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -27,6 +28,7 @@ import android.view.Surface;
 import android.view.WindowManager;
 
 import com.birdbraintechnologies.birdblocks.MainWebView;
+import com.birdbraintechnologies.birdblocks.R;
 import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
@@ -36,6 +38,7 @@ import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 import static java.security.AccessController.getContext;
 
 /**
@@ -147,6 +150,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 break;
             case "location":
                 responseBody = getDeviceLocation();
+                if (responseBody.equals("403 Forbidden"))
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.FORBIDDEN, MIME_PLAINTEXT, responseBody);
                 break;
             case "ssid":
                 responseBody = getDeviceSSID();
@@ -182,7 +188,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 break;
         }
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
         return r;
     }
 
@@ -192,8 +198,38 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @return Longitude and latitude separated by a space
      */
     private String getDeviceLocation() {
-        return Double.toString(longitude) + " " + Double.toString(latitude);
+        Log.d("LocPerm", "Entered getDeviceLocation() function in HostHandler");
+
+        if (ActivityCompat.checkSelfPermission(service,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(service,
+                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Intent showDialog = new Intent(MainWebView.LOCATION_PERMISSION);
+            LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+            Log.d("LocPerm", "Intent Sent to MainWebView");
+        }
+
+        if(ActivityCompat.checkSelfPermission(service,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || ActivityCompat.checkSelfPermission(service,
+                Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            LocationManager locationManager =
+                    (LocationManager) service.getSystemService(Context.LOCATION_SERVICE);
+            Criteria criteria = new Criteria();
+            criteria.setAccuracy(Criteria.ACCURACY_FINE);
+            criteria.setAltitudeRequired(true);
+            criteria.setPowerRequirement(Criteria.POWER_HIGH);
+            String provider = locationManager.getBestProvider(criteria, true);
+            locationManager.requestLocationUpdates(provider,
+                    LOCATION_UPDATE_MILLIS, LOCATION_UPDATE_THRESHOLD, this);
+            Log.d("LocPerm", "HostDeviceHandler reads Location Permissions reads location permissions as true");
+            return Double.toString(longitude) + " " + Double.toString(latitude);
+        }
+        Log.d("LocPerm", "HostDeviceHandler reads Location Permissions reads location permissions as false");
+        return "403 Forbidden";
     }
+
+
 
     /**
      * Gets the altitude of the device
@@ -370,7 +406,6 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
 
     @Override
     public void onProviderEnabled(String provider) {
-
     }
 
     @Override

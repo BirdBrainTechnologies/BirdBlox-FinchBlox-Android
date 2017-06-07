@@ -138,9 +138,10 @@ public class BluetoothHelper {
     }
 
     public void stopScan() {
-        deviceList.clear();
         if (scanner != null)
             scanner.stopScan(populateDevices);
+        if (deviceList != null)
+            deviceList.clear();
     }
 
 }

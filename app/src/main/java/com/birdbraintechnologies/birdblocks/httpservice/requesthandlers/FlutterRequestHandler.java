@@ -158,12 +158,11 @@ public class FlutterRequestHandler implements RequestHandler {
      * @return No Response
      */
     private String connectToDevice(String deviceId) {
-        String deviceMAC = deviceId;
         // TODO: Handle errors when connecting to device
-        MelodySmartConnection conn = btHelper.connectToDeviceMelodySmart(deviceMAC, this.flutterUARTSettings);
+        MelodySmartConnection conn = btHelper.connectToDeviceMelodySmart(deviceId, this.flutterUARTSettings);
         if (conn != null) {
             Flutter device = new Flutter(conn);
-            connectedDevices.put(deviceMAC, device);
+            connectedDevices.put(deviceId, device);
         }
         return "";
     }

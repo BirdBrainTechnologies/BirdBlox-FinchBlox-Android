@@ -1,14 +1,18 @@
 package com.birdbraintechnologies.birdblocks;
 
+import android.Manifest;
 import android.accounts.NetworkErrorException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.NetworkOnMainThreadException;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
@@ -20,6 +24,7 @@ import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler;
 
 import java.io.BufferedInputStream;
@@ -50,6 +55,9 @@ public class MainWebView extends AppCompatActivity {
     // public static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
     // public static final String PAGE_URL = "http://rawgit.com/TomWildenhain/HummingbirdDragAndDrop-/dev/HummingbirdDragAndDrop.html";
 
+    // public static boolean locationPermission;
+    public static final int MY_PERMISSIONS_ACCESS_FINE_LOCATION = 1;
+
     private WebView webView;
 
     /* For double back exit */
@@ -60,9 +68,11 @@ public class MainWebView extends AppCompatActivity {
     public static final String SHOW_DIALOG = "com.birdbraintechnologies.birdblocks.DIALOG";
     public static final String SHARE_FILE = "com.birdbraintechnologies.birdblocks.SHARE_FILE";
     public static final String EXIT = "com.birdbraintechnologies.birdblocks.EXIT";
+    public static final String LOCATION_PERMISSION = "com.birdbraintechnologies.birdblocks.REQUEST_LOCATION_PERMISSION";
     private BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            Log.d("LocPerm", "Entered onReceive Method");
             if (intent.getAction().equals(SHOW_DIALOG)) {
                 // Handles showing Choice and Text dialogs
                 showDialog(intent.getExtras());
@@ -71,6 +81,10 @@ public class MainWebView extends AppCompatActivity {
                 showShareDialog(intent.getExtras());
             } else if (intent.getAction().equals(EXIT)) {
                 exitApp();
+            } else if (intent.getAction().equals(LOCATION_PERMISSION)) {
+                // Handles requesting the user for location permissions
+                Log.d("LocPerm", "Location Permission Intent Received");
+                requestLocationPermissions();
             }
         }
     };
@@ -78,6 +92,9 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        // locationPermission = (ContextCompat.checkSelfPermission(MainWebView.this,
+        //        Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
 
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
@@ -171,6 +188,7 @@ public class MainWebView extends AppCompatActivity {
         intentFilter.addAction(SHOW_DIALOG);
         intentFilter.addAction(SHARE_FILE);
         intentFilter.addAction(EXIT);
+        intentFilter.addAction(LOCATION_PERMISSION);
         bManager.registerReceiver(bReceiver, intentFilter);
     }
 
@@ -289,6 +307,44 @@ public class MainWebView extends AppCompatActivity {
         Log.d("Unzip", "File Unzipped Successfully!!");
     }
 
+    private void requestLocationPermissions() {
+        if (ContextCompat.checkSelfPermission(MainWebView.this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            Log.d("LocPerm", "Location Permissions are Not Granted");
+            ActivityCompat.requestPermissions(MainWebView.this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    MY_PERMISSIONS_ACCESS_FINE_LOCATION);
+            Log.d("LocPerm", "Location Permission REquested from user");
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        Log.d("LocPerm", "Location Permission Response obtained");
+        switch (requestCode) {
+            case MY_PERMISSIONS_ACCESS_FINE_LOCATION: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay! Do the
+                    // contacts-related task you need to do.
+                    // locationPermission = true;
+                    Log.d("LocPerm", "Location Permissions allowed by user");
+                } else {
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+                    // locationPermission = false;
+                    Log.d("LocPerm", "Location Permissions not allowed by user");
+                }
+                return;
+            }
+            // other 'case' lines to check for other
+            // permissions this app might request
+        }
+    }
+
     private void showDialog(Bundle b) {
         BirdblocksDialog dialog = new BirdblocksDialog();
         dialog.setArguments(b);
@@ -310,5 +366,6 @@ public class MainWebView extends AppCompatActivity {
         this.stopService(getIntent());
         this.finishAndRemoveTask();
     }
+
 
 }
