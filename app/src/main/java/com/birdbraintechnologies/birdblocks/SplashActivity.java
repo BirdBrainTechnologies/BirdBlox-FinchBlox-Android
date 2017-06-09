@@ -14,7 +14,7 @@ public class SplashActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // start main web view
+        // start main webView
         startActivity(new Intent(this, MainWebView.class));
 
         // close splash activity

@@ -2,6 +2,7 @@ package com.birdbraintechnologies.birdblocks;
 
 import android.Manifest;
 import android.accounts.NetworkErrorException;
+import android.app.ActionBar;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -28,6 +29,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
@@ -46,6 +48,7 @@ import java.net.URLConnection;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static android.R.attr.uiOptions;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler.metrics;
 
 
@@ -102,7 +105,39 @@ public class MainWebView extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
+        // Hide the status bar
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
+        // Remember that you should never show the action bar if the
+        // status bar is hidden, so hide that too if necessary.
+        if (getActionBar() != null)
+            getActionBar().hide();
+
+        // Get the physical dimensions (width, height) of screen, and update  the static
+        // variable metrics in the PropertiesHandler class with this information.
+        metrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
+        // Store the width and height in inches for use here too
+        float yInches= metrics.heightPixels/metrics.ydpi;
+        float xInches= metrics.widthPixels/metrics.xdpi;
+        // Calculate diagonal length of screen in inches
+        double diagonalInches = Math.sqrt(xInches*xInches + yInches*yInches);
+
+        if (diagonalInches>=6.5){
+            // 6.5 inch device screen or bigger - In this case rotation is allowed
+            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
+            // Resizes the webView upon screen rotation
+            mOrientationListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
+                @Override
+                public void onOrientationChanged(int orientation) {
+                    // Inject the JavaScript command to resize into webView
+                    webView.loadUrl("javascript:GuiElements.updateDims()");
+                }
+            };
+            mOrientationListener.enable();
+        } else {
+            // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
+            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        }
 
         // locationPermission = (ContextCompat.checkSelfPermission(MainWebView.this,
         //        Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
@@ -188,11 +223,6 @@ public class MainWebView extends AppCompatActivity {
         webSettings.setJavaScriptEnabled(true);
         webView.resumeTimers();
 
-        // Get the physical dimensions (width, height) of screen, and update  the static
-        // variable metrics in the PropertiesHandler class with this information.
-        metrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
-
         // Broadcast receiver
         bManager = LocalBroadcastManager.getInstance(this);
         IntentFilter intentFilter = new IntentFilter();
@@ -202,15 +232,9 @@ public class MainWebView extends AppCompatActivity {
         intentFilter.addAction(LOCATION_PERMISSION);
         bManager.registerReceiver(bReceiver, intentFilter);
 
-        // Resizes the webView upon screen rotation
-        mOrientationListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
-            @Override
-            public void onOrientationChanged(int orientation) {
-                // Inject the JavaScript command to resize into webView
-                webView.loadUrl("javascript:GuiElements.updateDims()");
-            }
-        };
-        mOrientationListener.enable();
+
+
+
 
         // Get intent, action and MIME type
 //        Intent intent = getIntent();
@@ -250,7 +274,8 @@ public class MainWebView extends AppCompatActivity {
         super.onResume();
         webView.onResume();
         webView.resumeTimers();
-        mOrientationListener.enable();
+        if (mOrientationListener != null)
+            mOrientationListener.enable();
     }
 
     @Override
@@ -258,7 +283,8 @@ public class MainWebView extends AppCompatActivity {
         super.onPause();
         webView.pauseTimers();
         webView.onPause();
-        mOrientationListener.disable();
+        if (mOrientationListener != null)
+            mOrientationListener.disable();
     }
 
     @Override
@@ -266,8 +292,10 @@ public class MainWebView extends AppCompatActivity {
         super.onDestroy();
         bManager.unregisterReceiver(bReceiver);
         webView.destroy();
-        mOrientationListener.disable();
+        if (mOrientationListener != null)
+            mOrientationListener.disable();
         stopService(new Intent(this, HttpService.class));
+        stopService(new Intent(this, BluetoothHelper.class));
     }
 
     @Override
