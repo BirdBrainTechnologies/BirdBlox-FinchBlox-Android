@@ -54,7 +54,7 @@ public class PropertiesHandler implements RequestHandler {
      *
      * @return String representing the screen "width, height" of the device
      */
-    private String getDeviceScreenSize() {
+    public static String getDeviceScreenSize() {
         // Get device screen width and height in mm
         double mXDpi = metrics.xdpi;
         double screen_height_in_mm = (metrics.heightPixels * 25.4) / (mXDpi);

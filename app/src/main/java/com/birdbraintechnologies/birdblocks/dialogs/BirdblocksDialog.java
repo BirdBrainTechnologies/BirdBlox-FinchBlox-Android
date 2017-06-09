@@ -68,14 +68,8 @@ public class BirdblocksDialog extends DialogFragment {
 
     @Override
     public void onCancel(DialogInterface dialog) {
+        sendResponseBroadcast("Cancelled");
         super.onCancel(dialog);
-        sendResponseBroadcast("Cancelled");
-    }
-
-    @Override
-    public void onDismiss (DialogInterface dialog) {
-        super.onDismiss(dialog);
-        sendResponseBroadcast("Cancelled");
     }
 
     private void sendResponseBroadcast(String response) {

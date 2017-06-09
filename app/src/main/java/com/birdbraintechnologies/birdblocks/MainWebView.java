@@ -6,10 +6,14 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.NetworkOnMainThreadException;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -17,9 +21,11 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.OrientationEventListener;
 import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
@@ -39,6 +45,8 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler.metrics;
 
 
 /**
@@ -93,6 +101,8 @@ public class MainWebView extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
+        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
+
         // locationPermission = (ContextCompat.checkSelfPermission(MainWebView.this,
         //        Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
 
@@ -123,7 +133,8 @@ public class MainWebView extends AppCompatActivity {
 
                 // Download the layout from github
                 try {
-                    downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                //    downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                    downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
                 } catch (NetworkOnMainThreadException | SecurityException e) {
                     Log.e("Download", "Error occurred while downloading file: " + e);
                     return;
@@ -156,7 +167,6 @@ public class MainWebView extends AppCompatActivity {
             Log.e("LocFile", "Problem: " + e);
         }
 
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_web_view);
 
@@ -177,10 +187,10 @@ public class MainWebView extends AppCompatActivity {
         webSettings.setJavaScriptEnabled(true);
         webView.resumeTimers();
 
-        // Get the physical dimensions (width, height) of screen, and update the static
+        // Get the physical dimensions (width, height) of screen, and update  the static
         // variable metrics in the PropertiesHandler class with this information.
-        PropertiesHandler.metrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getRealMetrics(PropertiesHandler.metrics);
+        metrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
 
         // Broadcast receiver
         bManager = LocalBroadcastManager.getInstance(this);
@@ -190,7 +200,35 @@ public class MainWebView extends AppCompatActivity {
         intentFilter.addAction(EXIT);
         intentFilter.addAction(LOCATION_PERMISSION);
         bManager.registerReceiver(bReceiver, intentFilter);
+
+        // Resizes the webView upon screen rotation
+        new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
+            @Override
+            public void onOrientationChanged(int orientation) {
+                // Inject the JavaScript command to resize into webView
+                webView.loadUrl("javascript:GuiElements.updateDims()");
+            }
+        }.enable();
+
+        // Get intent, action and MIME type
+//        Intent intent = getIntent();
+//        String action = intent.getAction();
+//        String type = intent.getType();
+//
+//        if (Intent.ACTION_SEND.equals(action) && type != null) {
+//            if ("text/plain".equals(type)) {
+//                handleSendText(intent); // Handle text being sent
+//            } else if (type.startsWith("image/")) {
+//                handleSendImage(intent); // Handle single image being sent
+//            }
+//        } else if (Intent.ACTION_SEND_MULTIPLE.equals(action) && type != null) {
+//            if (type.startsWith("image/")) {
+//                handleSendMultipleImages(intent); // Handle multiple images being sent
+//            }
+//        }
+
     }
+
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
