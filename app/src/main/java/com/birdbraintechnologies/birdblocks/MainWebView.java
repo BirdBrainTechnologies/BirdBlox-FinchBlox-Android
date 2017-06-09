@@ -14,7 +14,6 @@ import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.NetworkOnMainThreadException;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -26,14 +25,11 @@ import android.view.OrientationEventListener;
 import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -48,7 +44,6 @@ import java.net.URLConnection;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import static android.R.attr.uiOptions;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler.metrics;
 
 
@@ -112,36 +107,10 @@ public class MainWebView extends AppCompatActivity {
         if (getActionBar() != null)
             getActionBar().hide();
 
-        // Get the physical dimensions (width, height) of screen, and update  the static
-        // variable metrics in the PropertiesHandler class with this information.
-        metrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
-        // Store the width and height in inches for use here too
-        float yInches= metrics.heightPixels/metrics.ydpi;
-        float xInches= metrics.widthPixels/metrics.xdpi;
-        // Calculate diagonal length of screen in inches
-        double diagonalInches = Math.sqrt(xInches*xInches + yInches*yInches);
-
-        if (diagonalInches>=6.5){
-            // 6.5 inch device screen or bigger - In this case rotation is allowed
-            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
-            // Resizes the webView upon screen rotation
-            mOrientationListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
-                @Override
-                public void onOrientationChanged(int orientation) {
-                    // Inject the JavaScript command to resize into webView
-                    webView.loadUrl("javascript:GuiElements.updateDims()");
-                }
-            };
-            mOrientationListener.enable();
-        } else {
-            // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
-            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        }
-
         // locationPermission = (ContextCompat.checkSelfPermission(MainWebView.this,
         //        Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
 
+        // Set hardware volume buttons to control media volume
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         // 'Parent' Location where downloaded, unzipped files are to be stored
@@ -169,7 +138,7 @@ public class MainWebView extends AppCompatActivity {
 
                 // Download the layout from github
                 try {
-                //    downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                    //    downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
                     downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
                 } catch (NetworkOnMainThreadException | SecurityException e) {
                     Log.e("Download", "Error occurred while downloading file: " + e);
@@ -187,6 +156,9 @@ public class MainWebView extends AppCompatActivity {
 
         // Spawn the thread (for download, unzip of layout)
         t.start();
+
+        // Check device screen size, and adjust rotation settings accordingly
+        adjustRotationSettings();
 
         // Wait for above thread to finish
         try {
@@ -231,9 +203,6 @@ public class MainWebView extends AppCompatActivity {
         intentFilter.addAction(EXIT);
         intentFilter.addAction(LOCATION_PERMISSION);
         bManager.registerReceiver(bReceiver, intentFilter);
-
-
-
 
 
         // Get intent, action and MIME type
@@ -376,6 +345,38 @@ public class MainWebView extends AppCompatActivity {
             zis.close();
         }
         Log.d("Unzip", "File Unzipped Successfully!!");
+    }
+
+    /**
+     * Checks device screen size, and adjusts rotation settings accordingly
+     */
+    private void adjustRotationSettings() {
+        // Get the physical dimensions (width, height) of screen, and update  the static
+        // variable metrics in the PropertiesHandler class with this information.
+        metrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
+        // Store the width and height in inches for use here too
+        float yInches = metrics.heightPixels / metrics.ydpi;
+        float xInches = metrics.widthPixels / metrics.xdpi;
+        // Calculate diagonal length of screen in inches
+        double diagonalInches = Math.sqrt(xInches * xInches + yInches * yInches);
+
+        if (diagonalInches >= 6.5) {
+            // 6.5 inch device screen or bigger - In this case rotation is allowed
+            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
+            // Resizes the webView upon screen rotation
+            mOrientationListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
+                @Override
+                public void onOrientationChanged(int orientation) {
+                    // Inject the JavaScript command to resize into webView
+                    webView.loadUrl("javascript:GuiElements.updateDims()");
+                }
+            };
+            mOrientationListener.enable();
+        } else {
+            // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
+            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        }
     }
 
     private void requestLocationPermissions() {
