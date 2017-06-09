@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-    
+
     <uses-feature android:name="android.hardware.location" />
 
     <application
@@ -23,15 +23,22 @@
             android:name=".MainWebView"
             android:configChanges="orientation|screenSize"
             android:screenOrientation="landscape">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            <!--<intent-filter>-->
+                <!--<action android:name="android.intent.action.MAIN" />-->
+
+                <!--<category android:name="android.intent.category.LAUNCHER" />-->
+            <!--</intent-filter>-->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="file"  android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.bbx" />
+
+                <data
+                    android:host="*"
+                    android:mimeType="*/*"
+                    android:pathPattern=".*\\.bbx"
+                    android:scheme="file" />
                 <data android:pathPattern=".*\\..*\\.bbx" />
                 <data android:pathPattern=".*\\..*\\..*\\.bbx" />
                 <data android:pathPattern=".*\\..*\\..*\\..*\\.bbx" />
@@ -42,6 +49,16 @@
             android:name=".httpservice.HttpService"
             android:enabled="true"
             android:exported="true" />
+
+        <activity android:name=".SplashActivity"
+                  android:label="@string/app_name"
+                  android:theme="@style/SplashTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
