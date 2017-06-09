@@ -67,6 +67,7 @@ public class MainWebView extends AppCompatActivity {
     public static final int MY_PERMISSIONS_ACCESS_FINE_LOCATION = 1;
 
     private WebView webView;
+    private OrientationEventListener mOrientationListener;
 
     /* For double back exit */
     private static final int DOUBLE_BACK_DELAY = 2000;
@@ -202,13 +203,14 @@ public class MainWebView extends AppCompatActivity {
         bManager.registerReceiver(bReceiver, intentFilter);
 
         // Resizes the webView upon screen rotation
-        new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
+        mOrientationListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
             @Override
             public void onOrientationChanged(int orientation) {
                 // Inject the JavaScript command to resize into webView
                 webView.loadUrl("javascript:GuiElements.updateDims()");
             }
-        }.enable();
+        };
+        mOrientationListener.enable();
 
         // Get intent, action and MIME type
 //        Intent intent = getIntent();
@@ -248,6 +250,7 @@ public class MainWebView extends AppCompatActivity {
         super.onResume();
         webView.onResume();
         webView.resumeTimers();
+        mOrientationListener.enable();
     }
 
     @Override
@@ -255,6 +258,7 @@ public class MainWebView extends AppCompatActivity {
         super.onPause();
         webView.pauseTimers();
         webView.onPause();
+        mOrientationListener.disable();
     }
 
     @Override
@@ -262,6 +266,7 @@ public class MainWebView extends AppCompatActivity {
         super.onDestroy();
         bManager.unregisterReceiver(bReceiver);
         webView.destroy();
+        mOrientationListener.disable();
         stopService(new Intent(this, HttpService.class));
     }
 
