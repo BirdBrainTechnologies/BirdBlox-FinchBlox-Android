@@ -39,6 +39,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.zip.ZipEntry;
@@ -379,6 +380,37 @@ public class MainWebView extends AppCompatActivity {
         }
     }
 
+    /**
+     * Determines availability of given port.
+     *
+     * @param port Port number of the required port
+     * @return Returns true if given is available (not in use), and false otherwise.
+     * @exception RuntimeException
+     *
+     */
+    private static boolean port_available(int port) {
+        System.out.println("--------------Testing port " + port);
+        Socket s = null;
+        try {
+            s = new Socket("localhost", port);
+            // If the code makes it this far without an exception it means
+            // something is using the port and has responded.
+            System.out.println("--------------Port " + port + " is not available");
+            return false;
+        } catch (IOException e) {
+            System.out.println("--------------Port " + port + " is available");
+            return true;
+        } finally {
+            if(s != null){
+                try {
+                    s.close();
+                } catch (IOException e) {
+                    throw new RuntimeException("You should handle this error." , e);
+                }
+            }
+        }
+    }
+
     private void requestLocationPermissions() {
         if (ContextCompat.checkSelfPermission(MainWebView.this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
@@ -390,6 +422,7 @@ public class MainWebView extends AppCompatActivity {
             Log.d("LocPerm", "Location Permission REquested from user");
         }
     }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
