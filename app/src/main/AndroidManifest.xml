@@ -36,7 +36,7 @@
 
                 <data
                     android:host="*"
-                    android:mimeType="*/*"
+                    android:mimeType="text/xml"
                     android:pathPattern=".*\\.bbx"
                     android:scheme="file" />
                 <data android:pathPattern=".*\\..*\\.bbx" />

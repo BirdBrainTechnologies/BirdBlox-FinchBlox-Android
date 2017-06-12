@@ -1,19 +1,17 @@
 package com.birdbraintechnologies.birdblocks;
 
 import android.Manifest;
-import android.accounts.NetworkErrorException;
-import android.app.ActionBar;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.NetworkOnMainThreadException;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -30,6 +28,7 @@ import android.widget.Toast;
 import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -39,12 +38,17 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static android.R.attr.path;
+import static android.R.attr.type;
+import static android.R.id.input;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler.metrics;
 
 
@@ -67,6 +71,9 @@ public class MainWebView extends AppCompatActivity {
 
     private WebView webView;
     private OrientationEventListener mOrientationListener;
+    private String importedFile;
+    private static final String BIRDBLOCKS_ZIP_DIR = "Zipped";
+    private static final String BIRDBLOCKS_UNZIP_DIR = "Unzipped";
 
     /* For double back exit */
     private static final int DOUBLE_BACK_DELAY = 2000;
@@ -100,6 +107,20 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        FileManagementHandler.SecretFileDirectory = getFilesDir();
+        importedFile = null;
+
+        // Get intent
+        Intent intent = getIntent();
+
+        if (Intent.ACTION_VIEW.equals(intent.getAction())) {
+            String str = intent.getDataString();
+            String last4 = str == null || str.length() < 4 ? str : str.substring(str.length() - 4);
+            if (".bbx".equals(last4)) {
+                Log.d("ImportIntent", "Hi, we are about to call copy function");
+                importedFile = copyAndReturnFilename(intent);
+            }
+        }
 
         // Hide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
@@ -124,13 +145,13 @@ public class MainWebView extends AppCompatActivity {
             public void run() {
                 //Check if the locations to download and unzip already exist in the internal storage
                 // If they don't, create them
-                File f = new File(parent_dir + "/Zipped.zip");
+                File f = new File(parent_dir + "/" + BIRDBLOCKS_ZIP_DIR + "/UI.zip");
                 if (!f.exists()) try {
                     f.createNewFile();
                 } catch (IOException | SecurityException e) {
                     Log.e("Download", "" + e);
                 }
-                File f2 = new File(parent_dir + "/Unzipped");
+                File f2 = new File(parent_dir + "/" + BIRDBLOCKS_UNZIP_DIR);
                 if (!f2.exists()) try {
                     f2.mkdirs();
                 } catch (SecurityException e) {
@@ -196,6 +217,13 @@ public class MainWebView extends AppCompatActivity {
         webSettings.setJavaScriptEnabled(true);
         webView.resumeTimers();
 
+        if (importedFile != null) {
+            // Inject the JavaScript command to open the imported file into the webView
+            Log.d("ImportIntent", "Final File Name: " + importedFile);
+            webView.loadUrl("javascript:SaveManager.import(" + importedFile + ")");
+        }
+
+
         // Broadcast receiver
         bManager = LocalBroadcastManager.getInstance(this);
         IntentFilter intentFilter = new IntentFilter();
@@ -204,24 +232,6 @@ public class MainWebView extends AppCompatActivity {
         intentFilter.addAction(EXIT);
         intentFilter.addAction(LOCATION_PERMISSION);
         bManager.registerReceiver(bReceiver, intentFilter);
-
-
-        // Get intent, action and MIME type
-//        Intent intent = getIntent();
-//        String action = intent.getAction();
-//        String type = intent.getType();
-//
-//        if (Intent.ACTION_SEND.equals(action) && type != null) {
-//            if ("text/plain".equals(type)) {
-//                handleSendText(intent); // Handle text being sent
-//            } else if (type.startsWith("image/")) {
-//                handleSendImage(intent); // Handle single image being sent
-//            }
-//        } else if (Intent.ACTION_SEND_MULTIPLE.equals(action) && type != null) {
-//            if (type.startsWith("image/")) {
-//                handleSendMultipleImages(intent); // Handle multiple images being sent
-//            }
-//        }
 
     }
 
@@ -279,6 +289,58 @@ public class MainWebView extends AppCompatActivity {
                     Toast.LENGTH_SHORT).show();
         }
         back_pressed = System.currentTimeMillis();
+    }
+
+    /**
+     *
+     *
+     * @param inputPath
+     * @param inputFile
+     * @param outputPath
+     */
+    private void copyFile(String inputPath, String inputFile, String outputPath) {
+        InputStream in = null;
+        OutputStream out = null;
+        try {
+            //create output directory if it doesn't exist
+            File dir = new File (outputPath);
+            if (!dir.exists())
+            {
+                try {
+                    dir.mkdirs();
+                } catch (SecurityException e) {
+                    Log.e("Copy Directory", "" + e);
+                }
+            }
+            in = new FileInputStream(inputPath + inputFile);
+            out = new FileOutputStream(outputPath + inputFile);
+            byte[] buffer = new byte[1024];
+            int read;
+            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+            in.close();
+            in = null;
+            // write the output file (You have now copied the file)
+            out.flush();
+            out.close();
+            out = null;
+        }  catch (IOException e) {
+            Log.e("Copy", e.getMessage());
+        }
+    }
+
+    /**
+     *
+     *
+     * @param intent
+     * @return
+     */
+    private String copyAndReturnFilename(Intent intent) {
+        String outputPath = FileManagementHandler.getBirdblocksDir().getAbsolutePath() + "/";
+        String inputFile = intent.getData().getLastPathSegment();
+        File file = new File(intent.getData().getPath());
+        String inputPath = file.getParentFile().toString() + "/";
+        copyFile(inputPath, inputFile, outputPath);
+        return inputFile.substring(0, inputFile.length() - 4);
     }
 
     /**

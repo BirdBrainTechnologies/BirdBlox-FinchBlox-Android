@@ -22,6 +22,8 @@ import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static java.security.AccessController.getContext;
+
 /**
  * Request handler for managing files on the device.
  *
@@ -30,8 +32,9 @@ import fi.iki.elonen.NanoHTTPD;
  */
 public class FileManagementHandler implements RequestHandler {
     private static final String TAG = FileManagementHandler.class.getName();
-    private static final String BIRDBLOCKS_SAVE_DIR = "Birdblocks";
+    private static final String BIRDBLOCKS_SAVE_DIR = "Saved";
     private static final String FILE_NOT_FOUND_RESPONSE = "File Not Found";
+    public static File SecretFileDirectory;
 
     private HttpService service;
 
@@ -194,11 +197,17 @@ public class FileManagementHandler implements RequestHandler {
      *
      * @return File object for the save directory
      */
-    private File getBirdblocksDir() {
-        File file = new File(Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_DOCUMENTS), BIRDBLOCKS_SAVE_DIR);
-        if (!file.mkdirs()) {
-            return file;
+    public static File getBirdblocksDir() {
+        //File file = new File(Environment.getExternalStoragePublicDirectory(
+        //        Environment.DIRECTORY_DOCUMENTS), BIRDBLOCKS_SAVE_DIR);
+
+        File file = new File(SecretFileDirectory, BIRDBLOCKS_SAVE_DIR);
+        if (!file.exists()) {
+            try {
+                file.mkdirs();
+            } catch (SecurityException e) {
+                Log.e("Save Directory", "" + e);
+            }
         }
         Log.d(TAG, "Created BirdBlocks save directory: " + file.getPath());
         return file;

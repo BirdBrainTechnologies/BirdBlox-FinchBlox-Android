@@ -35,10 +35,12 @@ public class BirdblocksDialog extends DialogFragment {
         if (type == DialogType.INPUT) {
             // Build input dialog
             String hint = getArguments().getString("hint");
+            String defaultText = getArguments().getString("default");
             final EditText input = new EditText(getActivity());
             input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_NORMAL);
             Log.d("Properties3", hint);
             input.setHint(hint);
+            input.setText(defaultText);
             builder.setView(input)
                     .setPositiveButton("Done", new DialogInterface.OnClickListener() {
                         @Override

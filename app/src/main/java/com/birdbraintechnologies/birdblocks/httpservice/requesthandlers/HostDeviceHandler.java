@@ -171,7 +171,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 break;
             case "dialog":
                 // showDialog(path[1], path[2], path[3]);
-                showDialog(m.get("title").get(0), m.get("question").get(0), m.get("holder").get(0));
+                String placeholder = (m.get("placeholder") == null ? "" : m.get("placeholder").get(0));
+                String prefill = (m.get("prefill") == null ? "" : m.get("prefill").get(0));
+                showDialog(m.get("title").get(0), m.get("question").get(0), placeholder, prefill);
                 break;
             case "choice":
                 // showChoice(path[1], path[2], path[3], path[4]);
@@ -270,7 +272,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @return Each axis' acceleration separated by spaces
      */
     private String getDeviceAcceleration() {
-        return deviceAccelX + " " + deviceAccelY + " " + deviceAccelZ;
+        return (-deviceAccelX) + " " + (-deviceAccelY) + " " + (-deviceAccelZ);
     }
 
     /**
@@ -290,11 +292,12 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     /**
      * Shows a text input dialog with a question
      *
-     * @param title    Title of the dialog
-     * @param question Text to show to the user
-     * @param hint     Placeholder text for the text input
+     * @param title        Title of the dialog
+     * @param question     Text to show to the user
+     * @param hint         Placeholder text for the text input
+     * @param defaultText  Default text present in the input text field initially
      */
-    private void showDialog(String title, String question, String hint) {
+    private void showDialog(String title, String question, String hint, String defaultText) {
         dialogResponse = null;
         // Send broadcast to MainWebView
         Intent showDialog = new Intent(MainWebView.SHOW_DIALOG);
@@ -302,6 +305,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         showDialog.putExtra("title", title);
         showDialog.putExtra("message", question);
         showDialog.putExtra("hint", hint);
+        showDialog.putExtra("default", defaultText);
         LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
     }
 
