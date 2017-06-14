@@ -173,7 +173,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 // showDialog(path[1], path[2], path[3]);
                 String placeholder = (m.get("placeholder") == null ? "" : m.get("placeholder").get(0));
                 String prefill = (m.get("prefill") == null ? "" : m.get("prefill").get(0));
-                showDialog(m.get("title").get(0), m.get("question").get(0), placeholder, prefill);
+                String selectAll = (m.get("selectAll") == null ? "" : m.get("selectAll").get(0));
+                showDialog(m.get("title").get(0), m.get("question").get(0), placeholder, prefill, selectAll);
                 break;
             case "choice":
                 // showChoice(path[1], path[2], path[3], path[4]);
@@ -296,8 +297,10 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @param question     Text to show to the user
      * @param hint         Placeholder text for the text input
      * @param defaultText  Default text present in the input text field initially
+     * @param selectAll    If this is 'true' (or any variation of the word 'true'),
+     *                     the default text in the input box should be pre-selected.
      */
-    private void showDialog(String title, String question, String hint, String defaultText) {
+    private void showDialog(String title, String question, String hint, String defaultText, String selectAll) {
         dialogResponse = null;
         // Send broadcast to MainWebView
         Intent showDialog = new Intent(MainWebView.SHOW_DIALOG);
@@ -306,6 +309,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         showDialog.putExtra("message", question);
         showDialog.putExtra("hint", hint);
         showDialog.putExtra("default", defaultText);
+        showDialog.putExtra("select", selectAll.toLowerCase().equals("true"));
         LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
     }
 

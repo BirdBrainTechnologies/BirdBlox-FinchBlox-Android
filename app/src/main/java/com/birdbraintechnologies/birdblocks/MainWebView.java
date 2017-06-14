@@ -11,6 +11,7 @@ import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.NetworkOnMainThreadException;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -71,7 +72,6 @@ public class MainWebView extends AppCompatActivity {
     private WebView webView;
     private OrientationEventListener mOrientationListener;
     private String importedFile;
-    private static final String BIRDBLOCKS_ZIP_DIR = "Zipped";
     private static final String BIRDBLOCKS_UNZIP_DIR = "Unzipped";
 
     /* For double back exit */
@@ -144,17 +144,17 @@ public class MainWebView extends AppCompatActivity {
             public void run() {
                 //Check if the locations to download and unzip already exist in the internal storage
                 // If they don't, create them
-                File f = new File(parent_dir + "/" + BIRDBLOCKS_ZIP_DIR + "/UI.zip");
+                File f = new File(parent_dir + "/UI.zip");
                 if (!f.exists()) try {
                     f.createNewFile();
                 } catch (IOException | SecurityException e) {
-                    Log.e("Download", "" + e);
+                    Log.e("Download", e.getMessage());
                 }
                 File f2 = new File(parent_dir + "/" + BIRDBLOCKS_UNZIP_DIR);
                 if (!f2.exists()) try {
                     f2.mkdirs();
                 } catch (SecurityException e) {
-                    Log.e("Download", "" + e);
+                    Log.e("Download", e.getMessage());
                 }
 
                 // Download the layout from github
@@ -162,7 +162,7 @@ public class MainWebView extends AppCompatActivity {
                     //    downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
                     downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
                 } catch (NetworkOnMainThreadException | SecurityException e) {
-                    Log.e("Download", "Error occurred while downloading file: " + e);
+                    Log.e("Download", "Error occurred while downloading file: " + e.getMessage());
                     return;
                 }
 
@@ -170,7 +170,7 @@ public class MainWebView extends AppCompatActivity {
                 try {
                     unzip(f, f2);
                 } catch (IOException e) {
-                    Log.e("Unzip", "Java I/O Error while unzipping file: " + e);
+                    Log.e("Unzip", "Java I/O Error while unzipping file: " + e.getMessage());
                 }
             }
         };
@@ -185,15 +185,15 @@ public class MainWebView extends AppCompatActivity {
         try {
             t.join();
         } catch (InterruptedException | NetworkOnMainThreadException e) {
-            Log.e("Join Thread", "Exception while joining download thread: " + e);
+            Log.e("Join Thread", "Exception while joining download thread: " + e.getMessage());
         }
 
         // Get location of downloaded layout as a 'File'
-        File lFile = new File(getFilesDir() + "/Unzipped/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
+        File lFile = new File(parent_dir + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
         if (!lFile.exists()) try {
             lFile.createNewFile();
         } catch (IOException | SecurityException e) {
-            Log.e("LocFile", "Problem: " + e);
+            Log.e("LocFile", "Problem: " + e.getMessage());
         }
 
         super.onCreate(savedInstanceState);
@@ -221,7 +221,6 @@ public class MainWebView extends AppCompatActivity {
             Log.d("ImportIntent", "Final File Name: " + importedFile);
             webView.loadUrl("javascript:SaveManager.import(" + importedFile + ")");
         }
-
 
         // Broadcast receiver
         bManager = LocalBroadcastManager.getInstance(this);
@@ -308,7 +307,7 @@ public class MainWebView extends AppCompatActivity {
                 try {
                     dir.mkdirs();
                 } catch (SecurityException e) {
-                    Log.e("Copy Directory", "" + e);
+                    Log.e("Copy Directory", "" + e.getMessage());
                 }
             }
             in = new FileInputStream(inputPath + inputFile);

@@ -2,14 +2,15 @@ package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Environment;
-import android.provider.ContactsContract;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblocks.MainWebView;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -23,8 +24,8 @@ import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
-import static android.media.CamcorderProfile.get;
-import static java.security.AccessController.getContext;
+import static android.R.attr.name;
+import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
  * Request handler for managing files on the device.
@@ -58,19 +59,38 @@ public class FileManagementHandler implements RequestHandler {
                     responseBody = saveFile(m.get("filename").get(0), session, m.get("options").get(0));
                 } else {
                     // bad request
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "");
                 }
+                if (responseBody == null) {
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.CONFLICT, MIME_PLAINTEXT, "");
+                }
+                Log.d("AutoSave",  "Save: " + responseBody);
                 break;
             case "load":
                 responseBody = loadFile(m.get("filename").get(0));
                 break;
             case "rename":
                 if (m.get("options") == null) {
-                    renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0), null);
+                    responseBody = renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0), null);
                 } else if (m.get("options").get(0).equals("soft")) {
-                    renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0), m.get("options").get(0));
+                    responseBody = renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0), m.get("options").get(0));
                 } else {
                     // bad request
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "");
                 }
+                if (responseBody == null) {
+                    responseBody = "";
+                } else if (responseBody.equals("409")) {
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.CONFLICT, MIME_PLAINTEXT, "");
+                } else {
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "");
+                }
+                Log.d("AutoSave",  "Rename: " + responseBody);
                 break;
             case "delete":
                 deleteFile(m.get("filename").get(0));
@@ -81,10 +101,19 @@ public class FileManagementHandler implements RequestHandler {
             case "export":
                 exportFile(m.get("filename").get(0), session);
                 break;
+            case "getAvailableName":
+                try {
+                    responseBody = getAvailableName(m.get("filename").get(0));
+                } catch (NullPointerException e) {
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "");
+                }
+                Log.d("AutoSave",  "GetAvailableName: " + responseBody);
+                break;
         }
 
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
         return r;
     }
 
@@ -97,28 +126,38 @@ public class FileManagementHandler implements RequestHandler {
      * @return
      */
     private String saveFile(String filename, NanoHTTPD.IHTTPSession session, String option) {
+//        Log.d("AutoSaveSave", "Command to save with name: " + filename + "option: " + option);
+//        Log.d("AutoSaveSave", "Name: " + filename + " is available? " + isNameAvailable(getBirdblocksDir(), filename));
+//        Log.d("AutoSaveSave", "Name: " + filename + " is sanitized? " + isNameSanitized(filename));
         if (session.getMethod() != NanoHTTPD.Method.POST) {
             Log.d(TAG, "Save must be done via POST request");
             return null;
         }
         Map<String, String> postFiles = new HashMap<>();
-
         if (option == null) {
-            // do nothing extra in this case
-            // forcibly attempt to write
-            // overwrite file with same name, if it exists
-        } else if (option.equals("new")) {
-            // try to save
-            // automatically find an available name
-            filename = findAvailableName(getBirdblocksDir(), filename);
+            // forcibly attempt to write, and overwrite file with same name, if it exists
+            // if name is not sanitized, throw 409 error
+            if(!isNameSanitized(filename)) {
+                // raise 409
+                return null;
+            }
         } else if (option.equals("soft")) {
-            // try to save
-            // respond with 409 if name unavailable
-            if (!isNameAvailable(getBirdblocksDir(), filename))
-                // Raise 409
-                return "409";
+            // try to save, and respond with 409 if name unavailable ot name is not sanitized
+            if ((!isNameSanitized(filename)) || !isNameAvailable(getBirdblocksDir(), filename)) {
+                // raise 409
+                Log.d("AutoSaveSave", "One of them fails");
+                return null;
+            }
+        } else if (option.equals("new")) {
+            // try to save, and automatically find an available name
+            filename = findAvailableName(getBirdblocksDir(), filename);
+            if (filename == null) {
+                // raise 409
+                return null;
+            }
         }
-
+//        Log.d("AutoSaveSave", "Actually saving with name: " + filename + "option: " + option);
+        // actually save file here
         File newFile = new File(getBirdblocksDir(), filename);
         try {
             // Parse POST body to get parameters
@@ -169,32 +208,32 @@ public class FileManagementHandler implements RequestHandler {
      *
      * @param oldFilename Old file name
      * @param newFilename New name of file
-     * @param option
-     * @return CAREFUL -> RETURNS ERROR CODE FOR NOW
-     * // TODO: Implement Properly
+     * @param option      Can be null or "soft", depending on which
+     *                    this method performs different actions
+     * @return            Returns null if successful, otherwise returns
+     *                    error code ("409" or "503") as string
      */
     private String renameFile(String oldFilename, String newFilename, String option) {
         File file = new File(getBirdblocksDir(), oldFilename);
         if (!file.exists() || !isNameSanitized(newFilename)) {
-            // 409
+            // 409 if oldFile doesn't exist, or newFilename is corrupt
             return "409";
         }
         if (option == null) {
-            // force rename if newFilename is valid
-            // overwrite file if it exists
-            // 409 if newFilename is corrupt
+            // force rename if newFilename is valid, and overwrite file if it exists
+            // do nothing extra here
         } else if (option.equals("soft")) {
-            // throw error if new name file already exists
-            // if new name corrupt, throw error
+            // throw 409 error if new name file already exists
             // else rename
             if (!isNameAvailable(getBirdblocksDir(), newFilename))
                 return "409";
         }
         try {
+            // actually rename file here
             file.renameTo(new File(getBirdblocksDir(), newFilename));
             return null;
         } catch (Exception e) {
-            Log.e("Rename", "");
+            Log.e("Rename", e.getMessage());
             // 503
             return "503";
         }
@@ -225,7 +264,8 @@ public class FileManagementHandler implements RequestHandler {
             return response;
         }
         for (int i = 0; i < files.length; i++) {
-            response += files[i].getName() + "\n";
+            response += files[i].getName();
+            if (i < files.length - 1) response += "\n";
         }
         return response;
     }
@@ -250,35 +290,72 @@ public class FileManagementHandler implements RequestHandler {
             }
             return filename;
         } catch (Exception e) {
-            Log.e("Export", "");
+            Log.e("Export", e.getMessage());
             return null;
         }
     }
 
     /**
      *
-     * @param name
-     * @return
-     */
-    public static boolean isNameSanitized(String name) {
-        return true;
-    }
-
-    /**
      *
-     * @param name
-     * @return
+     * @param filename
+     * @return Returns an available name for 'filename'
      */
-    public static String sanitizeName (String name) {
-        return name;
+    private String getAvailableName(String filename) {
+        Log.d("AutoSave", "GetAvailableName: " + filename);
+        try {
+            JSONObject nameObject = new JSONObject();
+            Log.d("AutoSave", "FileName 1: " + filename);
+            nameObject.put("availableName", findAvailableName(getBirdblocksDir(), filename));
+            Log.d("AutoSave", "FileName 2: " + filename);
+            nameObject.put("alreadySanitized", isNameSanitized(filename));
+            Log.d("AutoSave", "FileName 3: " + filename);
+            nameObject.put("alreadyAvailable", isNameAvailable(getBirdblocksDir(), filename));
+            Log.d("AutoSave", "FileName 4: " + filename);
+            Log.d("AutoSave", "Available name found: " + findAvailableName(getBirdblocksDir(), filename));
+            return nameObject.toString();
+        } catch (JSONException | NullPointerException e) {
+            Log.e("AvailableName", e.getMessage());
+            return null;
+        }
     }
 
     /**
-     * @param dir
-     * @param name
-     * @return
+     * Checks if input filename contains any illegal characters
+     *
+     * @param name Input filename
+     * @return     Returns false if 'name' contains any illegal characters,
+     *             and true otherwise.
      */
-    public static boolean isNameAvailable(File dir, String name) {
+    private static boolean isNameSanitized(String name) {
+        if (name == null) return false;
+        // Illegal characters are:
+        // '\', '/', ':', '*', '?', '<', '>', '|', '.', '\n', '\r', '\0', '"', '$'
+        return !name.matches(".*[\\\\/:*?<>|.\n\r\0\"$].*");
+    }
+
+    /**
+     * Sanitizes filename, with any illegal characters replaced with underscores.
+     *
+     * @param name Input filename
+     * @return     Returns sanitized name.
+     *             (Returns null if name is null).
+     */
+    private static String sanitizeName (String name) {
+        if (name == null) return null;
+        if (isNameSanitized(name)) return name;
+        // else
+        return name.replaceAll("[\\\\/:*?<>|.\n\r\0\"$]", "_");
+    }
+
+    /**
+     * @param dir   Directory in which the file is located
+     * @param name  Input filename
+     * @return      Returns false if there is already a file with the filename
+     *              'name' in the directory 'dir', and true otherwise
+     */
+    private static boolean isNameAvailable(File dir, String name) {
+        if (name == null) return true;
         File[] files = dir.listFiles();
         for (File file : files) {
             if (file.getName().equals(name)) return false;
@@ -287,16 +364,38 @@ public class FileManagementHandler implements RequestHandler {
     }
 
     /**
-     * @param dir
-     * @param name
-     * @return
+     * @param dir   Directory in which the file is located
+     * @param name  Input filename
+     * @return      Returns an available name for a file with filename 'name'
+     *              in the directory 'dir'. (Returns null if error occurs)
      */
     public static String findAvailableName(File dir, String name) {
         if (isNameAvailable(dir, name)) return name;
+        Log.d("AutoSave", "Is " + name + " available? " + isNameAvailable(dir, name));
         // else
+        name = sanitizeName(name);
+        if (name == null)
+            // raise 409
+            return null;
         try {
             File[] files = dir.listFiles();
-            for (int i = 1; i <= files.length; i++) {
+            int n = 2;
+            if (name.length() >= 3 && name.endsWith(")")) {
+                int startIndex = name.length() - 1;
+                while (startIndex >= 0) {
+                    if (name.charAt(startIndex) == '(') break;
+                    startIndex--;
+                }
+                if(startIndex < name.length() - 2) {
+                    String number = name.substring(startIndex+1, name.length()-1);
+                    // if the String 'number' actually contains a number 2 onwards
+                    if (number.matches("^[1-9]\\d*$") && !number.equals("1"))
+                        n = Integer.parseInt(number);
+                    // remove the "(number)" part from the end of name
+                    name = name.substring(0, name.length() - (number.length() + 2));
+                }
+            }
+            for (int i = n; i <= files.length + n; i++) {
                 String newName = name + "(" + i + ")";
                 if (isNameAvailable(dir, newName)) return newName;
             }

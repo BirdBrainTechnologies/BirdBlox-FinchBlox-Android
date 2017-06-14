@@ -1,8 +1,6 @@
 package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
 import android.content.SharedPreferences;
-import android.util.Log;
-
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 

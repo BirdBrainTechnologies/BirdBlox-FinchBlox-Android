@@ -79,7 +79,8 @@ public class HttpService extends Service {
         public Response serve(IHTTPSession session) {
             String requestPath = session.getUri();
 
-            Log.d("PropertiesParameters", session.getParameters().toString());
+            Log.d("SessionURI", session.getUri());
+            Log.d("SessionParameters", session.getParameters().toString());
 
             Method requestMethod = session.getMethod();
             Log.d(TAG, session.getRemoteIpAddress() + " " + requestMethod + " " + requestPath);
