@@ -11,7 +11,6 @@ import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.NetworkOnMainThreadException;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;

@@ -49,6 +49,8 @@ public class RequestRouter {
         addRoute("^/data/(.*)$", new FileManagementHandler(service));
         addRoute("^/sound/(.*)$", new SoundHandler(service));
         addRoute("^/properties/(.*)$", new PropertiesHandler(service));
+        // TODO: Add UI commands
+        // addRoute("^/ui/(.*)$", new __Handler(service));
     }
 
     /**

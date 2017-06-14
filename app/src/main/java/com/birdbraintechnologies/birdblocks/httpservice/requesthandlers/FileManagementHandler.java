@@ -3,6 +3,7 @@ package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Environment;
+import android.provider.ContactsContract;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
@@ -22,6 +23,7 @@ import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static android.media.CamcorderProfile.get;
 import static java.security.AccessController.getContext;
 
 /**
@@ -50,13 +52,25 @@ public class FileManagementHandler implements RequestHandler {
         String responseBody = "";
         switch (path[0]) {
             case "save":
-                saveFile(m.get("filename").get(0), session);
+                if (m.get("options") == null) {
+                    responseBody = saveFile(m.get("filename").get(0), session, null);
+                } else if (m.get("options").get(0).equals("new") || m.get("options").get(0).equals("soft")) {
+                    responseBody = saveFile(m.get("filename").get(0), session, m.get("options").get(0));
+                } else {
+                    // bad request
+                }
                 break;
             case "load":
                 responseBody = loadFile(m.get("filename").get(0));
                 break;
             case "rename":
-                renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0));
+                if (m.get("options") == null) {
+                    renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0), null);
+                } else if (m.get("options").get(0).equals("soft")) {
+                    renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0), m.get("options").get(0));
+                } else {
+                    // bad request
+                }
                 break;
             case "delete":
                 deleteFile(m.get("filename").get(0));
@@ -74,19 +88,37 @@ public class FileManagementHandler implements RequestHandler {
         return r;
     }
 
-
     /**
      * Saves a file to the device (Only supports POST requests)
      *
      * @param filename Name of the file to save
      * @param session  HttpRequest to get the POST body of
+     * @param option
+     * @return
      */
-    private void saveFile(String filename, NanoHTTPD.IHTTPSession session) {
+    private String saveFile(String filename, NanoHTTPD.IHTTPSession session, String option) {
         if (session.getMethod() != NanoHTTPD.Method.POST) {
             Log.d(TAG, "Save must be done via POST request");
-            return;
+            return null;
         }
         Map<String, String> postFiles = new HashMap<>();
+
+        if (option == null) {
+            // do nothing extra in this case
+            // forcibly attempt to write
+            // overwrite file with same name, if it exists
+        } else if (option.equals("new")) {
+            // try to save
+            // automatically find an available name
+            filename = findAvailableName(getBirdblocksDir(), filename);
+        } else if (option.equals("soft")) {
+            // try to save
+            // respond with 409 if name unavailable
+            if (!isNameAvailable(getBirdblocksDir(), filename))
+                // Raise 409
+                return "409";
+        }
+
         File newFile = new File(getBirdblocksDir(), filename);
         try {
             // Parse POST body to get parameters
@@ -98,9 +130,12 @@ public class FileManagementHandler implements RequestHandler {
         } catch (IOException e) {
             newFile.delete();
             Log.e(TAG, e.toString());
+            return null;
         } catch (NanoHTTPD.ResponseException e) {
             Log.e(TAG, e.toString());
+            return null;
         }
+        return filename;
     }
 
     /**
@@ -134,13 +169,35 @@ public class FileManagementHandler implements RequestHandler {
      *
      * @param oldFilename Old file name
      * @param newFilename New name of file
+     * @param option
+     * @return CAREFUL -> RETURNS ERROR CODE FOR NOW
+     * // TODO: Implement Properly
      */
-    private void renameFile(String oldFilename, String newFilename) {
+    private String renameFile(String oldFilename, String newFilename, String option) {
         File file = new File(getBirdblocksDir(), oldFilename);
-        if (!file.exists()) {
-            return;
+        if (!file.exists() || !isNameSanitized(newFilename)) {
+            // 409
+            return "409";
         }
-        file.renameTo(new File(getBirdblocksDir(), newFilename));
+        if (option == null) {
+            // force rename if newFilename is valid
+            // overwrite file if it exists
+            // 409 if newFilename is corrupt
+        } else if (option.equals("soft")) {
+            // throw error if new name file already exists
+            // if new name corrupt, throw error
+            // else rename
+            if (!isNameAvailable(getBirdblocksDir(), newFilename))
+                return "409";
+        }
+        try {
+            file.renameTo(new File(getBirdblocksDir(), newFilename));
+            return null;
+        } catch (Exception e) {
+            Log.e("Rename", "");
+            // 503
+            return "503";
+        }
     }
 
     /**
@@ -179,17 +236,74 @@ public class FileManagementHandler implements RequestHandler {
      * @param filename Name of the file to share
      * @param session  HttpRequest containing the most up to date contents of the file
      */
-    private void exportFile(String filename, NanoHTTPD.IHTTPSession session) {
+    private String exportFile(String filename, NanoHTTPD.IHTTPSession session) {
+        /* SAVING HERE NO LONGER REQUIRED */
         // Save the updated contents (in case they were updated)
-        saveFile(filename, session);
-
-        // Create share intent on the main activity
-        File file = new File(getBirdblocksDir(), filename);
-        if (file.exists()) {
-            Intent showDialog = new Intent(MainWebView.SHARE_FILE);
-            showDialog.putExtra("file_uri", Uri.fromFile(file));
-            LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+        // saveFile(filename, session);
+        try {
+            // Create share intent on the main activity
+            File file = new File(getBirdblocksDir(), filename);
+            if (file.exists()) {
+                Intent showDialog = new Intent(MainWebView.SHARE_FILE);
+                showDialog.putExtra("file_uri", Uri.fromFile(file));
+                LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+            }
+            return filename;
+        } catch (Exception e) {
+            Log.e("Export", "");
+            return null;
         }
+    }
+
+    /**
+     *
+     * @param name
+     * @return
+     */
+    public static boolean isNameSanitized(String name) {
+        return true;
+    }
+
+    /**
+     *
+     * @param name
+     * @return
+     */
+    public static String sanitizeName (String name) {
+        return name;
+    }
+
+    /**
+     * @param dir
+     * @param name
+     * @return
+     */
+    public static boolean isNameAvailable(File dir, String name) {
+        File[] files = dir.listFiles();
+        for (File file : files) {
+            if (file.getName().equals(name)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param dir
+     * @param name
+     * @return
+     */
+    public static String findAvailableName(File dir, String name) {
+        if (isNameAvailable(dir, name)) return name;
+        // else
+        try {
+            File[] files = dir.listFiles();
+            for (int i = 1; i <= files.length; i++) {
+                String newName = name + "(" + i + ")";
+                if (isNameAvailable(dir, newName)) return newName;
+            }
+        } catch (SecurityException e) {
+            Log.e("FindName", e.getMessage());
+        }
+        return null;
     }
 
     /**
