@@ -11,7 +11,6 @@ import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.NetworkOnMainThreadException;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -46,9 +45,6 @@ import java.net.URLConnection;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import static android.R.attr.path;
-import static android.R.attr.type;
-import static android.R.id.input;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler.metrics;
 
 
@@ -69,10 +65,14 @@ public class MainWebView extends AppCompatActivity {
     // public static boolean locationPermission;
     public static final int MY_PERMISSIONS_ACCESS_FINE_LOCATION = 1;
 
+    // True if device has microphone
+    public static boolean deviceHasMicrophone;
+
     private WebView webView;
     private OrientationEventListener mOrientationListener;
     private String importedFile;
     private static final String BIRDBLOCKS_UNZIP_DIR = "Unzipped";
+    private static final String BIRDBLOCKS_DIR = "Birdblocks";
 
     /* For double back exit */
     private static final int DOUBLE_BACK_DELAY = 2000;
@@ -106,7 +106,11 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         FileManagementHandler.SecretFileDirectory = getFilesDir();
+        // FileManagementHandler.SecretFileDirectory = new File(Environment.getExternalStoragePublicDirectory(
+        //        Environment.DIRECTORY_DOCUMENTS), BIRDBLOCKS_DIR);
+
         importedFile = null;
 
         // Get intent
@@ -127,6 +131,8 @@ public class MainWebView extends AppCompatActivity {
         // status bar is hidden, so hide that too if necessary.
         if (getActionBar() != null)
             getActionBar().hide();
+
+        deviceHasMicrophone = hasMicrophone();
 
         // locationPermission = (ContextCompat.checkSelfPermission(MainWebView.this,
         //        Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
@@ -524,12 +530,19 @@ public class MainWebView extends AppCompatActivity {
         // TODO: Change to bbx
         sendIntent.setType("text/xml");
         startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.send_to)));
+
     }
 
     private void exitApp() {
         Log.d("APP", "Exiting");
         this.stopService(getIntent());
         this.finishAndRemoveTask();
+    }
+
+    private boolean hasMicrophone() {
+        PackageManager pmanager = this.getPackageManager();
+        return pmanager.hasSystemFeature(
+                PackageManager.FEATURE_MICROPHONE);
     }
 
 

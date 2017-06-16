@@ -97,7 +97,7 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
      * Gets the duration of the given sound
      *
      * @param soundId The sound's id
-     * @return Duration in millseconds of the sound
+     * @return Duration in milliseconds of the sound
      */
     private synchronized String getDuration(String soundId) {
         String path = SOUNDS_DIR + "/%s.wav";

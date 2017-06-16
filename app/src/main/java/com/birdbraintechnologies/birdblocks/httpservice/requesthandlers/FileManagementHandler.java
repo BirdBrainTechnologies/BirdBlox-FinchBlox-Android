@@ -24,7 +24,6 @@ import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
-import static android.R.attr.name;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
@@ -126,9 +125,6 @@ public class FileManagementHandler implements RequestHandler {
      * @return
      */
     private String saveFile(String filename, NanoHTTPD.IHTTPSession session, String option) {
-//        Log.d("AutoSaveSave", "Command to save with name: " + filename + "option: " + option);
-//        Log.d("AutoSaveSave", "Name: " + filename + " is available? " + isNameAvailable(getBirdblocksDir(), filename));
-//        Log.d("AutoSaveSave", "Name: " + filename + " is sanitized? " + isNameSanitized(filename));
         if (session.getMethod() != NanoHTTPD.Method.POST) {
             Log.d(TAG, "Save must be done via POST request");
             return null;
@@ -302,17 +298,11 @@ public class FileManagementHandler implements RequestHandler {
      * @return Returns an available name for 'filename'
      */
     private String getAvailableName(String filename) {
-        Log.d("AutoSave", "GetAvailableName: " + filename);
         try {
             JSONObject nameObject = new JSONObject();
-            Log.d("AutoSave", "FileName 1: " + filename);
             nameObject.put("availableName", findAvailableName(getBirdblocksDir(), filename));
-            Log.d("AutoSave", "FileName 2: " + filename);
             nameObject.put("alreadySanitized", isNameSanitized(filename));
-            Log.d("AutoSave", "FileName 3: " + filename);
             nameObject.put("alreadyAvailable", isNameAvailable(getBirdblocksDir(), filename));
-            Log.d("AutoSave", "FileName 4: " + filename);
-            Log.d("AutoSave", "Available name found: " + findAvailableName(getBirdblocksDir(), filename));
             return nameObject.toString();
         } catch (JSONException | NullPointerException e) {
             Log.e("AvailableName", e.getMessage());
@@ -370,10 +360,10 @@ public class FileManagementHandler implements RequestHandler {
      *              in the directory 'dir'. (Returns null if error occurs)
      */
     public static String findAvailableName(File dir, String name) {
+        name = sanitizeName(name);
         if (isNameAvailable(dir, name)) return name;
         Log.d("AutoSave", "Is " + name + " available? " + isNameAvailable(dir, name));
         // else
-        name = sanitizeName(name);
         if (name == null)
             // raise 409
             return null;

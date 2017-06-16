@@ -7,6 +7,7 @@ import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FlutterR
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HummingbirdRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.RecordingHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SettingsHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SoundHandler;
 
@@ -49,6 +50,7 @@ public class RequestRouter {
         addRoute("^/data/(.*)$", new FileManagementHandler(service));
         addRoute("^/sound/(.*)$", new SoundHandler(service));
         addRoute("^/properties/(.*)$", new PropertiesHandler(service));
+        addRoute("^/record/(.*)$", new RecordingHandler(service));
         // TODO: Add UI commands
         // addRoute("^/ui/(.*)$", new __Handler(service));
     }
