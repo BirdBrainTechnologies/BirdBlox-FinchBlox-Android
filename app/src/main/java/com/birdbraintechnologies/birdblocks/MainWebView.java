@@ -72,6 +72,7 @@ public class MainWebView extends AppCompatActivity {
     private OrientationEventListener mOrientationListener;
     private String importedFile;
     private static final String BIRDBLOCKS_UNZIP_DIR = "Unzipped";
+    private static final String BIRDBLOCKS_ZIP_DIR = "Zipped";
     private static final String BIRDBLOCKS_DIR = "Birdblocks";
 
     /* For double back exit */
@@ -150,8 +151,10 @@ public class MainWebView extends AppCompatActivity {
             public void run() {
                 //Check if the locations to download and unzip already exist in the internal storage
                 // If they don't, create them
-                File f = new File(parent_dir + "/UI.zip");
+                File f = new File(parent_dir + "/" + BIRDBLOCKS_ZIP_DIR + "/UI.zip");
                 if (!f.exists()) try {
+                    if (!f.getParentFile().exists())
+                        f.getParentFile().mkdirs();
                     f.createNewFile();
                 } catch (IOException | SecurityException e) {
                     Log.e("Download", e.getMessage());
@@ -540,8 +543,8 @@ public class MainWebView extends AppCompatActivity {
     }
 
     private boolean hasMicrophone() {
-        PackageManager pmanager = this.getPackageManager();
-        return pmanager.hasSystemFeature(
+        PackageManager pManager = this.getPackageManager();
+        return pManager.hasSystemFeature(
                 PackageManager.FEATURE_MICROPHONE);
     }
 
