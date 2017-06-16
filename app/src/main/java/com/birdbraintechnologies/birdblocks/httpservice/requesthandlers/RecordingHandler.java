@@ -16,8 +16,6 @@ import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.getBirdblocksDir;
-
 /**
  * Handler for handling recording and playback of (recorded) sounds,
  * as well as managing these recorded sound files.
@@ -26,18 +24,16 @@ import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.F
  */
 
 public class RecordingHandler implements RequestHandler {
-    HttpService service;
-
     private static MediaRecorder mediaRecorder;
-
     // Directory where recordings are to be stored, as a String
     private static String recordedFilesDir;
     // Directory where recordings are to be stored, as a 'File'
     private static File recordDir;
+    HttpService service;
 
     public RecordingHandler(HttpService service) {
         this.service = service;
-        recordedFilesDir = getBirdblocksDir().getAbsolutePath() + "/Recordings";
+        recordedFilesDir = FileManagementHandler.SecretFileDirectory.getAbsolutePath() + "/Recordings";
         recordDir = new File(recordedFilesDir);
         if(!recordDir.exists()) {
             try {
@@ -69,6 +65,12 @@ public class RecordingHandler implements RequestHandler {
                 break;
             case "list":
                 responseBody = listRecordings();
+                break;
+            case "rename":
+                break;
+            case "delete":
+                break;
+            case "export":
                 break;
             default:
                 break;

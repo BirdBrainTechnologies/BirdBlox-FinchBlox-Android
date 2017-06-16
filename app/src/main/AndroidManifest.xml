@@ -25,25 +25,12 @@
             android:configChanges="orientation|screenSize"
             android:screenOrientation="landscape">
             <!--<intent-filter>-->
-                <!--<action android:name="android.intent.action.MAIN" />-->
+            <!--<action android:name="android.intent.action.MAIN" />-->
 
-                <!--<category android:name="android.intent.category.LAUNCHER" />-->
+            <!--<category android:name="android.intent.category.LAUNCHER" />-->
             <!--</intent-filter>-->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
 
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
 
-                <data
-                    android:host="*"
-                    android:mimeType="text/xml"
-                    android:pathPattern=".*\\.bbx"
-                    android:scheme="file" />
-                <data android:pathPattern=".*\\..*\\.bbx" />
-                <data android:pathPattern=".*\\..*\\..*\\.bbx" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.bbx" />
-            </intent-filter>
         </activity>
 
         <service
@@ -51,15 +38,139 @@
             android:enabled="true"
             android:exported="true" />
 
-        <activity android:name=".SplashActivity"
-                  android:label="@string/app_name"
-                  android:theme="@style/SplashTheme">
+        <activity
+            android:name=".SplashScreen"
+            android:label="@string/app_name"
+            android:theme="@style/SplashTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/xml" />
+                <data android:pathPattern=".*\\.bbx" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/xml" />
+                <data android:pathPattern=".*\\.bbx" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/xml" />
+                <data android:pathPattern=".*\\.bbx" />
+            </intent-filter>
+
+            <!--<intent-filter>-->
+            <!--<action android:name="android.intent.action.SEND" />-->
+
+            <!--<category android:name="android.intent.category.BROWSABLE" />-->
+            <!--<category android:name="android.intent.category.DEFAULT" />-->
+
+            <!--<data android:scheme="content" />-->
+            <!--<data android:host="*" />-->
+            <!--<data android:mimeType="*/*" />-->
+            <!--</intent-filter>-->
+
+            <!--<intent-filter>-->
+            <!--<action android:name="android.intent.action.SEND" />-->
+
+            <!--<category android:name="android.intent.category.BROWSABLE" />-->
+            <!--<category android:name="android.intent.category.DEFAULT" />-->
+
+            <!--<data android:scheme="file" />-->
+            <!--<data android:host="*" />-->
+            <!--<data android:pathPattern=".*\\.bbx" />-->
+            <!--<data android:mimeType="*/*" />-->
+            <!--</intent-filter>-->
+
+            <!--<intent-filter>-->
+            <!--<action android:name="android.intent.action.GET_CONTENT" />-->
+
+            <!--<category android:name="android.intent.category.BROWSABLE" />-->
+            <!--<category android:name="android.intent.category.DEFAULT" />-->
+
+            <!--<data android:scheme="file" />-->
+            <!--<data android:host="*" />-->
+            <!--<data android:pathPattern=".*\\.bbx" />-->
+            <!--<data android:mimeType="*/*" />-->
+            <!--</intent-filter>-->
+
+            <!--<intent-filter>-->
+            <!--<action android:name="android.intent.action.GET_CONTENT" />-->
+
+            <!--<category android:name="android.intent.category.BROWSABLE" />-->
+            <!--<category android:name="android.intent.category.DEFAULT" />-->
+
+            <!--<data android:scheme="*" />-->
+            <!--<data android:host="*" />-->
+            <!--<data android:pathPattern=".*\\.bbx" />-->
+            <!--<data android:mimeType="*/*" />-->
+            <!--</intent-filter>-->
+
+            <!--<intent-filter>-->
+            <!--<action android:name="android.intent.action.VIEW" />-->
+
+            <!--<category android:name="android.intent.category.BROWSABLE" />-->
+            <!--<category android:name="android.intent.category.DEFAULT" />-->
+
+            <!--<data android:scheme="*" />-->
+            <!--<data android:host="*" />-->
+            <!--<data android:mimeType="*/*" />-->
+            <!--</intent-filter>-->
+
+            <!--<intent-filter>-->
+            <!--<action android:name="android.intent.action.VIEW" />-->
+
+            <!--<category android:name="android.intent.category.BROWSABLE" />-->
+            <!--<category android:name="android.intent.category.DEFAULT" />-->
+
+            <!--<data android:scheme="content" />-->
+            <!--<data android:host="*" />-->
+            <!--<data android:mimeType="*/*" />-->
+            <!--</intent-filter>-->
+
+            <!--<intent-filter>-->
+            <!--<action android:name="android.intent.action.VIEW" />-->
+
+            <!--<category android:name="android.intent.category.BROWSABLE" />-->
+            <!--<category android:name="android.intent.category.DEFAULT" />-->
+
+            <!--<data android:scheme="file" />-->
+            <!--<data android:host="*" />-->
+            <!--<data android:pathPattern=".*\\.bbx" />-->
+            <!--<data android:mimeType="*/*" />-->
+
+            <!--<data android:pathPattern=".*\\..*\\.bbx" />-->
+            <!--<data android:pathPattern=".*\\..*\\..*\\.bbx" />-->
+            <!--<data android:pathPattern=".*\\..*\\..*\\..*\\.bbx" />-->
+            <!--</intent-filter>-->
+
         </activity>
+
+        <provider
+            android:name="android.support.v4.content.FileProvider"
+            android:authorities="${applicationId}"
+            android:exported="false"
+            android:grantUriPermissions="true">
+
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths" />
+
+        </provider>
+
     </application>
 
 </manifest>

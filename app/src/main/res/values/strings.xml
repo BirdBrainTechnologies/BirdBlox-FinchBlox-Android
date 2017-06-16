@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">BirdBlox</string>
     <string name="send_to">Send to</string>
+    <string name="share_with">Share with</string>
 </resources>

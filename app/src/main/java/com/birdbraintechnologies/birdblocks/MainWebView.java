@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.os.NetworkOnMainThreadException;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
@@ -39,9 +40,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -64,26 +67,24 @@ public class MainWebView extends AppCompatActivity {
 
     // public static boolean locationPermission;
     public static final int MY_PERMISSIONS_ACCESS_FINE_LOCATION = 1;
-
-    // True if device has microphone
-    public static boolean deviceHasMicrophone;
-
-    private WebView webView;
-    private OrientationEventListener mOrientationListener;
-    private String importedFile;
-    private static final String BIRDBLOCKS_UNZIP_DIR = "Unzipped";
-    private static final String BIRDBLOCKS_ZIP_DIR = "Zipped";
-    private static final String BIRDBLOCKS_DIR = "Birdblocks";
-
-    /* For double back exit */
-    private static final int DOUBLE_BACK_DELAY = 2000;
-    private long back_pressed;
-
     /* Broadcast receiver for displaying dialogs */
     public static final String SHOW_DIALOG = "com.birdbraintechnologies.birdblocks.DIALOG";
     public static final String SHARE_FILE = "com.birdbraintechnologies.birdblocks.SHARE_FILE";
     public static final String EXIT = "com.birdbraintechnologies.birdblocks.EXIT";
     public static final String LOCATION_PERMISSION = "com.birdbraintechnologies.birdblocks.REQUEST_LOCATION_PERMISSION";
+    private static final String BIRDBLOCKS_UNZIP_DIR = "Unzipped";
+    private static final String BIRDBLOCKS_ZIP_DIR = "Zipped";
+    private static final String BIRDBLOCKS_DIR = "BirdBlox";
+    /* For double back exit */
+    private static final int DOUBLE_BACK_DELAY = 2000;
+    // True if device has microphone
+    public static boolean deviceHasMicrophone;
+    LocalBroadcastManager bManager;
+    private WebView webView;
+    private OrientationEventListener mOrientationListener;
+    private String importedFileName;
+    private String encodedFileName;
+    private long back_pressed;
     private BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -103,7 +104,114 @@ public class MainWebView extends AppCompatActivity {
             }
         }
     };
-    LocalBroadcastManager bManager;
+
+    /**
+     * Gives substring consisting of last 4 characters of a given string.
+     *
+     * @param str Input String
+     * @return Returns substring consisting of last 4 characters of input string, if possible.
+     * Otherwise returns input string
+     */
+    public static String last4(String str) {
+        return str == null || str.length() < 4 ? str : str.substring(str.length() - 4);
+    }
+
+    /**
+     * Downloads the file at the given URL to the given location
+     *
+     * @param url        The URL of the file to be downloaded
+     * @param outputFile The location where the required file is to be downloaded,
+     *                   passed in as a 'File' object
+     */
+    private static void downloadFile(String url, File outputFile) {
+        try {
+            URL u = new URL(url);
+            URLConnection conn = u.openConnection();
+            int contentLength = conn.getContentLength();
+            DataInputStream stream = new DataInputStream(u.openStream());
+            byte[] buffer = new byte[contentLength];
+            stream.readFully(buffer);
+            stream.close();
+            DataOutputStream fos = new DataOutputStream(new FileOutputStream(outputFile));
+            fos.write(buffer);
+            fos.flush();
+            fos.close();
+            Log.d("Download", "File Downloaded Successfully!!");
+        } catch (IOException e) {
+            Log.e("Download", e.getMessage());
+        }
+    }
+
+    /**
+     * Unzips the file at the given location, and stores the unzipped file at
+     * the given target directory.
+     *
+     * @param zipFile         The location of the zip file (which is to be unzipped),
+     *                        passed in as a 'File' object
+     * @param targetDirectory The location (target directory) where the required file
+     *                        is to be unzipped to, passed in as a 'File' object.
+     */
+    private static void unzip(File zipFile, File targetDirectory) throws IOException {
+        ZipInputStream zis = new ZipInputStream(
+                new BufferedInputStream(new FileInputStream(zipFile)));
+        try {
+            ZipEntry ze;
+            int count;
+            byte[] buffer = new byte[8192];
+            while ((ze = zis.getNextEntry()) != null) {
+                File file = new File(targetDirectory, ze.getName());
+                File dir = ze.isDirectory() ? file : file.getParentFile();
+                if (!dir.isDirectory() && !dir.mkdirs())
+                    throw new FileNotFoundException("Failed to ensure directory: " +
+                            dir.getAbsolutePath());
+                if (ze.isDirectory())
+                    continue;
+                FileOutputStream fout = new FileOutputStream(file);
+                try {
+                    while ((count = zis.read(buffer)) != -1)
+                        fout.write(buffer, 0, count);
+                } finally {
+                    fout.close();
+                }
+                Log.d("Unzip", "File Unzipped Successfully!!");
+            }
+        } catch (IOException e) {
+            Log.e("Unzip", "Exception thrown while unzipping: " + e.toString());
+        } finally {
+            zis.close();
+        }
+        Log.d("Unzip", "File Unzipped Successfully!!");
+    }
+
+    /**
+     * Determines availability of given port.
+     *
+     * @param port Port number of the required port
+     * @return Returns true if given is available (not in use), and false otherwise.
+     * @throws RuntimeException
+     */
+    private static boolean port_available(int port) {
+        System.out.println("--------------Testing port " + port);
+        Socket s = null;
+        try {
+            s = new Socket("localhost", port);
+            // If the code makes it this far without an exception it means
+            // something is using the port and has responded.
+            System.out.println("--------------Port " + port + " is not available");
+            return false;
+        } catch (IOException e) {
+            System.out.println("--------------Port " + port + " is available");
+            return true;
+        } finally {
+            if (s != null) {
+                try {
+                    s.close();
+                } catch (IOException e) {
+                    throw new RuntimeException("You should handle this error.", e);
+                }
+            }
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,17 +220,19 @@ public class MainWebView extends AppCompatActivity {
         // FileManagementHandler.SecretFileDirectory = new File(Environment.getExternalStoragePublicDirectory(
         //        Environment.DIRECTORY_DOCUMENTS), BIRDBLOCKS_DIR);
 
-        importedFile = null;
-
         // Get intent
         Intent intent = getIntent();
+        String action = intent.getStringExtra("Action");
 
-        if (Intent.ACTION_VIEW.equals(intent.getAction())) {
-            String str = intent.getDataString();
-            String last4 = str == null || str.length() < 4 ? str : str.substring(str.length() - 4);
-            if (".bbx".equals(last4)) {
-                Log.d("ImportIntent", "Hi, we are about to call copy function");
-                importedFile = copyAndReturnFilename(intent);
+        if (Intent.ACTION_VIEW.equals(action) || Intent.ACTION_SEND.equals(action)) {
+            try {
+                String str = intent.getStringExtra("Data");
+                if (".bbx".equals(last4(str))) {
+                    importedFileName = sanitizeAndCopy(Uri.parse(str));
+                    encodedFileName = URLEncoder.encode(importedFileName, "utf-8");
+                }
+            } catch (UnsupportedEncodingException | NullPointerException e) {
+                Log.e("MainWebView", "");
             }
         }
 
@@ -225,10 +335,11 @@ public class MainWebView extends AppCompatActivity {
         webSettings.setJavaScriptEnabled(true);
         webView.resumeTimers();
 
-        if (importedFile != null) {
+        if (encodedFileName != null) {
             // Inject the JavaScript command to open the imported file into the webView
-            Log.d("ImportIntent", "Final File Name: " + importedFile);
-            webView.loadUrl("javascript:SaveManager.import(" + importedFile + ")");
+            Log.d("ImportIntent", "Final File Name: " + importedFileName);
+            Log.d("ImportIntent", "Encoded File Name: " + encodedFileName);
+            webView.loadUrl("javascript:SaveManager.import(\"" + encodedFileName + "\")");
         }
 
         // Broadcast receiver
@@ -241,7 +352,6 @@ public class MainWebView extends AppCompatActivity {
         bManager.registerReceiver(bReceiver, intentFilter);
 
     }
-
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
@@ -299,13 +409,14 @@ public class MainWebView extends AppCompatActivity {
     }
 
     /**
+     * Copies inputFile (located at inputPath) to outputPath, and sanitizes the filename.
      *
-     *
-     * @param inputPath
-     * @param inputFile
-     * @param outputPath
+     * @param inputPath   Location of file to be copied
+     * @param inputFile   Filename of file to be copied
+     * @param outputPath  Location where the above file is to be copied to ('pasted')
+     * @return Returns the new (sanitized) filename
      */
-    private void copyFile(String inputPath, String inputFile, String outputPath) {
+    private String sanitizeAndCopyFile(String inputPath, String inputFile, String outputPath) {
         InputStream in = null;
         OutputStream out = null;
         try {
@@ -316,11 +427,12 @@ public class MainWebView extends AppCompatActivity {
                 try {
                     dir.mkdirs();
                 } catch (SecurityException e) {
-                    Log.e("Copy Directory", "" + e.getMessage());
+                    Log.e("MainWebView", "Copy Directory: " + e.getMessage());
                 }
             }
-            in = new FileInputStream(inputPath + inputFile);
-            out = new FileOutputStream(outputPath + inputFile);
+            in = new FileInputStream(inputPath + "/" + inputFile);
+            String newName = FileManagementHandler.findAvailableName(dir, inputFile.substring(0, inputFile.length() - 4));
+            out = new FileOutputStream(outputPath + "/" + newName + ".bbx");
             byte[] buffer = new byte[1024];
             int read;
             while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
@@ -330,91 +442,32 @@ public class MainWebView extends AppCompatActivity {
             out.flush();
             out.close();
             out = null;
-        }  catch (IOException e) {
-            Log.e("Copy", e.getMessage());
-        }
-    }
-
-    /**
-     *
-     *
-     * @param intent
-     * @return
-     */
-    private String copyAndReturnFilename(Intent intent) {
-        String outputPath = FileManagementHandler.getBirdblocksDir().getAbsolutePath() + "/";
-        String inputFile = intent.getData().getLastPathSegment();
-        File file = new File(intent.getData().getPath());
-        String inputPath = file.getParentFile().toString() + "/";
-        copyFile(inputPath, inputFile, outputPath);
-        return inputFile.substring(0, inputFile.length() - 4);
-    }
-
-    /**
-     * Downloads the file at the given URL to the given location
-     *
-     * @param url        The URL of the file to be downloaded
-     * @param outputFile The location where the required file is to be downlaoded,
-     *                   passed in as a 'File' object
-     */
-    private static void downloadFile(String url, File outputFile) {
-        try {
-            URL u = new URL(url);
-            URLConnection conn = u.openConnection();
-            int contentLength = conn.getContentLength();
-            DataInputStream stream = new DataInputStream(u.openStream());
-            byte[] buffer = new byte[contentLength];
-            stream.readFully(buffer);
-            stream.close();
-            DataOutputStream fos = new DataOutputStream(new FileOutputStream(outputFile));
-            fos.write(buffer);
-            fos.flush();
-            fos.close();
-            Log.d("Download", "File Downloaded Successfully!!");
+            Log.d("MainWebView", "Imported File Successfully!");
+            return newName;
         } catch (IOException e) {
-            Log.e("Download", "" + e);
+            Log.e("MainWebView", "SanitizeAndCopyFile: " + e.getMessage());
         }
+        return null;
     }
 
     /**
-     * Unzips the file at the given location, and stores the unzipped file at
-     * the given target directory.
+     * Creates a copy of the 'file to be imported' in the app's internal (secret) directory,
+     * and then returns the filename of this copy.
      *
-     * @param zipFile         The location of the zip file (which is to be unzipped),
-     *                        passed in as a 'File' object
-     * @param targetDirectory The location (target directory) where the required file
-     *                        is to be unzipped to, passed in as a 'File' object.
+     * @param data   Uri containing path of file to be imported.
+     * @return Returns the new (sanitized) filename
      */
-    private static void unzip(File zipFile, File targetDirectory) throws IOException {
-        ZipInputStream zis = new ZipInputStream(
-                new BufferedInputStream(new FileInputStream(zipFile)));
+    private String sanitizeAndCopy(Uri data) {
         try {
-            ZipEntry ze;
-            int count;
-            byte[] buffer = new byte[8192];
-            while ((ze = zis.getNextEntry()) != null) {
-                File file = new File(targetDirectory, ze.getName());
-                File dir = ze.isDirectory() ? file : file.getParentFile();
-                if (!dir.isDirectory() && !dir.mkdirs())
-                    throw new FileNotFoundException("Failed to ensure directory: " +
-                            dir.getAbsolutePath());
-                if (ze.isDirectory())
-                    continue;
-                FileOutputStream fout = new FileOutputStream(file);
-                try {
-                    while ((count = zis.read(buffer)) != -1)
-                        fout.write(buffer, 0, count);
-                } finally {
-                    fout.close();
-                }
-                Log.d("Unzip", "File Unzipped Successfully!!");
-            }
-        } catch (IOException e) {
-            Log.e("Unzip", "Exception thrown while unzipping: " + e.toString());
-        } finally {
-            zis.close();
+            String outputPath = FileManagementHandler.getBirdblocksDir().getAbsolutePath();
+            String inputFile = data.getLastPathSegment();
+            File file = new File(data.getPath());
+            String inputPath = file.getParentFile().toString();
+            return sanitizeAndCopyFile(inputPath, inputFile, outputPath);
+        } catch (SecurityException e) {
+            Log.e("MainWebView", "SanitizeAndCopy: " + e.getMessage());
         }
-        Log.d("Unzip", "File Unzipped Successfully!!");
+        return null;
     }
 
     /**
@@ -446,37 +499,6 @@ public class MainWebView extends AppCompatActivity {
         } else {
             // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        }
-    }
-
-    /**
-     * Determines availability of given port.
-     *
-     * @param port Port number of the required port
-     * @return Returns true if given is available (not in use), and false otherwise.
-     * @exception RuntimeException
-     *
-     */
-    private static boolean port_available(int port) {
-        System.out.println("--------------Testing port " + port);
-        Socket s = null;
-        try {
-            s = new Socket("localhost", port);
-            // If the code makes it this far without an exception it means
-            // something is using the port and has responded.
-            System.out.println("--------------Port " + port + " is not available");
-            return false;
-        } catch (IOException e) {
-            System.out.println("--------------Port " + port + " is available");
-            return true;
-        } finally {
-            if(s != null){
-                try {
-                    s.close();
-                } catch (IOException e) {
-                    throw new RuntimeException("You should handle this error." , e);
-                }
-            }
         }
     }
 
@@ -526,13 +548,28 @@ public class MainWebView extends AppCompatActivity {
         // dialog.setCancelable(true);
     }
 
+    /**
+     * @param b
+     */
     private void showShareDialog(Bundle b) {
-        Intent sendIntent = new Intent();
-        sendIntent.setAction(Intent.ACTION_SEND);
-        sendIntent.putExtra(Intent.EXTRA_STREAM, (Uri) b.get("file_uri"));
-        // TODO: Change to bbx
-        sendIntent.setType("text/xml");
-        startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.send_to)));
+        try {
+            // create new intent
+            Intent sendIntent = new Intent(Intent.ACTION_SEND);
+            // set flag to give temporary permission to external app to use your FileProvider
+            sendIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            // generate URI, with authority defined as the application ID in the Manifest, the last param is file I want to open
+            Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID, new File((String) b.get("file_path")));
+            sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
+            // We are sharing xml files, so we give it a valid MIME type
+            // TODO: Change to bbx
+            sendIntent.setType("text/xml");
+            // Validate that the device can open the File
+            if (sendIntent.resolveActivity(MainWebView.this.getPackageManager()) != null) {
+                startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.share_with)));
+            }
+        } catch (Exception e) {
+            Log.e("FileProvider", e.getMessage());
+        }
 
     }
 

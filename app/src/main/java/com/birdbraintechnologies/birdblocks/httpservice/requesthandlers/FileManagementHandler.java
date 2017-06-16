@@ -1,7 +1,6 @@
 package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
 import android.content.Intent;
-import android.net.Uri;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
@@ -152,9 +151,8 @@ public class FileManagementHandler implements RequestHandler {
                 return null;
             }
         }
-//        Log.d("AutoSaveSave", "Actually saving with name: " + filename + "option: " + option);
         // actually save file here
-        File newFile = new File(getBirdblocksDir(), filename);
+        File newFile = new File(getBirdblocksDir(), filename + ".bbx");
         try {
             // Parse POST body to get parameters
             session.parseBody(postFiles);
@@ -173,6 +171,52 @@ public class FileManagementHandler implements RequestHandler {
         return filename;
     }
 
+
+    /**
+     * Checks if input filename contains any illegal characters
+     *
+     * @param name Input filename
+     * @return Returns false if 'name' contains any illegal characters,
+     *             and true otherwise.
+     */
+    private static boolean isNameSanitized(String name) {
+        if (name == null) return false;
+        // Illegal characters are:
+        // '\', '/', ':', '*', '?', '<', '>', '|', '.', '\n', '\r', '\0', '"', '$'
+        return !name.matches(".*[\\\\/:*?<>|.\n\r\0\"$].*");
+    }
+
+
+    /**
+     * Sanitizes filename, with any illegal characters replaced with underscores.
+     *
+     * @param name Input filename
+     * @return Returns sanitized name.
+     * (Returns null if name is null).
+     */
+    private static String sanitizeName(String name) {
+        if (name == null) return null;
+        if (isNameSanitized(name)) return name;
+        // else
+        return name.replaceAll("[\\\\/:*?<>|.\n\r\0\"$]", "_");
+    }
+
+    /**
+     * @param dir  Directory in which the file is located
+     * @param name Input filename
+     * @return Returns false if there is already a file with the filename
+     * 'name' in the directory 'dir', and true otherwise
+     */
+    private static boolean isNameAvailable(File dir, String name) {
+        if (name == null) return true;
+        name += ".bbx";
+        File[] files = dir.listFiles();
+        for (File file : files) {
+            if (file.getName().equals(name)) return false;
+        }
+        return true;
+    }
+
     /**
      * Loads a file from the device
      *
@@ -180,7 +224,7 @@ public class FileManagementHandler implements RequestHandler {
      * @return String contents of the file
      */
     private String loadFile(String filename) {
-        File file = new File(getBirdblocksDir(), filename);
+        File file = new File(getBirdblocksDir(), filename + ".bbx");
         if (!file.exists()) {
             return FILE_NOT_FOUND_RESPONSE;
         }
@@ -210,7 +254,7 @@ public class FileManagementHandler implements RequestHandler {
      *                    error code ("409" or "503") as string
      */
     private String renameFile(String oldFilename, String newFilename, String option) {
-        File file = new File(getBirdblocksDir(), oldFilename);
+        File file = new File(getBirdblocksDir(), oldFilename + ".bbx");
         if (!file.exists() || !isNameSanitized(newFilename)) {
             // 409 if oldFile doesn't exist, or newFilename is corrupt
             return "409";
@@ -226,7 +270,7 @@ public class FileManagementHandler implements RequestHandler {
         }
         try {
             // actually rename file here
-            file.renameTo(new File(getBirdblocksDir(), newFilename));
+            file.renameTo(new File(getBirdblocksDir(), newFilename + ".bbx"));
             return null;
         } catch (Exception e) {
             Log.e("Rename", e.getMessage());
@@ -241,11 +285,52 @@ public class FileManagementHandler implements RequestHandler {
      * @param filename Name of file to delete
      */
     private void deleteFile(String filename) {
-        File file = new File(getBirdblocksDir(), filename);
+        File file = new File(getBirdblocksDir(), filename + ".bbx");
         if (!file.exists()) {
             return;
         }
         file.delete();
+    }
+
+    /**
+     * @param dir  Directory in which the file is located
+     * @param name Input filename
+     * @return Returns an available name for a file with filename 'name'
+     * in the directory 'dir'. (Returns null if error occurs)
+     */
+    public static String findAvailableName(File dir, String name) {
+        try {
+            if (name == null)
+                // raise 409
+                return null;
+            name = sanitizeName(name);
+            if (isNameAvailable(dir, name)) return name;
+            // else
+            File[] files = dir.listFiles();
+            int n = 2;
+            if (name.length() > 2 && name.endsWith(")")) {
+                int startIndex = name.length() - 2;
+                while (startIndex >= 0) {
+                    if (name.charAt(startIndex) == '(') break;
+                    startIndex--;
+                }
+                if (startIndex < name.length() - 2) {
+                    String number = name.substring(startIndex + 1, name.length() - 1);
+                    // if the String 'number' actually contains a number 2 onwards
+                    if (number.matches("^[1-9]\\d*$") && !number.equals("1"))
+                        n = Integer.parseInt(number);
+                    // remove the "(number)" part from the end of name
+                    name = name.substring(0, name.length() - (number.length() + 2));
+                }
+            }
+            for (int i = n; i <= files.length + n; i++) {
+                String newName = name + "(" + i + ")";
+                if (isNameAvailable(dir, newName)) return newName;
+            }
+        } catch (SecurityException | NullPointerException e) {
+            Log.e("FindName", e.getMessage());
+        }
+        return null;
     }
 
     /**
@@ -260,7 +345,12 @@ public class FileManagementHandler implements RequestHandler {
             return response;
         }
         for (int i = 0; i < files.length; i++) {
-            response += files[i].getName();
+            String filename = files[i].getName();
+            if (MainWebView.last4(filename).equals(".bbx"))
+                response += filename.substring(0, filename.length() - 4);
+                // TODO: Remove 'else' below.
+                // It is only for debugging purposes, just to see what other files are there.
+            else response += filename;
             if (i < files.length - 1) response += "\n";
         }
         return response;
@@ -278,10 +368,11 @@ public class FileManagementHandler implements RequestHandler {
         // saveFile(filename, session);
         try {
             // Create share intent on the main activity
-            File file = new File(getBirdblocksDir(), filename);
+            File file = new File(getBirdblocksDir(), filename + ".bbx");
             if (file.exists()) {
                 Intent showDialog = new Intent(MainWebView.SHARE_FILE);
-                showDialog.putExtra("file_uri", Uri.fromFile(file));
+                //showDialog.putExtra("file_uri", Uri.fromFile(file));
+                showDialog.putExtra("file_path", file.getAbsolutePath());
                 LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
             }
             return filename;
@@ -292,8 +383,6 @@ public class FileManagementHandler implements RequestHandler {
     }
 
     /**
-     *
-     *
      * @param filename
      * @return Returns an available name for 'filename'
      */
@@ -308,91 +397,6 @@ public class FileManagementHandler implements RequestHandler {
             Log.e("AvailableName", e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * Checks if input filename contains any illegal characters
-     *
-     * @param name Input filename
-     * @return     Returns false if 'name' contains any illegal characters,
-     *             and true otherwise.
-     */
-    private static boolean isNameSanitized(String name) {
-        if (name == null) return false;
-        // Illegal characters are:
-        // '\', '/', ':', '*', '?', '<', '>', '|', '.', '\n', '\r', '\0', '"', '$'
-        return !name.matches(".*[\\\\/:*?<>|.\n\r\0\"$].*");
-    }
-
-    /**
-     * Sanitizes filename, with any illegal characters replaced with underscores.
-     *
-     * @param name Input filename
-     * @return     Returns sanitized name.
-     *             (Returns null if name is null).
-     */
-    private static String sanitizeName (String name) {
-        if (name == null) return null;
-        if (isNameSanitized(name)) return name;
-        // else
-        return name.replaceAll("[\\\\/:*?<>|.\n\r\0\"$]", "_");
-    }
-
-    /**
-     * @param dir   Directory in which the file is located
-     * @param name  Input filename
-     * @return      Returns false if there is already a file with the filename
-     *              'name' in the directory 'dir', and true otherwise
-     */
-    private static boolean isNameAvailable(File dir, String name) {
-        if (name == null) return true;
-        File[] files = dir.listFiles();
-        for (File file : files) {
-            if (file.getName().equals(name)) return false;
-        }
-        return true;
-    }
-
-    /**
-     * @param dir   Directory in which the file is located
-     * @param name  Input filename
-     * @return      Returns an available name for a file with filename 'name'
-     *              in the directory 'dir'. (Returns null if error occurs)
-     */
-    public static String findAvailableName(File dir, String name) {
-        name = sanitizeName(name);
-        if (isNameAvailable(dir, name)) return name;
-        Log.d("AutoSave", "Is " + name + " available? " + isNameAvailable(dir, name));
-        // else
-        if (name == null)
-            // raise 409
-            return null;
-        try {
-            File[] files = dir.listFiles();
-            int n = 2;
-            if (name.length() >= 3 && name.endsWith(")")) {
-                int startIndex = name.length() - 1;
-                while (startIndex >= 0) {
-                    if (name.charAt(startIndex) == '(') break;
-                    startIndex--;
-                }
-                if(startIndex < name.length() - 2) {
-                    String number = name.substring(startIndex+1, name.length()-1);
-                    // if the String 'number' actually contains a number 2 onwards
-                    if (number.matches("^[1-9]\\d*$") && !number.equals("1"))
-                        n = Integer.parseInt(number);
-                    // remove the "(number)" part from the end of name
-                    name = name.substring(0, name.length() - (number.length() + 2));
-                }
-            }
-            for (int i = n; i <= files.length + n; i++) {
-                String newName = name + "(" + i + ")";
-                if (isNameAvailable(dir, newName)) return newName;
-            }
-        } catch (SecurityException e) {
-            Log.e("FindName", e.getMessage());
-        }
-        return null;
     }
 
     /**
