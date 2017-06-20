@@ -1,7 +1,6 @@
 package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
 import android.Manifest;
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -19,16 +18,13 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.Surface;
 import android.view.WindowManager;
 
 import com.birdbraintechnologies.birdblocks.MainWebView;
-import com.birdbraintechnologies.birdblocks.R;
 import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
@@ -39,7 +35,6 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
-import static java.security.AccessController.getContext;
 
 /**
  * Handler for getting sensor data from the host device and showing dialogs
@@ -171,10 +166,12 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 break;
             case "dialog":
                 // showDialog(path[1], path[2], path[3]);
+                String title = (m.get("title") == null ? "" : m.get("title").get(0));
+                String question = (m.get("question") == null ? "" : m.get("question").get(0));
                 String placeholder = (m.get("placeholder") == null ? "" : m.get("placeholder").get(0));
                 String prefill = (m.get("prefill") == null ? "" : m.get("prefill").get(0));
                 String selectAll = (m.get("selectAll") == null ? "" : m.get("selectAll").get(0));
-                showDialog(m.get("title").get(0), m.get("question").get(0), placeholder, prefill, selectAll);
+                showDialog(title, question, placeholder, prefill, selectAll);
                 break;
             case "choice":
                 // showChoice(path[1], path[2], path[3], path[4]);

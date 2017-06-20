@@ -52,9 +52,9 @@ public class FileManagementHandler implements RequestHandler {
         switch (path[0]) {
             case "save":
                 if (m.get("options") == null) {
-                    responseBody = saveFile(m.get("filename").get(0), session, null);
+                    responseBody = saveFile(m.get("filename").get(0), session, null, ".bbx");
                 } else if (m.get("options").get(0).equals("new") || m.get("options").get(0).equals("soft")) {
-                    responseBody = saveFile(m.get("filename").get(0), session, m.get("options").get(0));
+                    responseBody = saveFile(m.get("filename").get(0), session, m.get("options").get(0), ".bbx");
                 } else {
                     // bad request
                     return NanoHTTPD.newFixedLengthResponse(
@@ -67,13 +67,14 @@ public class FileManagementHandler implements RequestHandler {
                 Log.d("AutoSave",  "Save: " + responseBody);
                 break;
             case "load":
-                responseBody = loadFile(m.get("filename").get(0));
+                Log.d("MainWebView", "Open called: " + m.get("filename").get(0));
+                responseBody = loadFile(m.get("filename").get(0), ".bbx");
                 break;
             case "rename":
                 if (m.get("options") == null) {
-                    responseBody = renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0), null);
+                    responseBody = renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0), null, ".bbx");
                 } else if (m.get("options").get(0).equals("soft")) {
-                    responseBody = renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0), m.get("options").get(0));
+                    responseBody = renameFile(m.get("oldFilename").get(0), m.get("newFilename").get(0), m.get("options").get(0), ".bbx");
                 } else {
                     // bad request
                     return NanoHTTPD.newFixedLengthResponse(
@@ -91,17 +92,17 @@ public class FileManagementHandler implements RequestHandler {
                 Log.d("AutoSave",  "Rename: " + responseBody);
                 break;
             case "delete":
-                deleteFile(m.get("filename").get(0));
+                deleteFile(m.get("filename").get(0), ".bbx");
                 break;
             case "files":
-                responseBody = listFiles();
+                responseBody = listFiles(".bbx");
                 break;
             case "export":
-                exportFile(m.get("filename").get(0), session);
+                exportFile(m.get("filename").get(0), ".bbx", session);
                 break;
             case "getAvailableName":
                 try {
-                    responseBody = getAvailableName(m.get("filename").get(0));
+                    responseBody = getAvailableName(m.get("filename").get(0), ".bbx");
                 } catch (NullPointerException e) {
                     return NanoHTTPD.newFixedLengthResponse(
                             NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "");
@@ -121,9 +122,11 @@ public class FileManagementHandler implements RequestHandler {
      * @param filename Name of the file to save
      * @param session  HttpRequest to get the POST body of
      * @param option
+     * @param extension File extension (put in empty string if no extension)
+     *                  Eg: ".bbx", ".m4a", etc
      * @return
      */
-    private String saveFile(String filename, NanoHTTPD.IHTTPSession session, String option) {
+    private String saveFile(String filename, NanoHTTPD.IHTTPSession session, String option, String extension) {
         if (session.getMethod() != NanoHTTPD.Method.POST) {
             Log.d(TAG, "Save must be done via POST request");
             return null;
@@ -138,21 +141,21 @@ public class FileManagementHandler implements RequestHandler {
             }
         } else if (option.equals("soft")) {
             // try to save, and respond with 409 if name unavailable ot name is not sanitized
-            if ((!isNameSanitized(filename)) || !isNameAvailable(getBirdblocksDir(), filename)) {
+            if ((!isNameSanitized(filename)) || !isNameAvailable(getBirdblocksDir(), filename, extension)) {
                 // raise 409
                 Log.d("AutoSaveSave", "One of them fails");
                 return null;
             }
         } else if (option.equals("new")) {
             // try to save, and automatically find an available name
-            filename = findAvailableName(getBirdblocksDir(), filename);
+            filename = findAvailableName(getBirdblocksDir(), filename, extension);
             if (filename == null) {
                 // raise 409
                 return null;
             }
         }
         // actually save file here
-        File newFile = new File(getBirdblocksDir(), filename + ".bbx");
+        File newFile = new File(getBirdblocksDir(), filename + extension);
         try {
             // Parse POST body to get parameters
             session.parseBody(postFiles);
@@ -202,14 +205,16 @@ public class FileManagementHandler implements RequestHandler {
     }
 
     /**
-     * @param dir  Directory in which the file is located
-     * @param name Input filename
+     * @param dir       Directory in which the file is located
+     * @param name      Input filename
+     * @param extension File extension (put in empty string if no extension)
+     *                  Eg: ".bbx", ".m4a", etc
      * @return Returns false if there is already a file with the filename
      * 'name' in the directory 'dir', and true otherwise
      */
-    private static boolean isNameAvailable(File dir, String name) {
+    private static boolean isNameAvailable(File dir, String name, String extension) {
         if (name == null) return true;
-        name += ".bbx";
+        name += extension;
         File[] files = dir.listFiles();
         for (File file : files) {
             if (file.getName().equals(name)) return false;
@@ -220,11 +225,13 @@ public class FileManagementHandler implements RequestHandler {
     /**
      * Loads a file from the device
      *
-     * @param filename Name of the file to load
+     * @param filename  Name of the file to load
+     * @param extension File extension (put in empty string if no extension)
+     *                  Eg: ".bbx", ".m4a", etc
      * @return String contents of the file
      */
-    private String loadFile(String filename) {
-        File file = new File(getBirdblocksDir(), filename + ".bbx");
+    private String loadFile(String filename, String extension) {
+        File file = new File(getBirdblocksDir(), filename + extension);
         if (!file.exists()) {
             return FILE_NOT_FOUND_RESPONSE;
         }
@@ -250,11 +257,13 @@ public class FileManagementHandler implements RequestHandler {
      * @param newFilename New name of file
      * @param option      Can be null or "soft", depending on which
      *                    this method performs different actions
+     * @param extension   File extension (put in empty string if no extension)
+     *                    Eg: ".bbx", ".m4a", etc
      * @return            Returns null if successful, otherwise returns
      *                    error code ("409" or "503") as string
      */
-    private String renameFile(String oldFilename, String newFilename, String option) {
-        File file = new File(getBirdblocksDir(), oldFilename + ".bbx");
+    private String renameFile(String oldFilename, String newFilename, String option, String extension) {
+        File file = new File(getBirdblocksDir(), oldFilename + extension);
         if (!file.exists() || !isNameSanitized(newFilename)) {
             // 409 if oldFile doesn't exist, or newFilename is corrupt
             return "409";
@@ -265,12 +274,12 @@ public class FileManagementHandler implements RequestHandler {
         } else if (option.equals("soft")) {
             // throw 409 error if new name file already exists
             // else rename
-            if (!isNameAvailable(getBirdblocksDir(), newFilename))
+            if (!isNameAvailable(getBirdblocksDir(), newFilename, ".bbx"))
                 return "409";
         }
         try {
             // actually rename file here
-            file.renameTo(new File(getBirdblocksDir(), newFilename + ".bbx"));
+            file.renameTo(new File(getBirdblocksDir(), newFilename + extension));
             return null;
         } catch (Exception e) {
             Log.e("Rename", e.getMessage());
@@ -283,9 +292,11 @@ public class FileManagementHandler implements RequestHandler {
      * Deletes a saved file on the device
      *
      * @param filename Name of file to delete
+     * @param extension File extension (put in empty string if no extension)
+     *                  Eg: ".bbx", ".m4a", etc
      */
-    private void deleteFile(String filename) {
-        File file = new File(getBirdblocksDir(), filename + ".bbx");
+    private void deleteFile(String filename, String extension) {
+        File file = new File(getBirdblocksDir(), filename + extension);
         if (!file.exists()) {
             return;
         }
@@ -293,18 +304,20 @@ public class FileManagementHandler implements RequestHandler {
     }
 
     /**
-     * @param dir  Directory in which the file is located
-     * @param name Input filename
+     * @param dir       Directory in which the file is located
+     * @param name      Input filename
+     * @param extension File extension (put in empty string if no extension)
+     *                  Eg: ".bbx", ".m4a", etc
      * @return Returns an available name for a file with filename 'name'
      * in the directory 'dir'. (Returns null if error occurs)
      */
-    public static String findAvailableName(File dir, String name) {
+    public static String findAvailableName(File dir, String name, String extension) {
         try {
             if (name == null)
                 // raise 409
                 return null;
             name = sanitizeName(name);
-            if (isNameAvailable(dir, name)) return name;
+            if (isNameAvailable(dir, name, extension)) return name;
             // else
             File[] files = dir.listFiles();
             int n = 2;
@@ -325,7 +338,7 @@ public class FileManagementHandler implements RequestHandler {
             }
             for (int i = n; i <= files.length + n; i++) {
                 String newName = name + "(" + i + ")";
-                if (isNameAvailable(dir, newName)) return newName;
+                if (isNameAvailable(dir, newName, extension)) return newName;
             }
         } catch (SecurityException | NullPointerException e) {
             Log.e("FindName", e.getMessage());
@@ -336,9 +349,11 @@ public class FileManagementHandler implements RequestHandler {
     /**
      * Lists the files on the device
      *
+     * @param extension File extension (put in empty string if no extension)
+     *                  Eg: ".bbx", ".m4a", etc
      * @return List of files on the device separated by \n
      */
-    private String listFiles() {
+    private String listFiles(String extension) {
         File[] files = getBirdblocksDir().listFiles();
         String response = "";
         if (files == null) {
@@ -346,11 +361,8 @@ public class FileManagementHandler implements RequestHandler {
         }
         for (int i = 0; i < files.length; i++) {
             String filename = files[i].getName();
-            if (MainWebView.last4(filename).equals(".bbx"))
+            if (MainWebView.last4(filename).equals(extension))
                 response += filename.substring(0, filename.length() - 4);
-                // TODO: Remove 'else' below.
-                // It is only for debugging purposes, just to see what other files are there.
-            else response += filename;
             if (i < files.length - 1) response += "\n";
         }
         return response;
@@ -360,15 +372,17 @@ public class FileManagementHandler implements RequestHandler {
      * Starts a share command for a saved file on the device
      *
      * @param filename Name of the file to share
+     * @param extension File extension (put in empty string if no extension)
+     *                  Eg: ".bbx", ".m4a", etc
      * @param session  HttpRequest containing the most up to date contents of the file
      */
-    private String exportFile(String filename, NanoHTTPD.IHTTPSession session) {
+    private String exportFile(String filename, String extension, NanoHTTPD.IHTTPSession session) {
         /* SAVING HERE NO LONGER REQUIRED */
         // Save the updated contents (in case they were updated)
         // saveFile(filename, session);
         try {
             // Create share intent on the main activity
-            File file = new File(getBirdblocksDir(), filename + ".bbx");
+            File file = new File(getBirdblocksDir(), filename + extension);
             if (file.exists()) {
                 Intent showDialog = new Intent(MainWebView.SHARE_FILE);
                 //showDialog.putExtra("file_uri", Uri.fromFile(file));
@@ -384,14 +398,16 @@ public class FileManagementHandler implements RequestHandler {
 
     /**
      * @param filename
+     * @param extension File extension (put in empty string if no extension)
+     *                  Eg: ".bbx", ".m4a", etc
      * @return Returns an available name for 'filename'
      */
-    private String getAvailableName(String filename) {
+    private String getAvailableName(String filename, String extension) {
         try {
             JSONObject nameObject = new JSONObject();
-            nameObject.put("availableName", findAvailableName(getBirdblocksDir(), filename));
+            nameObject.put("availableName", findAvailableName(getBirdblocksDir(), filename, extension));
             nameObject.put("alreadySanitized", isNameSanitized(filename));
-            nameObject.put("alreadyAvailable", isNameAvailable(getBirdblocksDir(), filename));
+            nameObject.put("alreadyAvailable", isNameAvailable(getBirdblocksDir(), filename, extension));
             return nameObject.toString();
         } catch (JSONException | NullPointerException e) {
             Log.e("AvailableName", e.getMessage());

@@ -1,11 +1,9 @@
 package com.birdbraintechnologies.birdblocks.devices;
 
-import android.util.Log;
-
+import com.birdbraintechnologies.birdblocks.States.HBState;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +34,9 @@ public class Hummingbird implements UARTConnection.RXDataListener {
     private byte[] rawSensorValues;
     private Object rawSensorValuesLock = new Object();
 
+    private static HBState oldState;
+    private static HBState newState;
+
     /**
      * Initializes a Hummingbird device
      *
@@ -43,6 +44,8 @@ public class Hummingbird implements UARTConnection.RXDataListener {
      */
     public Hummingbird(UARTConnection conn) {
         this.conn = conn;
+        if (oldState == null) oldState = new HBState();
+        if (newState == null) newState = new HBState();
     }
 
     /**
@@ -128,6 +131,7 @@ public class Hummingbird implements UARTConnection.RXDataListener {
         // Compute servo angle [0,225] from angle [0,180]
         byte angleByte = clampToBounds(Math.round(angle * 1.25), 0, 225);
         return conn.writeBytes(new byte[]{SERVO_CMD, computePort(port), angleByte});
+        // newState.setServo(port, angleByte);
     }
 
     /**
@@ -141,6 +145,7 @@ public class Hummingbird implements UARTConnection.RXDataListener {
         // Compute vibration intensity [0,255] from intensityPercentage
         byte intensity = clampToBounds(Math.round(intensityPercent * 2.55), 0, 255);
         return conn.writeBytes(new byte[]{VIB_MOTOR_CMD, computePort(port), intensity});
+        // newState.setVibrator(port, intensity);
     }
 
     /**
@@ -155,10 +160,10 @@ public class Hummingbird implements UARTConnection.RXDataListener {
     public boolean setMotor(int port, int speedPercent) {
         // Compute direction from speedPercent parity ('0' is forward, '1' is backwards)
         byte direction = (byte) ((speedPercent >= 0) ? '0' : '1');
-
         // Compute absolute speed [0,255] from speedPercent [-100,100]
         byte speed = clampToBounds(Math.round(Math.abs(speedPercent) * 2.55), 0, 255);
         return conn.writeBytes(new byte[]{MOTOR_CMD, computePort(port), direction, speed});
+        // newState.setMotor(port, (speedPercent >= 0 ? speed : (byte) -speed));
     }
 
     /**
@@ -172,6 +177,7 @@ public class Hummingbird implements UARTConnection.RXDataListener {
         // Compute intensity [0,255] from percentage
         byte intensity = clampToBounds(Math.round(intensityPercent * 2.55), 0, 255);
         return conn.writeBytes(new byte[]{LED_CMD, computePort(port), intensity});
+        // newState.setLED(port, intensity);
     }
 
     /**
@@ -189,6 +195,7 @@ public class Hummingbird implements UARTConnection.RXDataListener {
         byte g = clampToBounds(Math.round(gPercent * 2.55), 0, 255);
         byte b = clampToBounds(Math.round(bPercent * 2.55), 0, 255);
         return conn.writeBytes(new byte[]{TRI_LED_CMD, computePort(port), r, g, b});
+        // newState.setTriLED(port, r, g, b);
     }
 
     /**
@@ -198,6 +205,7 @@ public class Hummingbird implements UARTConnection.RXDataListener {
      */
     public boolean stopAll() {
         return conn.writeBytes(new byte[]{STOP_PERIPH_CMD});
+        // newState.resetAll();
     }
 
     /**

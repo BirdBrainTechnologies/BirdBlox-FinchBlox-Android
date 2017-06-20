@@ -48,9 +48,9 @@ public class RequestRouter {
         addRoute("^/tablet/(.*)$", new HostDeviceHandler(service));
         addRoute("^/settings/(.*)$", new SettingsHandler(service));
         addRoute("^/data/(.*)$", new FileManagementHandler(service));
-        addRoute("^/sound/(.*)$", new SoundHandler(service));
+        addRoute("^/sound/recording/(.*)$", new RecordingHandler(service));
+        addRoute("^/sound/(?!recording)(.*)$", new SoundHandler(service));
         addRoute("^/properties/(.*)$", new PropertiesHandler(service));
-        addRoute("^/record/(.*)$", new RecordingHandler(service));
         // TODO: Add UI commands
         // addRoute("^/ui/(.*)$", new __Handler(service));
     }

@@ -48,13 +48,31 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
         String responseBody = "";
         switch (path[0]) {
             case "names":
-                responseBody = listSounds();
+                if (m.get("recording") == null || m.get("recording").get(0).equals("false"))
+                    responseBody = listSounds(false);
+                else if (m.get("recording").get(0).equals("true"))
+                    responseBody = listSounds(true);
+                else {
+                    //bad request
+                }
                 break;
             case "duration":
-                responseBody = getDuration(m.get("filename").get(0));
+                if (m.get("recording") == null || m.get("recording").get(0).equals("false"))
+                    responseBody = getDuration(m.get("filename").get(0), false);
+                else if (m.get("recording").get(0).equals("true"))
+                    responseBody = getDuration(m.get("filename").get(0), true);
+                else {
+                    //bad request
+                }
                 break;
             case "play":
-                playSound(m.get("filename").get(0));
+                if (m.get("recording") == null || m.get("recording").get(0).equals("false"))
+                    playSound(m.get("filename").get(0), false);
+                else if (m.get("recording").get(0).equals("true"))
+                    playSound(m.get("filename").get(0), true);
+                else {
+                    //bad request
+                }
                 break;
             case "note":
                 playNote(Integer.valueOf(m.get("note").get(0)), Integer.valueOf(m.get("duration").get(0)));
@@ -76,9 +94,13 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
     /**
      * Lists all the sounds that the app supports
      *
+     * @param recording true if the requested sounds are recordings, false otherwise
      * @return String list of all the sounds
      */
-    private String listSounds() {
+    private String listSounds(boolean recording) {
+        if (recording) {
+            return (new RecordingHandler()).listRecordings();
+        }
         AssetManager assets = service.getAssets();
         try {
             String[] sounds = assets.list(SOUNDS_DIR);
@@ -97,9 +119,13 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
      * Gets the duration of the given sound
      *
      * @param soundId The sound's id
+     * @param recording true if the requested sound is a recording, false otherwise
      * @return Duration in milliseconds of the sound
      */
-    private synchronized String getDuration(String soundId) {
+    private synchronized String getDuration(String soundId, boolean recording) {
+        if (recording) {
+            return (new RecordingHandler()).getDuration(soundId);
+        }
         String path = SOUNDS_DIR + "/%s.wav";
         try {
             AssetManager assets = service.getAssets();
@@ -118,11 +144,16 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
     }
 
     /**
-     * Plays the given sound by its id
+     * Plays the given sound by its id/filename
      *
-     * @param soundId The sound's id
+     * @param soundId   The sound's id/filename
+     * @param recording true if the requested sound is a recording, false otherwise
      */
-    private synchronized void playSound(String soundId) {
+    private synchronized void playSound(String soundId, boolean recording) {
+        if (recording) {
+            (new RecordingHandler()).playAudio(soundId);
+            return;
+        }
         String path = SOUNDS_DIR + "/%s.wav";
         try {
             AssetManager assets = service.getAssets();
@@ -159,17 +190,14 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
      */
     private void stopSound() {
         try {
-//            if (tone != null) {
-//                tone.stop();
-//                tone = null;
-//            }
+            (new RecordingHandler()).stopPlayback();
             if (mediaPlayer != null && mediaPlayer.isPlaying()) {
                 mediaPlayer.stop();
                 mediaPlayer.release();
             }
             Log.d("StopSound", "Stop Request Sent");
         } catch (IllegalStateException e) {
-
+            Log.e("SoundHandler", "Stop Sounds: " + e.getMessage());
         }
     }
 

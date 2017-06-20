@@ -21,8 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -47,7 +45,6 @@ public class HummingbirdRequestHandler implements RequestHandler {
     private UARTSettings hbUARTSettings;
     private BluetoothHelper btHelper;
     private HashMap<String, Hummingbird> connectedDevices;
-
 
     public HummingbirdRequestHandler(HttpService service) {
         this.service = service;
@@ -158,7 +155,6 @@ public class HummingbirdRequestHandler implements RequestHandler {
      */
     private String connectToDevice(String deviceId) {
         // TODO: Handle errors when connecting to device
-        Log.d("HummLogConn", "Id: " + deviceId);
         UARTConnection conn = btHelper.connectToDeviceUART(deviceId, this.hbUARTSettings);
         if (conn != null) {
             Hummingbird device = new Hummingbird(conn);
