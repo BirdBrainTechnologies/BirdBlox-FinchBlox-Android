@@ -160,6 +160,7 @@ public class Hummingbird implements UARTConnection.RXDataListener {
     public boolean setMotor(int port, int speedPercent) {
         // Compute direction from speedPercent parity ('0' is forward, '1' is backwards)
         byte direction = (byte) ((speedPercent >= 0) ? '0' : '1');
+
         // Compute absolute speed [0,255] from speedPercent [-100,100]
         byte speed = clampToBounds(Math.round(Math.abs(speedPercent) * 2.55), 0, 255);
         return conn.writeBytes(new byte[]{MOTOR_CMD, computePort(port), direction, speed});

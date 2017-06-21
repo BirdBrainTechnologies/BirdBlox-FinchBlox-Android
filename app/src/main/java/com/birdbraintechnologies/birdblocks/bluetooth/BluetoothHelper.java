@@ -30,7 +30,7 @@ public class BluetoothHelper {
     private Handler handler;
     private boolean btScanning;
     private Context context;
-    private HashMap<String, BluetoothDevice> deviceList;
+    public static HashMap<String, BluetoothDevice> deviceList;
     private BluetoothLeScanner scanner;
 
     /* Callback for populating the device list */

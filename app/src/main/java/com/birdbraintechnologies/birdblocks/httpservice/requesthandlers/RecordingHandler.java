@@ -399,7 +399,7 @@ public class RecordingHandler implements RequestHandler {
 
     /**
      * Method to merge media files together.
-     * <p>
+     *
      * SOURCE: https://stackoverflow.com/questions/16435945/how-can-i-pause-voice-recording-in-android
      * Modified slightly to suit our needs.
      *

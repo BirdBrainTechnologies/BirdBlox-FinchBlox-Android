@@ -45,7 +45,7 @@ public class SplashScreen extends AppCompatActivity {
             webViewIntent.putExtra("Scheme", data.getScheme());
             webViewIntent.putExtra("Data", oldIntent.getData().toString());
         } else if (oldIntent.getExtras() != null && oldIntent.getExtras().get(Intent.EXTRA_STREAM) != null) {
-            webViewIntent.putExtra("Scheme", "content");
+            webViewIntent.putExtra("Scheme", "file");
             webViewIntent.putExtra("Data", oldIntent.getExtras().get(Intent.EXTRA_STREAM).toString());
         } else {
             webViewIntent.putExtra("Scheme", "");

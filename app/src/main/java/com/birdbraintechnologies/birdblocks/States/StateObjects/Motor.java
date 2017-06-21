@@ -13,6 +13,10 @@ public class Motor {
     }
 
     public Motor(byte s) {
+        if (s < 0) {
+            s = (byte) (-s);
+            s |= (1 << 7);
+        }
         speed = s;
     }
 
@@ -21,6 +25,10 @@ public class Motor {
     }
 
     public void setSpeed(byte s) {
+        if (s < 0) {
+            s = (byte) (-s);
+            s |= (1 << 7);
+        }
         speed = s;
     }
 

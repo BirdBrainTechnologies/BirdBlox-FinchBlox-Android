@@ -1,6 +1,7 @@
 package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
 import android.content.SharedPreferences;
+
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
@@ -33,6 +34,10 @@ public class SettingsHandler implements RequestHandler {
         switch (path[0]) {
             case "get":
                 responseBody = getSetting(m.get("key").get(0));
+                if (responseBody.equals(DEFAULT_VALUE)) {
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+                }
                 break;
             case "set":
                 putSetting(m.get("key").get(0), m.get("value").get(0).toString());
