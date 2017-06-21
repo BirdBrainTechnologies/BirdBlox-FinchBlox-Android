@@ -64,7 +64,7 @@ import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.P
 public class MainWebView extends AppCompatActivity {
 
     /*OLDER LOCATIONS FOR LOADING THE LAYOUT ARE IN THE TWO LINES BELOW*/
-    // public static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
+    public static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
     // public static final String PAGE_URL = "http://rawgit.com/TomWildenhain/HummingbirdDragAndDrop-/dev/HummingbirdDragAndDrop.html";
 
     // public static boolean locationPermission;
@@ -160,25 +160,28 @@ public class MainWebView extends AppCompatActivity {
 
 
         // Spawn the thread (for download, unzip of layout)
-        unzipAndDownloadThread.start();
+        // TODO: Uncomment later
+//        unzipAndDownloadThread.start();
 
         // Check device screen size, and adjust rotation settings accordingly
         adjustRotationSettings();
 
         // Wait for above thread to finish
-        try {
-            unzipAndDownloadThread.join();
-        } catch (InterruptedException | NetworkOnMainThreadException e) {
-            Log.e("Join Thread", "Exception while joining download thread: " + e.getMessage());
-        }
+        // TODO: Uncomment later
+//        try {
+//            unzipAndDownloadThread.join();
+//        } catch (InterruptedException | NetworkOnMainThreadException e) {
+//            Log.e("Join Thread", "Exception while joining download thread: " + e.getMessage());
+//        }
 
         // Get location of downloaded layout as a 'File'
-        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
-        if (!lFile.exists()) try {
-            lFile.createNewFile();
-        } catch (IOException | SecurityException e) {
-            Log.e("LocFile", "Problem: " + e.getMessage());
-        }
+        // TODO: Uncomment later
+//        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
+//        if (!lFile.exists()) try {
+//            lFile.createNewFile();
+//        } catch (IOException | SecurityException e) {
+//            Log.e("LocFile", "Problem: " + e.getMessage());
+//        }
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_web_view);
@@ -188,7 +191,9 @@ public class MainWebView extends AppCompatActivity {
 
         // Create webview
         webView = (WebView) findViewById(R.id.main_webview);
-        webView.loadUrl("file:///" + lFile.getAbsolutePath());
+        // TODO: Uncomment later
+        // webView.loadUrl("file:///" + lFile.getAbsolutePath());
+        webView.loadUrl(PAGE_URL);
         webView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN

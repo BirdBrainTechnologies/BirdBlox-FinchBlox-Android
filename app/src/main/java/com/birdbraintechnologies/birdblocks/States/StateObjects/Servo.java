@@ -9,7 +9,8 @@ public class Servo {
     private byte angle;
 
     public Servo() {
-        angle = 0;
+        int i = 255;
+        angle = (byte) i;
     }
 
     public Servo(byte a) {

@@ -26,7 +26,7 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
         MediaPlayer.OnCompletionListener {
     private static final String TAG = SoundHandler.class.getName();
     private static final String SOUNDS_DIR = "frontend/SoundClips";
-    private static final String BLOCK_SOUNDS_DIR = FileManagementHandler.SecretFileDirectory + "/Unzipped" + "/HummingbirdDragAndDrop--dev/SoundsForUI";
+    private static final String BLOCK_SOUNDS_DIR = "frontend/SoundsForUI";
 
     /* Constants for playing tones */
     private static double AUDIO_SAMPLING_RATE = 44100.0;
@@ -49,18 +49,18 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
         String responseBody = "";
         switch (path[0]) {
             case "names":
-                if (m.get("recording") == null || m.get("recording").get(0).equals("false"))
+                if (m.get("type") == null || m.get("type").get(0).equals("effect"))
                     responseBody = listSounds(false);
-                else if (m.get("recording").get(0).equals("true"))
+                else if (m.get("type").get(0).equals("recording"))
                     responseBody = listSounds(true);
                 else {
                     //bad request
                 }
                 break;
             case "duration":
-                if (m.get("recording") == null || m.get("recording").get(0).equals("false"))
+                if (m.get("type") == null || m.get("type").get(0).equals("effect"))
                     responseBody = getDuration(m.get("filename").get(0), false);
-                else if (m.get("recording").get(0).equals("true"))
+                else if (m.get("type").get(0).equals("recording"))
                     responseBody = getDuration(m.get("filename").get(0), true);
                 else {
                     //bad request
@@ -121,7 +121,7 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
     /**
      * Gets the duration of the given sound
      *
-     * @param soundId The sound's id
+     * @param soundId   The sound's id
      * @param recording true if the requested sound is a recording, false otherwise
      * @return Duration in milliseconds of the sound
      */
@@ -149,9 +149,9 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
     /**
      * Plays the given sound by its id/filename
      *
-     * @param soundId   The sound's id/filename
-     * @param type      "recording" if the requested sound is a recording,
-     *                  "ui" if block sound, and effect sound otherwise
+     * @param soundId The sound's id/filename
+     * @param type    "recording" if the requested sound is a recording,
+     *                "ui" if block sound, and an effect sound otherwise
      */
     private synchronized void playSound(String soundId, String type) {
         String path;
@@ -159,35 +159,36 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
             (new RecordingHandler()).playAudio(soundId);
             return;
         } else if (type.equals("ui")) {
+            path = BLOCK_SOUNDS_DIR + "/%s.wav";
+            new Thread() {
+                public void run(String soundId, String path) {
+                    try {
+                        AssetManager assets = service.getAssets();
+                        AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
+                        mediaPlayer = new MediaPlayer();
+                        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                        mediaPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
+                        mediaPlayer.prepare();
+                        mediaPlayer.start();
+                    } catch (IOException e) {
+                        Log.e(TAG, "Unable to play sound " + e.toString());
+                    }
+                }
+            }.run(soundId, path);
+        } else {
+            path = SOUNDS_DIR + "/%s.wav";
             try {
-                path = BLOCK_SOUNDS_DIR + "/%s.wav";
+                AssetManager assets = service.getAssets();
+                AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
                 mediaPlayer = new MediaPlayer();
                 mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-                mediaPlayer.setDataSource(path);
+                mediaPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
                 mediaPlayer.setOnCompletionListener(this);
                 mediaPlayer.setOnPreparedListener(this);
                 mediaPlayer.prepare();
-                mediaPlayer.start();
-                return;
             } catch (IOException e) {
-                Log.e("Sound Handler", "Block Sounds: " + e.getMessage());
-                return;
+                Log.e(TAG, "Unable to play sound " + e.toString());
             }
-        } else {
-            path = SOUNDS_DIR + "/%s.wav";
-        }
-        try {
-            AssetManager assets = service.getAssets();
-            AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mediaPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
-            mediaPlayer.setOnCompletionListener(this);
-            mediaPlayer.setOnPreparedListener(this);
-            mediaPlayer.prepare();
-        } catch (IOException e) {
-            Log.e(TAG, "Unable to play sound " + e.toString());
-            return;
         }
     }
 
