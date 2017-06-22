@@ -13,7 +13,6 @@ import android.content.Intent;
 import android.os.Handler;
 import android.util.Log;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -25,7 +24,7 @@ import java.util.List;
 public class BluetoothHelper {
     private static final String TAG = "BluetoothHelper";
     private static final int SCAN_DURATION = 5000;  /* Length of time to perform a scan */
-
+    public static boolean currentlyScanning;
     private BluetoothAdapter btAdapter;
     private Handler handler;
     private boolean btScanning;
@@ -71,9 +70,12 @@ public class BluetoothHelper {
      * Scans for Bluetooth devices that matches the filter.
      *
      * @param scanFilters List of bluetooth.le.ScanFilter to filter by
-     * @return List of devices that matches the filters
+     * //@return List of devices that matches the filters
      */
-    synchronized public List<BluetoothDevice> scanDevices(List<ScanFilter> scanFilters) {
+    //synchronized public List<BluetoothDevice> scanDevices(List<ScanFilter> scanFilters) {
+    synchronized public void scanDevices(List<ScanFilter> scanFilters) {
+        Log.d("BLEScan", "About to start scan");
+        if (currentlyScanning) return;
         if (scanner == null) {
             // Start scanning for devices
             scanner = btAdapter.getBluetoothLeScanner();
@@ -84,6 +86,7 @@ public class BluetoothHelper {
                     btScanning = false;
                     scanner.stopScan(populateDevices);
                     scanner = null;
+                    currentlyScanning = false;
                 }
             }, SCAN_DURATION);
             btScanning = true;
@@ -91,12 +94,12 @@ public class BluetoothHelper {
             ScanSettings scanSettings = (new ScanSettings.Builder())
                     .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                     .build();
+            currentlyScanning = true;
             scanner.startScan(scanFilters, scanSettings, populateDevices);
         }
-
-        synchronized (deviceList) {
-            return new ArrayList<>(deviceList.values());
-        }
+        //synchronized (deviceList) {
+        //    return new ArrayList<>(deviceList.values());
+        //}
     }
 
     /**
@@ -142,6 +145,7 @@ public class BluetoothHelper {
             scanner.stopScan(populateDevices);
         if (deviceList != null)
             deviceList.clear();
+        currentlyScanning = false;
     }
 
 }

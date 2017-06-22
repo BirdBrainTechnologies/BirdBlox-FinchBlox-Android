@@ -110,12 +110,14 @@ public class FlutterRequestHandler implements RequestHandler {
      */
     private synchronized String listDevices() {
         // List<BluetoothDevice> deviceList = btHelper.scanDevices(generateDeviceFilter());
-        new Thread() {
-            @Override
-            public void run() {
-                btHelper.scanDevices(generateDeviceFilter());
-            }
-        }.run();
+        if (!BluetoothHelper.currentlyScanning) {
+            new Thread() {
+                @Override
+                public void run() {
+                    btHelper.scanDevices(generateDeviceFilter());
+                }
+            }.run();
+        }
         List<BluetoothDevice> deviceList = (new ArrayList<>(btHelper.deviceList.values()));
         // TODO: Change this behavior to display correctly on device
         JSONArray devices = new JSONArray();

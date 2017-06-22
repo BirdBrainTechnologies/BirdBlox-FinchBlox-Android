@@ -302,7 +302,7 @@ public class RecordingHandler implements RequestHandler {
         try {
             mediaPlayer = new MediaPlayer();
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mediaPlayer.setDataSource(recordedFilesDir + "/" + filename);
+            mediaPlayer.setDataSource(recordedFilesDir + "/" + filename + ".m4a");
             mediaPlayer.prepare();
             mediaPlayer.start();
             return "Playing";
@@ -341,7 +341,7 @@ public class RecordingHandler implements RequestHandler {
         try {
             MediaPlayer mediaPlayer = new MediaPlayer();
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mediaPlayer.setDataSource(recordedFilesDir + "/" + filename);
+            mediaPlayer.setDataSource(recordedFilesDir + "/" + filename + ".m4a");
             mediaPlayer.prepare();
             String response = Integer.toString(mediaPlayer.getDuration());
             mediaPlayer.release();
@@ -366,7 +366,7 @@ public class RecordingHandler implements RequestHandler {
                 return response;
             }
             for (int i = 0; i < files.length; i++) {
-                response += files[i].getName();
+                response += files[i].getName().substring(0, files[i].getName().length() - 4);
                 if (i < files.length - 1) response += "\n";
             }
             return response;

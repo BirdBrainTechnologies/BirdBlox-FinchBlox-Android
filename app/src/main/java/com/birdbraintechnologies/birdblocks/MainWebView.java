@@ -7,8 +7,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.database.Cursor;
-import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -280,6 +280,42 @@ public class MainWebView extends AppCompatActivity {
         back_pressed = System.currentTimeMillis();
     }
 
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
+        // Get the physical dimensions (width, height) of screen, and update  the static
+        // variable metrics in the PropertiesHandler class with this information.
+        metrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
+        // Store the width and height in inches for use here too
+        float yInches = metrics.heightPixels / metrics.ydpi;
+        float xInches = metrics.widthPixels / metrics.xdpi;
+        // Calculate diagonal length of screen in inches
+        double diagonalInches = Math.sqrt(xInches * xInches + yInches * yInches);
+
+        if (diagonalInches >= 6.5) {
+            // 6.5 inch device screen or bigger - In this case rotation is allowed
+            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
+            // Resizes the webView upon screen rotation
+//            mOrientationListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
+//                @Override
+//                public void onOrientationChanged(int orientation) {
+//                    // Inject the JavaScript command to resize into webView
+//                    webView.loadUrl("javascript:GuiElements.updateDims()");
+//                    Log.d("UpdateDims", "Calling updateDims()");
+//                }
+//            };
+//            mOrientationListener.enable();
+            // Inject the JavaScript command to resize into webView
+            webView.loadUrl("javascript:GuiElements.updateDimsPreview(" + metrics.widthPixels + ", " + metrics.heightPixels + ")");
+            Log.d("UpdateDims", "Calling updateDimsPreview(" + metrics.widthPixels + ", " + metrics.heightPixels + ")");
+        } else {
+            // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
+            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        }
+    }
+
     /**
      * Gives substring consisting of last 4 characters of a given string.
      *
@@ -548,14 +584,16 @@ public class MainWebView extends AppCompatActivity {
             // 6.5 inch device screen or bigger - In this case rotation is allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
             // Resizes the webView upon screen rotation
-            mOrientationListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
-                @Override
-                public void onOrientationChanged(int orientation) {
-                    // Inject the JavaScript command to resize into webView
-                    webView.loadUrl("javascript:GuiElements.updateDims()");
-                }
-            };
-            mOrientationListener.enable();
+//            mOrientationListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
+//                @Override
+//                public void onOrientationChanged(int orientation) {
+//                    // Inject the JavaScript command to resize into webView
+//                    webView.loadUrl("javascript:GuiElements.updateDims()");
+//                    Log.d("UpdateDims", "Calling updateDims()");
+//                }
+//            };
+//            mOrientationListener.enable();
+            ;
         } else {
             // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);

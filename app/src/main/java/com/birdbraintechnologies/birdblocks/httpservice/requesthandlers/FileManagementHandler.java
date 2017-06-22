@@ -92,7 +92,13 @@ public class FileManagementHandler implements RequestHandler {
                 Log.d("AutoSave",  "Rename: " + responseBody);
                 break;
             case "delete":
-                deleteFile(m.get("filename").get(0), ".bbx");
+                if (m.get("recording") == null || m.get("recording").get(0).equals("false"))
+                    deleteFile(m.get("filename").get(0), false, ".bbx");
+                else if (m.get("recording").get(0).equals("true"))
+                    deleteFile(m.get("filename").get(0), true, ".m4a");
+                else {
+                    //bad request
+                }
                 break;
             case "files":
                 responseBody = listFiles(".bbx");
@@ -263,7 +269,8 @@ public class FileManagementHandler implements RequestHandler {
      *                    error code ("409" or "503") as string
      */
     private String renameFile(String oldFilename, String newFilename, String option, String extension) {
-        File file = new File(getBirdblocksDir(), oldFilename + extension);
+        File dirToPass = getBirdblocksDir();
+        File file = new File(dirToPass, oldFilename + extension);
         if (!file.exists() || !isNameSanitized(newFilename)) {
             // 409 if oldFile doesn't exist, or newFilename is corrupt
             return "409";
@@ -274,12 +281,12 @@ public class FileManagementHandler implements RequestHandler {
         } else if (option.equals("soft")) {
             // throw 409 error if new name file already exists
             // else rename
-            if (!isNameAvailable(getBirdblocksDir(), newFilename, ".bbx"))
+            if (!isNameAvailable(dirToPass, newFilename, ".bbx"))
                 return "409";
         }
         try {
             // actually rename file here
-            file.renameTo(new File(getBirdblocksDir(), newFilename + extension));
+            file.renameTo(new File(dirToPass, newFilename + extension));
             return null;
         } catch (Exception e) {
             Log.e("Rename", e.getMessage());
@@ -292,11 +299,18 @@ public class FileManagementHandler implements RequestHandler {
      * Deletes a saved file on the device
      *
      * @param filename Name of file to delete
+     * @param recording true if recorded file, false otherwise
      * @param extension File extension (put in empty string if no extension)
      *                  Eg: ".bbx", ".m4a", etc
      */
-    private void deleteFile(String filename, String extension) {
-        File file = new File(getBirdblocksDir(), filename + extension);
+    private void deleteFile(String filename, boolean recording, String extension) {
+        File file;
+        if (recording) {
+            file = new File(FileManagementHandler.SecretFileDirectory.getAbsolutePath() + "/Recordings/" + filename + extension);
+            Log.d("Cool", file.getAbsolutePath());
+        } else {
+            file = new File(getBirdblocksDir(), filename + extension);
+        }
         if (!file.exists()) {
             return;
         }
