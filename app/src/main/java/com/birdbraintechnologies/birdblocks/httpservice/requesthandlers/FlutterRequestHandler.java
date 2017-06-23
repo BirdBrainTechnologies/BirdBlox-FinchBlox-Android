@@ -5,10 +5,10 @@ import android.bluetooth.le.ScanFilter;
 import android.os.ParcelUuid;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblocks.Robots.Flutter;
 import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblocks.bluetooth.MelodySmartConnection;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTSettings;
-import com.birdbraintechnologies.birdblocks.devices.Flutter;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 import com.birdbraintechnologies.birdblocks.util.NamingHandler;

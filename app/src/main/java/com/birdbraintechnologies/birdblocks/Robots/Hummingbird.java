@@ -1,6 +1,5 @@
-package com.birdbraintechnologies.birdblocks.devices;
+package com.birdbraintechnologies.birdblocks.Robots;
 
-import com.birdbraintechnologies.birdblocks.States.HBState;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
 
@@ -34,9 +33,6 @@ public class Hummingbird implements UARTConnection.RXDataListener {
     private byte[] rawSensorValues;
     private Object rawSensorValuesLock = new Object();
 
-    private static HBState oldState;
-    private static HBState newState;
-
     /**
      * Initializes a Hummingbird device
      *
@@ -44,8 +40,6 @@ public class Hummingbird implements UARTConnection.RXDataListener {
      */
     public Hummingbird(UARTConnection conn) {
         this.conn = conn;
-        if (oldState == null) oldState = new HBState();
-        if (newState == null) newState = new HBState();
     }
 
     /**

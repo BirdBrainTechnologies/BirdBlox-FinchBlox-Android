@@ -387,7 +387,7 @@ public class MainWebView extends AppCompatActivity {
         } finally {
             zis.close();
         }
-        Log.d("Unzip", "File Unzipped Successfully!!");
+        Log.d("Unzip", "File Unzipped Successfully!");
     }
 
     // Create a new thread to perform download and unzip operations for layout
