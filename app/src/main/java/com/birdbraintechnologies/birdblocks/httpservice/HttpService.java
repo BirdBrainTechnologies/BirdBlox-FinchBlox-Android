@@ -24,8 +24,7 @@ public class HttpService extends Service {
 
     // To allow external requests (for debugging purposes),
     // just make the String below null.
-    private static final String HTTPAccessFlag = null
-            ;
+    private static final String HTTPAccessFlag = null;
 
     @Override
     public IBinder onBind(Intent intent) {
