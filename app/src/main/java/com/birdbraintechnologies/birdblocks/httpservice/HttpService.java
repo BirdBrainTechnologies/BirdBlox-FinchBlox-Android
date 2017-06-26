@@ -82,6 +82,7 @@ public class HttpService extends Service {
             Log.d("SessionURI", session.getUri());
             Log.d("SessionParameters", session.getParameters().toString());
 
+
             Method requestMethod = session.getMethod();
             Log.d(TAG, session.getRemoteIpAddress() + " " + requestMethod + " " + requestPath);
 

@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.States;
+package com.birdbraintechnologies.birdblocks.Robots.RobotStates;
 
 /**
  * @author Shreyan Bakshi (AppyFizz).
@@ -23,7 +23,7 @@ public abstract class RobotState<T extends RobotState<T>> {
      * @return Returns true if they're equal (all their attributes
      * have the same values), false otherwise.
      */
-    public abstract boolean equal(T rbs);
+    public abstract boolean equals_helper(T rbs);
 
     /**
      * Copies all attributes of the input RobotState into the current ('this') RobotState.

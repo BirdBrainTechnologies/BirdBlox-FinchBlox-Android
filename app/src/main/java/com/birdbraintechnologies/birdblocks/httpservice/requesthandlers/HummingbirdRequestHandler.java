@@ -47,6 +47,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
     private HashMap<String, Hummingbird> connectedDevices;
 
     public HummingbirdRequestHandler(HttpService service) {
+
         this.service = service;
         this.btHelper = service.getBluetoothHelper();
         this.connectedDevices = new HashMap<>();
@@ -65,6 +66,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         Map<String, List<String>> m = session.getParameters();
+
         // Generate response body
         String responseBody = "";
         switch (path[0]) {
@@ -84,6 +86,13 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 responseBody = disconnectFromDevice(m.get("id").get(0));
                 break;
             case "out":
+//                Log.d("SleepThread", "Before Sleeping: " + session.getUri());
+//                try {
+//                    Thread.sleep(10000);
+//                    Log.d("SleepThread", "After Sleeping: " + session.getUri());
+//                } catch (InterruptedException e) {
+//                    Log.e("SleepThread", e.getMessage());
+//                }
                 getDeviceFromId(m.get("id").get(0)).setOutput(path[1], m);
                 responseBody = "Connected to Hummingbird successfully.";
                 break;

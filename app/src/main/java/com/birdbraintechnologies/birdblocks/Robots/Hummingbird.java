@@ -1,10 +1,14 @@
 package com.birdbraintechnologies.birdblocks.Robots;
 
+import com.birdbraintechnologies.birdblocks.Robots.RobotStates.HBState;
+import com.birdbraintechnologies.birdblocks.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Represents a Hummingbird device and all of its functionality: Setting outputs, reading sensors
@@ -12,7 +16,7 @@ import java.util.Map;
  * @author Terence Sun (tsun1215)
  * @author Shreyan Bakshi (AppyFizz)
  */
-public class Hummingbird implements UARTConnection.RXDataListener {
+public class Hummingbird extends Robot<HBState> implements UARTConnection.RXDataListener {
     /*
      * Command prefixes for the Hummingbird according to spec
      * More info: http://www.hummingbirdkit.com/learning/hummingbird-duo-usb-protocol
@@ -29,6 +33,8 @@ public class Hummingbird implements UARTConnection.RXDataListener {
     private static final byte PING_CMD = 'z';
     private static final String RENAME_CMD = "AT+GAPDEVNAME";
 
+    private static final int COMMAND_TIMEOUT_IN_MILLIS = 5*1000;
+
     private UARTConnection conn;
     private byte[] rawSensorValues;
     private Object rawSensorValuesLock = new Object();
@@ -39,7 +45,18 @@ public class Hummingbird implements UARTConnection.RXDataListener {
      * @param conn Connection established with the Hummingbird device
      */
     public Hummingbird(UARTConnection conn) {
+        super();
         this.conn = conn;
+        oldState = new HBState();
+        newState = new HBState();
+    }
+
+    /**
+     * Actually sends the commands to the physical Hummingbird,
+     * based on certain conditions.
+     */
+    public void sendToRobot() {
+
     }
 
     /**
@@ -56,18 +73,34 @@ public class Hummingbird implements UARTConnection.RXDataListener {
         }
 
         // All remaining outputs are of the format: /out/<outputType>/<port>/<args>...
+
+        int port = Integer.parseInt(args.get("port").get(0));
+
         switch (outputType) {
+//            case "servo":
+//                return setServo(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("angle").get(0)));
+//            case "motor":
+//                return setMotor(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("speed").get(0)));
+//            case "vibration":
+//                return setVibrationMotor(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("intensity").get(0)));
+//            case "led":
+//                return setLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("intensity").get(0)));
+//            case "triled":
+//                return setTriLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("red").get(0)), Integer.parseInt(args.get("green").get(0)),
+//                        Integer.parseInt(args.get("blue").get(0)));
+
             case "servo":
-                return setServo(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("angle").get(0)));
+                return setRbSOOutput(oldState.getServo(port), newState.getServo(port), Integer.parseInt(args.get("angle").get(0)));
             case "motor":
-                return setMotor(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("speed").get(0)));
+                return setRbSOOutput(oldState.getMotor(port), newState.getMotor(port), Integer.parseInt(args.get("speed").get(0)));
             case "vibration":
-                return setVibrationMotor(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("intensity").get(0)));
+                return setRbSOOutput(oldState.getVibrator(port), newState.getVibrator(port),
+                        Integer.parseInt(args.get("intensity").get(0)));
             case "led":
-                return setLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("intensity").get(0)));
+                return setRbSOOutput(oldState.getLED(port), newState.getLED(port), Integer.parseInt(args.get("intensity").get(0)));
             case "triled":
-                return setTriLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("red").get(0)), Integer.parseInt(args.get("green").get(0)),
-                        Integer.parseInt(args.get("blue").get(0)));
+                return setRbSOOutput(oldState.getTriLED(port), newState.getTriLED(port), Integer.parseInt(args.get("red").get(0)),
+                        Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));
         }
 
         return false;
@@ -113,6 +146,27 @@ public class Hummingbird implements UARTConnection.RXDataListener {
     private void stopPollingSensors() {
         conn.writeBytes(new byte[]{READ_ALL_CMD, '6'});
     }
+
+    public boolean setRbSOOutput(RobotStateObject oldobj, RobotStateObject newobj, int... values) {
+        ReentrantLock lock = new ReentrantLock();
+        lock.lock();
+        try {
+            long startTime = System.currentTimeMillis();
+            long elapsedTime = 0L;
+            while (!newobj.equals(oldobj) && elapsedTime < COMMAND_TIMEOUT_IN_MILLIS) {
+                elapsedTime = (new Date()).getTime() - startTime;
+            }
+            if (newobj.equals(oldobj)) {
+                newobj.setValue(values);
+                lock.unlock();
+                return true;
+            }
+        } finally {
+            lock.unlock();
+        }
+        return false;
+    }
+
 
     /**
      * Sets the angle of the servo connected to the given port

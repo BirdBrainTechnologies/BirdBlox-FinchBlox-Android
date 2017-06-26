@@ -1,6 +1,6 @@
 package com.birdbraintechnologies.birdblocks.Robots;
 
-import com.birdbraintechnologies.birdblocks.States.RobotState;
+import com.birdbraintechnologies.birdblocks.Robots.RobotStates.RobotState;
 
 /**
  * @author Shreyan Bakshi (AppyFizz).
@@ -8,13 +8,17 @@ import com.birdbraintechnologies.birdblocks.States.RobotState;
 
 public abstract class Robot<T extends RobotState<T>> {
 
-    private T oldState;
-    private T newState;
+    protected T oldState;
+    protected T newState;
 
-    private boolean sending;
+    protected boolean sending;
 
-    public boolean statesEqual() {
-        return oldState.equal(newState);
+    public Robot() {
+        sending = false;
+    }
+
+    public synchronized boolean statesEqual() {
+        return oldState.equals(newState);
     }
 
     public synchronized boolean isCurrentlySending() {
@@ -33,6 +37,10 @@ public abstract class Robot<T extends RobotState<T>> {
         sending = false;
     }
 
-    public abstract void send();
+    /**
+     * Actually sends the commands to the physical Robot,
+     * based on certain conditions.
+     */
+    public abstract void sendToRobot();
 
 }

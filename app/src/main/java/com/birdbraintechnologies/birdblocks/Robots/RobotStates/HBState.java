@@ -1,10 +1,10 @@
-package com.birdbraintechnologies.birdblocks.States;
+package com.birdbraintechnologies.birdblocks.Robots.RobotStates;
 
-import com.birdbraintechnologies.birdblocks.States.StateObjects.LED;
-import com.birdbraintechnologies.birdblocks.States.StateObjects.Motor;
-import com.birdbraintechnologies.birdblocks.States.StateObjects.Servo;
-import com.birdbraintechnologies.birdblocks.States.StateObjects.TriLED;
-import com.birdbraintechnologies.birdblocks.States.StateObjects.Vibrator;
+import com.birdbraintechnologies.birdblocks.Robots.RobotStates.RobotStateObjects.LED;
+import com.birdbraintechnologies.birdblocks.Robots.RobotStates.RobotStateObjects.Motor;
+import com.birdbraintechnologies.birdblocks.Robots.RobotStates.RobotStateObjects.Servo;
+import com.birdbraintechnologies.birdblocks.Robots.RobotStates.RobotStateObjects.TriLED;
+import com.birdbraintechnologies.birdblocks.Robots.RobotStates.RobotStateObjects.Vibrator;
 
 import java.util.Arrays;
 
@@ -56,64 +56,94 @@ public class HBState extends RobotState<HBState> {
         vibrators[1] = new Vibrator(vibrator2);
     }
 
-    public byte getLED(int port) {
+    public LED getLED(int port) {
+        if (1 <= port && port <= leds.length)
+            return leds[port - 1];
+        return null;
+    }
+
+    public TriLED getTriLED(int port) {
+        if (1 <= port && port <= trileds.length)
+            return trileds[port - 1];
+        return null;
+    }
+
+    public Servo getServo(int port) {
+        if (1 <= port && port <= servos.length)
+            return servos[port - 1];
+        return null;
+    }
+
+    public Motor getMotor(int port) {
+        if (1 <= port && port <= motors.length)
+            return motors[port - 1];
+        return null;
+    }
+
+    public Vibrator getVibrator(int port) {
+        if (1 <= port && port <= vibrators.length)
+            return vibrators[port - 1];
+        return null;
+    }
+
+    public byte getLEDIntensity(int port) {
         if (1 <= port && port <= leds.length)
             return leds[port - 1].getIntensity();
         return 0;
     }
 
-    public void setLED(int port, byte intensity) {
+    public void setLEDIntensity(int port, int intensity) {
         if (1 <= port && port <= leds.length)
-            leds[port - 1].setIntensity(intensity);
+            leds[port - 1].setValue(intensity);
     }
 
-    public byte[] getTriLED(int port) {
+    public byte[] getTriLEDRGB(int port) {
         if (1 <= port && port <= trileds.length)
             return trileds[port - 1].getRGB();
         return null;
     }
 
-    public void setTriLED(int port, byte red, byte green, byte blue) {
+    public void setTriLEDRGB(int port, int red, int green, int blue) {
         if (1 <= port && port <= trileds.length)
-            trileds[port - 1].setRGB(red, green, blue);
+            trileds[port - 1].setValue(red, green, blue);
     }
 
-    public void setTriLED(int port, byte[] rgb) {
+    public void setTriLEDRGB(int port, int[] rgb) {
         if (1 <= port && port <= trileds.length)
-            trileds[port - 1].setRGB(rgb[0], rgb[1], rgb[2]);
+            trileds[port - 1].setValue(rgb);
     }
 
-    public byte getServo(int port) {
+    public byte getServoAngle(int port) {
         if (1 <= port && port <= servos.length)
             return servos[port - 1].getAngle();
-        return 0;
+        return (byte) 255;
     }
 
-    public void setServo(int port, byte angle) {
+    public void setServoAngle(int port, int angle) {
         if (1 <= port && port <= servos.length)
-            servos[port - 1].setAngle(angle);
+            servos[port - 1].setValue(angle);
     }
 
-    public byte getMotor(int port) {
+    public byte getMotorSpeed(int port) {
         if (1 <= port && port <= motors.length)
             return motors[port - 1].getSpeed();
         return 0;
     }
 
-    public void setMotor(int port, byte speed) {
+    public void setMotorSpeed(int port, int speed) {
         if (1 <= port && speed <= motors.length)
-            motors[port - 1].setSpeed(speed);
+            motors[port - 1].setValue(speed);
     }
 
-    public byte getVibrator(int port) {
+    public byte getVibratorIntensity(int port) {
         if (1 <= port && port <= vibrators.length)
             return vibrators[port - 1].getIntensity();
         return 0;
     }
 
-    public void setVibrator(int port, byte intensity) {
+    public void setVibratorIntensity(int port, int intensity) {
         if (1 <= port && intensity <= vibrators.length)
-            vibrators[port - 1].setIntensity(intensity);
+            vibrators[port - 1].setValue(intensity);
     }
 
     /**
@@ -121,10 +151,10 @@ public class HBState extends RobotState<HBState> {
      *
      * @param hbs The other HBState object.
      * @return Returns true if they're equal (all their attributes
-     * have the same values), false otherwise.
+     *         have the same values), false otherwise.
      */
     @Override
-    public boolean equal(HBState hbs) {
+    public boolean equals_helper(HBState hbs) {
         for (int i = 0; i < 4; i++) {
             if (leds[i].getIntensity() != hbs.leds[i].getIntensity())
                 return false;
@@ -150,6 +180,28 @@ public class HBState extends RobotState<HBState> {
 
 
     /**
+     * Compares the current ('this') HBState object with another object for equality.
+     *
+     * @param hbs The other object.
+     * @return Returns true if they're equal (they're both HBState objects, and all
+     *         their attributes have the same values), false otherwise.
+     */
+    @Override
+    public boolean equals(Object hbs) {
+        // self check
+        if (this == hbs)
+            return true;
+        // null check
+        if (hbs == null)
+            return false;
+        // type check and cast
+        if (getClass() != hbs.getClass())
+            return false;
+        return equals_helper((HBState) hbs);
+    }
+
+
+    /**
      * Copies all attributes of the input HBState into the current ('this') HBState.
      *
      * @param source The HBState from which the attributes are copied.
@@ -157,19 +209,19 @@ public class HBState extends RobotState<HBState> {
     @Override
     public void copy(HBState source) {
         for (int i = 0; i < 4; i++) {
-            leds[i].setIntensity(source.leds[i].getIntensity());
+            leds[i].setValue(source.leds[i].getIntensity());
         }
         for (int i = 0; i < 2; i++) {
-            trileds[i].setRGB(source.trileds[i].getRGB());
+            trileds[i].setValue(source.trileds[i].getRGB());
         }
         for (int i = 0; i < 4; i++) {
-            servos[i].setAngle(source.servos[i].getAngle());
+            servos[i].setValue(source.servos[i].getAngle());
         }
         for (int i = 0; i < 2; i++) {
-            motors[i].setSpeed(source.motors[i].getSpeed());
+            motors[i].setValue(source.motors[i].getSpeed());
         }
         for (int i = 0; i < 2; i++) {
-            vibrators[i].setIntensity(source.vibrators[i].getIntensity());
+            vibrators[i].setValue(source.vibrators[i].getIntensity());
         }
     }
 
