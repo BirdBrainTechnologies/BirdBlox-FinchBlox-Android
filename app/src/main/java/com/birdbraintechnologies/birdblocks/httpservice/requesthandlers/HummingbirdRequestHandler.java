@@ -93,6 +93,11 @@ public class HummingbirdRequestHandler implements RequestHandler {
 //                } catch (InterruptedException e) {
 //                    Log.e("SleepThread", e.getMessage());
 //                }
+                Log.d("Cool", path[1]);
+                if (m != null) Log.d("Cool", m.toString());
+                if (m.get("id") != null) Log.d("Cool", m.get("id").get(0));
+                Log.d("Cool", connectedDevices.toString());
+                if (getDeviceFromId(m.get("id").get(0)) != null) Log.d("Cool", "Woahhhhh");
                 getDeviceFromId(m.get("id").get(0)).setOutput(path[1], m);
                 responseBody = "Connected to Hummingbird successfully.";
                 break;
@@ -123,7 +128,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 public void run() {
                     btHelper.scanDevices(generateDeviceFilter());
                 }
-            }.run();
+            }.start();
         }
         // btHelper.scanDevices(generateDeviceFilter());
         List<BluetoothDevice> deviceList = (new ArrayList<>(btHelper.deviceList.values()));

@@ -8,6 +8,8 @@ import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -33,7 +35,11 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private static final byte PING_CMD = 'z';
     private static final String RENAME_CMD = "AT+GAPDEVNAME";
 
-    private static final int COMMAND_TIMEOUT_IN_MILLIS = 5*1000;
+    private static final int SETALL_INTERVAL_IN_MILLIS = 1000;
+    private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
+    private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 4000;
+
+    private long last_sent;
 
     private UARTConnection conn;
     private byte[] rawSensorValues;
@@ -49,14 +55,53 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         this.conn = conn;
         oldState = new HBState();
         newState = new HBState();
+
+        last_sent = System.currentTimeMillis();
+
+        new Thread() {
+            public void run() {
+                new Timer().scheduleAtFixedRate(new TimerTask() {
+                    @Override
+                    public void run() {
+                        // TODO: Error if sending fails
+                        sendToRobot();
+                    }
+                }, 0, SETALL_INTERVAL_IN_MILLIS);
+            }
+        }.start();
     }
 
     /**
      * Actually sends the commands to the physical Hummingbird,
      * based on certain conditions.
      */
-    public void sendToRobot() {
-
+    public synchronized boolean sendToRobot() {
+        if (isCurrentlySending()) {
+            return true;
+        } else if (!statesEqual()) {
+            // Not currently sending, but oldState and newState are different
+            long currentTime = System.currentTimeMillis();
+            // Send here
+            setSendingTrue();
+            boolean sent = conn.writeBytes(newState.setAll());
+            if (sent) oldState.copy(newState);
+            setSendingFalse();
+            last_sent = currentTime;
+            return sent;
+        } else {
+            // Not currently sending, and oldState and newState are the same
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - last_sent >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
+                // Send here
+                setSendingTrue();
+                boolean sent = conn.writeBytes(newState.setAll());
+                if (sent) oldState.copy(newState);
+                setSendingFalse();
+                last_sent = currentTime;
+                return sent;
+            }
+        }
+        return false;
     }
 
     /**
@@ -86,8 +131,8 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 //            case "led":
 //                return setLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("intensity").get(0)));
 //            case "triled":
-//                return setTriLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("red").get(0)), Integer.parseInt(args.get("green").get(0)),
-//                        Integer.parseInt(args.get("blue").get(0)));
+//                return setTriLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("red").get(0)),
+//                        Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));
 
             case "servo":
                 return setRbSOOutput(oldState.getServo(port), newState.getServo(port), Integer.parseInt(args.get("angle").get(0)));

@@ -26,11 +26,11 @@ public class HBState extends RobotState<HBState> {
         motors = new Motor[2];
         vibrators = new Vibrator[2];
 
-        for (LED led : leds) led = new LED();
-        for (TriLED triled : trileds) triled = new TriLED();
-        for (Servo servo : servos) servo = new Servo();
-        for (Motor motor : motors) motor = new Motor();
-        for (LED led : leds) led = new LED();
+        for (int i = 0; i < leds.length; i++) leds[i] = new LED();
+        for (int i = 0; i < trileds.length; i++) trileds[i] = new TriLED();
+        for (int i = 0; i < servos.length; i++) servos[i] = new Servo();
+        for (int i = 0; i < motors.length; i++) motors[i] = new Motor();
+        for (int i = 0; i < vibrators.length; i++) vibrators[i] = new Vibrator();
     }
 
     public HBState(byte led1, byte led2, byte led3, byte led4, byte triled1r, byte triled1g, byte triled1b, byte triled2r, byte triled2g, byte triled2b, byte servo1, byte servo2, byte servo3, byte servo4, byte motor1, byte motor2, byte vibrator1, byte vibrator2) {
@@ -154,7 +154,7 @@ public class HBState extends RobotState<HBState> {
      *         have the same values), false otherwise.
      */
     @Override
-    public boolean equals_helper(HBState hbs) {
+    public synchronized boolean equals_helper(HBState hbs) {
         for (int i = 0; i < 4; i++) {
             if (leds[i].getIntensity() != hbs.leds[i].getIntensity())
                 return false;
@@ -187,7 +187,7 @@ public class HBState extends RobotState<HBState> {
      *         their attributes have the same values), false otherwise.
      */
     @Override
-    public boolean equals(Object hbs) {
+    public synchronized boolean equals(Object hbs) {
         // self check
         if (this == hbs)
             return true;
@@ -207,7 +207,7 @@ public class HBState extends RobotState<HBState> {
      * @param source The HBState from which the attributes are copied.
      */
     @Override
-    public void copy(HBState source) {
+    public synchronized void copy(HBState source) {
         for (int i = 0; i < 4; i++) {
             leds[i].setValue(source.leds[i].getIntensity());
         }
@@ -233,7 +233,7 @@ public class HBState extends RobotState<HBState> {
      * the state objects, in the order shown below.
      */
     @Override
-    public byte[] setAll() {
+    public synchronized byte[] setAll() {
         byte[] all = new byte[19];
         // This must always be the first byte sent for the setAll command.
         all[0] = (byte) 0x41;
@@ -263,7 +263,7 @@ public class HBState extends RobotState<HBState> {
      * Resets all attributes of all state objects to their default values.
      */
     @Override
-    public void resetAll() {
+    public synchronized void resetAll() {
         for (LED led : leds) led = new LED();
         for (TriLED triled : trileds) triled = new TriLED();
         for (Servo servo : servos) servo = new Servo();

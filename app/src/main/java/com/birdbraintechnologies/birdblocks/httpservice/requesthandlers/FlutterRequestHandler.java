@@ -116,7 +116,7 @@ public class FlutterRequestHandler implements RequestHandler {
                 public void run() {
                     btHelper.scanDevices(generateDeviceFilter());
                 }
-            }.run();
+            }.start();
         }
         List<BluetoothDevice> deviceList = (new ArrayList<>(btHelper.deviceList.values()));
         // TODO: Change this behavior to display correctly on device

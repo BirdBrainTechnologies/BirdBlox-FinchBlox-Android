@@ -161,7 +161,7 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
         } else if (type.equals("ui")) {
             path = BLOCK_SOUNDS_DIR + "/%s.wav";
             new Thread() {
-                public void run(String soundId, String path) {
+                private void run(String soundId, String path) {
                     try {
                         AssetManager assets = service.getAssets();
                         AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));

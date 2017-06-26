@@ -17,9 +17,9 @@ public abstract class Robot<T extends RobotState<T>> {
         sending = false;
     }
 
-    public synchronized boolean statesEqual() {
-        return oldState.equals(newState);
-    }
+//    public synchronized boolean statesEqual() {
+//        return oldState.equals(newState);
+//    }
 
     public synchronized boolean isCurrentlySending() {
         return sending;
@@ -37,10 +37,12 @@ public abstract class Robot<T extends RobotState<T>> {
         sending = false;
     }
 
+    public synchronized boolean statesEqual() { return oldState.equals(newState);}
+
     /**
      * Actually sends the commands to the physical Robot,
      * based on certain conditions.
      */
-    public abstract void sendToRobot();
+    public abstract boolean sendToRobot();
 
 }
