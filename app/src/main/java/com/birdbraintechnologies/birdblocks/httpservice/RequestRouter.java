@@ -2,6 +2,7 @@ package com.birdbraintechnologies.birdblocks.httpservice;
 
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FlutterRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
@@ -51,6 +52,7 @@ public class RequestRouter {
         addRoute("^/sound/recording/(.*)$", new RecordingHandler(service));
         addRoute("^/sound/(?!recording)(.*)$", new SoundHandler(service));
         addRoute("^/properties/(.*)$", new PropertiesHandler(service));
+        addRoute("^/dropbox/(.*)$", new DropboxRequestHandler(service));
         // TODO: Add UI commands
         // addRoute("^/ui/(.*)$", new __Handler(service));
     }

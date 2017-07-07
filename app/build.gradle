@@ -19,6 +19,12 @@ android {
     }
 }
 
+repositories {
+    maven {
+        url "http://maven.cloudrail.com"
+    }
+}
+
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
@@ -28,5 +34,8 @@ dependencies {
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     compile 'org.nanohttpd:nanohttpd:2.3.+'
     compile 'com.googlecode.mp4parser:isoparser:1.0.2'
+    compile 'com.dropbox.core:dropbox-core-sdk:2.1.1'
+    compile 'com.cloudrail:cloudrail-si-android:2.18.0'
+    compile 'com.squareup.okhttp3:okhttp:3.5.0'
     testCompile 'junit:junit:4.12'
 }

@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -30,7 +31,9 @@ import android.widget.Toast;
 import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
+import com.dropbox.core.android.Auth;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -50,6 +53,7 @@ import java.net.URLEncoder;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.DB_PREFS_KEY;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler.metrics;
 
 
@@ -85,8 +89,10 @@ public class MainWebView extends AppCompatActivity {
     // True if user has provided microphone permissions
     public static boolean micPermissions;
 
+    public static Context mainWebViewContext;
+
     LocalBroadcastManager bManager;
-    private WebView webView;
+    public static WebView webView;
     private OrientationEventListener mOrientationListener;
     private String importedFileName;
     private String encodedFileName;
@@ -113,6 +119,8 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        mainWebViewContext = MainWebView.this;
 
         FileManagementHandler.SecretFileDirectory = getFilesDir();
         // FileManagementHandler.SecretFileDirectory = new File(Environment.getExternalStoragePublicDirectory(
@@ -241,6 +249,15 @@ public class MainWebView extends AppCompatActivity {
         if (mOrientationListener != null)
             mOrientationListener.enable();
         micPermissions = hasMicrophonePermissions();
+        if (DropboxRequestHandler.DB_ACCESS_TOKEN == null) {
+            DropboxRequestHandler.DB_ACCESS_TOKEN = Auth.getOAuth2Token();
+            if (DropboxRequestHandler.DB_ACCESS_TOKEN != null) {
+                SharedPreferences sharedPrefs = MainWebView.this.getSharedPreferences(DropboxRequestHandler.DB_PREFS_KEY, MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPrefs.edit();
+                editor.putString(DB_PREFS_KEY, DropboxRequestHandler.DB_ACCESS_TOKEN);
+                editor.apply();
+            }
+        }
     }
 
     @Override
@@ -417,8 +434,8 @@ public class MainWebView extends AppCompatActivity {
 
             // Download the layout from github
             try {
-                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
-                // downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                // downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
             } catch (NetworkOnMainThreadException | SecurityException e) {
                 Log.e("Download", "Error occurred while downloading file: " + e.getMessage());
                 return;

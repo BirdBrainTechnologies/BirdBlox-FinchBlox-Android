@@ -32,14 +32,10 @@ public class PropertiesHandler implements RequestHandler {
         String responseBody = "";
         switch (path[0]) {
             case "dims":
-                Log.d("Properties1Dims", "Got request to provide dimensions.");
                 responseBody = getDeviceScreenSize();
-                Log.d("Properties2Dims", "Dims Response Body: " + responseBody);
                 break;
             case "os":
-                Log.d("Properties1OS", "Got request to provide OS.");
                 responseBody = getDeviceOSVersion();
-                Log.d("Properties2OS", "OS Response Body: " + responseBody);
                 break;
             default:
                 break;

@@ -5,12 +5,14 @@ import com.birdbraintechnologies.birdblocks.Robots.RobotStates.RobotStateObjects
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
 
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.TimeUnit;
+
+import static com.birdbraintechnologies.birdblocks.httpservice.HttpService.doneSending;
+import static com.birdbraintechnologies.birdblocks.httpservice.HttpService.lock;
 
 /**
  * Represents a Hummingbird device and all of its functionality: Setting outputs, reading sensors
@@ -65,6 +67,10 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     public void run() {
                         // TODO: Error if sending fails
                         sendToRobot();
+                        try {
+                            doneSending.signal();
+                        } catch (IllegalMonitorStateException e) {
+                        }
                     }
                 }, 0, SETALL_INTERVAL_IN_MILLIS);
             }
@@ -84,7 +90,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             // Send here
             setSendingTrue();
             boolean sent = conn.writeBytes(newState.setAll());
-            if (sent) oldState.copy(newState);
+            if (sent) {
+                oldState.copy(newState);
+            }
             setSendingFalse();
             last_sent = currentTime;
             return sent;
@@ -95,7 +103,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 // Send here
                 setSendingTrue();
                 boolean sent = conn.writeBytes(newState.setAll());
-                if (sent) oldState.copy(newState);
+                if (sent) {
+                    oldState.copy(newState);
+                }
                 setSendingFalse();
                 last_sent = currentTime;
                 return sent;
@@ -122,18 +132,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         int port = Integer.parseInt(args.get("port").get(0));
 
         switch (outputType) {
-//            case "servo":
-//                return setServo(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("angle").get(0)));
-//            case "motor":
-//                return setMotor(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("speed").get(0)));
-//            case "vibration":
-//                return setVibrationMotor(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("intensity").get(0)));
-//            case "led":
-//                return setLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("intensity").get(0)));
-//            case "triled":
-//                return setTriLED(Integer.parseInt(args.get("port").get(0)), Integer.parseInt(args.get("red").get(0)),
-//                        Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));
-
             case "servo":
                 return setRbSOOutput(oldState.getServo(port), newState.getServo(port), Integer.parseInt(args.get("angle").get(0)));
             case "motor":
@@ -147,7 +145,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 return setRbSOOutput(oldState.getTriLED(port), newState.getTriLED(port), Integer.parseInt(args.get("red").get(0)),
                         Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));
         }
-
         return false;
     }
 
@@ -193,21 +190,21 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     }
 
     public boolean setRbSOOutput(RobotStateObject oldobj, RobotStateObject newobj, int... values) {
-        ReentrantLock lock = new ReentrantLock();
-        lock.lock();
         try {
-            long startTime = System.currentTimeMillis();
-            long elapsedTime = 0L;
-            while (!newobj.equals(oldobj) && elapsedTime < COMMAND_TIMEOUT_IN_MILLIS) {
-                elapsedTime = (new Date()).getTime() - startTime;
+            lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
+            while (!newobj.equals(oldobj)) {
+                doneSending.await(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
             }
             if (newobj.equals(oldobj)) {
                 newobj.setValue(values);
-                lock.unlock();
+                if (lock.isHeldByCurrentThread())
+                    lock.unlock();
                 return true;
             }
+        } catch (InterruptedException | IllegalMonitorStateException | IllegalStateException | IllegalThreadStateException e) {
         } finally {
-            lock.unlock();
+            if (lock.isHeldByCurrentThread())
+                lock.unlock();
         }
         return false;
     }
