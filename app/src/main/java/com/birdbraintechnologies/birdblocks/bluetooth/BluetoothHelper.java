@@ -24,18 +24,26 @@ import java.util.List;
 public class BluetoothHelper {
     private static final String TAG = "BluetoothHelper";
     private static final int SCAN_DURATION = 5000;  /* Length of time to perform a scan */
-    public static boolean currentlyScanning;
+    public static boolean currentlyScanning = false;
     private BluetoothAdapter btAdapter;
     private Handler handler;
     private boolean btScanning;
     private Context context;
-    public static HashMap<String, BluetoothDevice> deviceList;
+    public static HashMap<String, BluetoothDevice> deviceList = new HashMap<>();
     private BluetoothLeScanner scanner;
 
     /* Callback for populating the device list */
     private ScanCallback populateDevices = new ScanCallback() {
         @Override
+        public void onScanFailed(int errorCode) {
+            super.onScanFailed(errorCode);
+            currentlyScanning = false;
+
+        }
+
+        @Override
         public void onScanResult(int callbackType, ScanResult result) {
+            currentlyScanning = false;
             synchronized (deviceList) {
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
             }
@@ -51,7 +59,7 @@ public class BluetoothHelper {
         this.context = context;
         this.btScanning = false;
         this.handler = new Handler();
-        this.deviceList = new HashMap<>();
+        // this.deviceList = new HashMap<>();
 
         // Acquire Bluetooth service
         final BluetoothManager btManager =
@@ -73,9 +81,9 @@ public class BluetoothHelper {
      * //@return List of devices that matches the filters
      */
     //synchronized public List<BluetoothDevice> scanDevices(List<ScanFilter> scanFilters) {
-    synchronized public void scanDevices(List<ScanFilter> scanFilters) {
-        Log.d("BLEScan", "About to start scan");
+    synchronized public void scanDevices(final List<ScanFilter> scanFilters) {
         if (currentlyScanning) return;
+        Log.d("BLEScan", "About to start scan");
         if (scanner == null) {
             // Start scanning for devices
             scanner = btAdapter.getBluetoothLeScanner();

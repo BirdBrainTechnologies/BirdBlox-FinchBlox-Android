@@ -24,6 +24,10 @@ import java.util.UUID;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static com.birdbraintechnologies.birdblocks.MainWebView.bbxEncode;
+import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
+import static com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper.currentlyScanning;
+
 /**
  * Class for handling requests from the router to Hummingbird devices
  *
@@ -86,13 +90,6 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 responseBody = disconnectFromDevice(m.get("id").get(0));
                 break;
             case "out":
-//                Log.d("SleepThread", "Before Sleeping: " + session.getUri());
-//                try {
-//                    Thread.sleep(10000);
-//                    Log.d("SleepThread", "After Sleeping: " + session.getUri());
-//                } catch (InterruptedException e) {
-//                    Log.e("SleepThread", e.getMessage());
-//                }
                 Log.d("Cool", path[1]);
                 if (m != null) Log.d("Cool", m.toString());
                 if (m.get("id") != null) Log.d("Cool", m.get("id").get(0));
@@ -122,7 +119,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
      */
     private synchronized String listDevices() {
         // List<BluetoothDevice> deviceList = btHelper.scanDevices(generateDeviceFilter());
-        if (!BluetoothHelper.currentlyScanning) {
+        if (!currentlyScanning) {
             new Thread() {
                 @Override
                 public void run() {
@@ -167,7 +164,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @param deviceId Device ID to find
      * @return The connected device if it exists, null otherwise
      */
-    private Hummingbird getDeviceFromId(String deviceId) {
+    private synchronized Hummingbird getDeviceFromId(String deviceId) {
         return connectedDevices.get(deviceId);
     }
 
@@ -177,13 +174,21 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @param deviceId Device ID to connect to
      * @return No Response
      */
-    private String connectToDevice(String deviceId) {
+    private synchronized String connectToDevice(String deviceId) {
         // TODO: Handle errors when connecting to device
-        UARTConnection conn = btHelper.connectToDeviceUART(deviceId, this.hbUARTSettings);
-        if (conn != null) {
-            Hummingbird device = new Hummingbird(conn);
-            connectedDevices.put(deviceId, device);
+        try {
+            UARTConnection conn = btHelper.connectToDeviceUART(deviceId, this.hbUARTSettings);
+            if (conn != null) {
+                Hummingbird device = new Hummingbird(conn);
+                if (connectedDevices != null)
+                    connectedDevices.put(deviceId, device);
+                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(deviceId) + "', true);");
+            }
+        } catch (Exception e) {
+            Log.e("ConnectHB", " Error while connecting to HB " + e.getMessage());
         }
+
+        currentlyScanning = false;
         return "";
     }
 
@@ -201,13 +206,14 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @param deviceId Device ID of the device to disconnect from
      * @return No Response
      */
-    private String disconnectFromDevice(String deviceId) {
+    private synchronized String disconnectFromDevice(String deviceId) {
         Hummingbird device = getDeviceFromId(deviceId);
         if (device != null) {
             Log.d(TAG, "Disconnecting from device: " + deviceId);
             device.disconnect();
             Log.d("TotStat", "Removing device: " + deviceId);
             connectedDevices.remove(deviceId);
+            runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(deviceId) + "', false);");
         }
         Log.d("TotStat", "Connected Hummingbirds: " + connectedDevices.toString());
         return "Hummingbird disconnected successfully.";
@@ -218,7 +224,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
      *
      * @return List of scan filters
      */
-    private List<ScanFilter> generateDeviceFilter() {
+    private synchronized List<ScanFilter> generateDeviceFilter() {
         ScanFilter hbScanFilter = (new ScanFilter.Builder())
                 .setServiceUuid(ParcelUuid.fromString(HUMMINGBIRD_DEVICE_UUID))
                 .build();
@@ -233,7 +239,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
      *
      * @return 0, 1, or 2 depending on the aggregate status of all the devices
      */
-    private String getTotalStatus() {
+    private synchronized String getTotalStatus() {
         Log.d("TotStat", "Connected Devices: " + connectedDevices.toString());
         if (connectedDevices.size() == 0) {
             return "2";  // No devices connected
@@ -250,7 +256,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
      *
      *
      */
-    private String stopDiscover() {
+    private synchronized String stopDiscover() {
         if (btHelper != null)
             btHelper.stopScan();
         return "Bluetooth discovery stopped.";

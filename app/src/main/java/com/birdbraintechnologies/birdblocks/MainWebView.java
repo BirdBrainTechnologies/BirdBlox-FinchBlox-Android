@@ -13,6 +13,7 @@ import android.database.Cursor;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.NetworkOnMainThreadException;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
@@ -249,6 +250,13 @@ public class MainWebView extends AppCompatActivity {
         if (mOrientationListener != null)
             mOrientationListener.enable();
         micPermissions = hasMicrophonePermissions();
+//        String curr = MainWebView.this.getSharedPreferences(CURRENT_PREFS_KEY, Context.MODE_PRIVATE)
+//                .getString(CURRENT_PREFS_KEY, null);
+//        boolean named = MainWebView.this.getSharedPreferences(NAMED_PREFS_KEY, Context.MODE_PRIVATE)
+//                .getBoolean(NAMED_PREFS_KEY, false);
+//        if (curr != null) {
+//            webView.loadUrl("CallbackManager.data.open('" + name + "', \"" + curr + "\", " + named + ");");
+//        }
         if (DropboxRequestHandler.DB_ACCESS_TOKEN == null) {
             DropboxRequestHandler.DB_ACCESS_TOKEN = Auth.getOAuth2Token();
             if (DropboxRequestHandler.DB_ACCESS_TOKEN != null) {
@@ -310,18 +318,8 @@ public class MainWebView extends AppCompatActivity {
         if (diagonalInches >= 6.5) {
             // 6.5 inch device screen or bigger - In this case rotation is allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
-            // Resizes the webView upon screen rotation
-//            mOrientationListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
-//                @Override
-//                public void onOrientationChanged(int orientation) {
-//                    // Inject the JavaScript command to resize into webView
-//                    webView.loadUrl("javascript:GuiElements.updateDims()");
-//                    Log.d("UpdateDims", "Calling updateDims()");
-//                }
-//            };
-//            mOrientationListener.enable();
             // Inject the JavaScript command to resize into webView
-            webView.loadUrl("javascript:GuiElements.updateDimsPreview(" + metrics.widthPixels + ", " + metrics.heightPixels + ")");
+            runJavascript("GuiElements.updateDimsPreview(" + metrics.widthPixels + ", " + metrics.heightPixels + ")");
             Log.d("UpdateDims", "Calling updateDimsPreview(" + metrics.widthPixels + ", " + metrics.heightPixels + ")");
         } else {
             // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
@@ -434,8 +432,8 @@ public class MainWebView extends AppCompatActivity {
 
             // Download the layout from github
             try {
-                // downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
-                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
             } catch (NetworkOnMainThreadException | SecurityException e) {
                 Log.e("Download", "Error occurred while downloading file: " + e.getMessage());
                 return;
@@ -592,21 +590,9 @@ public class MainWebView extends AppCompatActivity {
         float xInches = metrics.widthPixels / metrics.xdpi;
         // Calculate diagonal length of screen in inches
         double diagonalInches = Math.sqrt(xInches * xInches + yInches * yInches);
-
         if (diagonalInches >= 6.5) {
             // 6.5 inch device screen or bigger - In this case rotation is allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
-            // Resizes the webView upon screen rotation
-//            mOrientationListener = new OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
-//                @Override
-//                public void onOrientationChanged(int orientation) {
-//                    // Inject the JavaScript command to resize into webView
-//                    webView.loadUrl("javascript:GuiElements.updateDims()");
-//                    Log.d("UpdateDims", "Calling updateDims()");
-//                }
-//            };
-//            mOrientationListener.enable();
-            ;
         } else {
             // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -673,7 +659,7 @@ public class MainWebView extends AppCompatActivity {
             sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
             // We are sharing xml files, so we give it a valid MIME type
             // TODO: Change to bbx
-            sendIntent.setType("text/xml");
+            sendIntent.setType("application/zip");
             // Validate that the device can open the File
             if (sendIntent.resolveActivity(MainWebView.this.getPackageManager()) != null) {
                 startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.share_with)));
@@ -681,7 +667,6 @@ public class MainWebView extends AppCompatActivity {
         } catch (Exception e) {
             Log.e("FileProvider", e.getMessage());
         }
-
     }
 
     private void exitApp() {
@@ -706,7 +691,7 @@ public class MainWebView extends AppCompatActivity {
      *
      * @param port Port number of the required port
      * @return Returns true if given is available (not in use), and false otherwise.
-     * @throws RuntimeException
+     * // @throws RuntimeException
      */
     private static boolean port_available(int port) {
         System.out.println("--------------Testing port " + port);
@@ -725,11 +710,50 @@ public class MainWebView extends AppCompatActivity {
                 try {
                     s.close();
                 } catch (IOException e) {
-                    throw new RuntimeException("You should handle this error.", e);
+                    // throw new RuntimeException("You should handle this error.", e);
                 }
             }
         }
     }
 
+
+    /**
+     * Runs the given javascript within the main webview.
+     *
+     * @param script The required js, with all user inputs PERCENT-ENCODED using bbxEncode.
+     */
+    public static void runJavascript(final String script) {
+        Handler mainHandler = new Handler(mainWebViewContext.getMainLooper());
+        Runnable myRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (webView != null) {
+                    webView.evaluateJavascript(script, null);
+                    // webView.loadUrl("javascript:" + script);
+                    Log.d("RUNJS", script);
+                }
+            }
+        };
+        mainHandler.post(myRunnable);
+
+    }
+
+    /**
+     * Custom percent-encode a String, to fit BirdBlox requirements.
+     *
+     * @param s The String to be percent-encoded.
+     * @return The custom percent-encoded form of String s
+     */
+    public static String bbxEncode(String s) {
+        try {
+            s = URLEncoder.encode(s, "utf-8");
+            s = s.replace("+", "%20");
+            // s = URLEncoder.encode(s, "utf-8");
+            return s;
+        } catch (UnsupportedEncodingException e) {
+            Log.e("bbxEncode", " " + e.getMessage());
+        }
+        return "";
+    }
 
 }

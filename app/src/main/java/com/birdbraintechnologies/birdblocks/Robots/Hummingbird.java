@@ -67,10 +67,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     public void run() {
                         // TODO: Error if sending fails
                         sendToRobot();
-                        try {
-                            doneSending.signal();
-                        } catch (IllegalMonitorStateException e) {
-                        }
                     }
                 }, 0, SETALL_INTERVAL_IN_MILLIS);
             }
@@ -95,6 +91,10 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             }
             setSendingFalse();
             last_sent = currentTime;
+            try {
+                doneSending.signal();
+            } catch (IllegalMonitorStateException e) {
+            }
             return sent;
         } else {
             // Not currently sending, and oldState and newState are the same
@@ -108,6 +108,10 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 }
                 setSendingFalse();
                 last_sent = currentTime;
+                try {
+                    doneSending.signal();
+                } catch (IllegalMonitorStateException e) {
+                }
                 return sent;
             }
         }
