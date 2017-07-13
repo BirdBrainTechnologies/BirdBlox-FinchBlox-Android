@@ -250,9 +250,9 @@ public class MainWebView extends AppCompatActivity {
         if (mOrientationListener != null)
             mOrientationListener.enable();
         micPermissions = hasMicrophonePermissions();
-//        String curr = MainWebView.this.getSharedPreferences(CURRENT_PREFS_KEY, Context.MODE_PRIVATE)
+//        String curr = MainWebView.this.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE)
 //                .getString(CURRENT_PREFS_KEY, null);
-//        boolean named = MainWebView.this.getSharedPreferences(NAMED_PREFS_KEY, Context.MODE_PRIVATE)
+//        boolean named = MainWebView.this.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE)
 //                .getBoolean(NAMED_PREFS_KEY, false);
 //        if (curr != null) {
 //            webView.loadUrl("CallbackManager.data.open('" + name + "', \"" + curr + "\", " + named + ");");

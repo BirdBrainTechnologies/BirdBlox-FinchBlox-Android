@@ -39,18 +39,17 @@ public class FileManagementHandler implements RequestHandler {
     private static final String FILE_NOT_FOUND_RESPONSE = "File Not Found";
     public static File SecretFileDirectory;
 
-    private SharedPreferences prefsCurrent;
+    private SharedPreferences filesPrefs;
+    public static final String FILES_PREFS_KEY = "com.birdbraintechnologies.birdblocks.FILE_MANAGEMENT";
     public static final String CURRENT_PREFS_KEY = "com.birdbraintechnologies.birdblocks.CURRENT_PROJECT";
-    private SharedPreferences prefsNamed;
     public static final String NAMED_PREFS_KEY = "com.birdbraintechnologies.birdblocks.IS_FILE_NAMED";
 
     private HttpService service;
 
     public FileManagementHandler(HttpService service) {
         this.service = service;
-        prefsCurrent = service.getSharedPreferences(CURRENT_PREFS_KEY, Context.MODE_PRIVATE);
-        prefsNamed = service.getSharedPreferences(NAMED_PREFS_KEY, Context.MODE_PRIVATE);
-        prefsNamed.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
+        filesPrefs = service.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
+        filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
     }
 
     @Override
@@ -104,11 +103,11 @@ public class FileManagementHandler implements RequestHandler {
         try {
             String encodedXML = bbxEncode(FileUtils.readFileToString(program, "utf-8"));
             String encodedName = bbxEncode(name);
-            boolean isNamed = prefsNamed.getBoolean(NAMED_PREFS_KEY, false);
+            boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
             if (encodedXML != null) {
                 runJavascript("CallbackManager.data.open('" + encodedName + "', \"" + encodedXML + "\", " + isNamed + ");");
-                prefsCurrent.edit().putString(CURRENT_PREFS_KEY, name).apply();
-                prefsNamed.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
+                filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
+                filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, name + " successfully opened.");
             }
@@ -135,10 +134,10 @@ public class FileManagementHandler implements RequestHandler {
         } else if (!oldName.equals(newName) && projectExists(newName)) {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.CONFLICT, MIME_PLAINTEXT, "Project called " + newName + " already exists");
-        } else if (oldName.equals(prefsCurrent.getString(CURRENT_PREFS_KEY, ""))) {
-            boolean isNamed = prefsNamed.getBoolean(NAMED_PREFS_KEY, false);
+        } else if (oldName.equals(filesPrefs.getString(CURRENT_PREFS_KEY, ""))) {
+            boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
             runJavascript("CallbackManager.data.setName('" + bbxEncode(newName) + "', " + isNamed + ");");
-            prefsNamed.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
+            filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
         }
         try {
             File file = new File(getBirdblocksDir(), oldName);
@@ -160,7 +159,7 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response.
      */
     private NanoHTTPD.Response closeProject() {
-        prefsCurrent.edit().putString(CURRENT_PREFS_KEY, null).apply();
+        filesPrefs.edit().putString(CURRENT_PREFS_KEY, null).apply();
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Current project closed successfully");
     }
@@ -180,11 +179,11 @@ public class FileManagementHandler implements RequestHandler {
         } else if (!projectExists(name)) {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " was not found!");
-        } else if (prefsCurrent.getString(CURRENT_PREFS_KEY, "").equals(name)) {
-            // TODO: callback here
+        } else if (filesPrefs.getString(CURRENT_PREFS_KEY, "").equals(name)) {
+            runJavascript("CallbackManager.data.close();");
         }
         try {
-            // TODO: Actually delete here.
+            deleteRecursive(new File(getBirdblocksDir(), name));
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, name + " successfully deleted.");
         } catch (SecurityException e) {
@@ -262,7 +261,7 @@ public class FileManagementHandler implements RequestHandler {
                     NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Please send a POST request.");
         }
         Map<String, String> postFiles = new HashMap<>();
-        String name = prefsCurrent.getString(CURRENT_PREFS_KEY, null);
+        String name = filesPrefs.getString(CURRENT_PREFS_KEY, null);
         if (name != null) {
             // actually save project here
             File newFile = new File(getBirdblocksDir(), name + "/program.xml");
@@ -311,10 +310,10 @@ public class FileManagementHandler implements RequestHandler {
                 // Parse POST body to get parameters
                 session.parseBody(postFiles);
                 FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8");
-                prefsCurrent.edit().putString(CURRENT_PREFS_KEY, name).apply();
-                boolean isNamed = prefsNamed.getBoolean(NAMED_PREFS_KEY, false);
+                filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
+                boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
                 runJavascript("CallbackManager.data.setName('" + bbxEncode(name) + "', " + isNamed + ");");
-                prefsNamed.edit().putBoolean(NAMED_PREFS_KEY, false).apply();
+                filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, false).apply();
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully created new project: " + name);
             } catch (IOException e) {
@@ -488,6 +487,21 @@ public class FileManagementHandler implements RequestHandler {
 
 
     /**
+     * Recursive function to delete a file / directory and all of its contents.
+     *
+     * SOURCE: https://stackoverflow.com/questions/4943629/how-to-delete-a-whole-folder-and-content
+     *
+     * @param fileOrDirectory The file or directory to be deleted.
+     */
+    private void deleteRecursive(File fileOrDirectory) {
+        if (fileOrDirectory.isDirectory())
+            for (File child : fileOrDirectory.listFiles())
+                deleteRecursive(child);
+        fileOrDirectory.delete();
+    }
+
+
+    /**
      * Gets the BirdBlocks save directory
      *
      * @return File object for the save directory
@@ -495,7 +509,6 @@ public class FileManagementHandler implements RequestHandler {
     public static File getBirdblocksDir() {
         //File file = new File(Environment.getExternalStoragePublicDirectory(
         //        Environment.DIRECTORY_DOCUMENTS), BIRDBLOCKS_SAVE_DIR);
-
         File file = new File(SecretFileDirectory, BIRDBLOCKS_SAVE_DIR);
         if (!file.exists()) {
             try {
