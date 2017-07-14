@@ -1,5 +1,7 @@
 package com.birdbraintechnologies.birdblocks.Robots;
 
+import android.util.Log;
+
 import com.birdbraintechnologies.birdblocks.Robots.RobotStates.HBState;
 import com.birdbraintechnologies.birdblocks.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
@@ -37,7 +39,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private static final byte PING_CMD = 'z';
     private static final String RENAME_CMD = "AT+GAPDEVNAME";
 
-    private static final int SETALL_INTERVAL_IN_MILLIS = 1000;
+    private static final int SETALL_INTERVAL_IN_MILLIS = 32;
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 4000;
 
@@ -67,6 +69,15 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     public void run() {
                         // TODO: Error if sending fails
                         sendToRobot();
+                        try {
+                            lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
+                            doneSending.signal();
+                        } catch (InterruptedException | IllegalMonitorStateException e) {
+                            Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
+                        } finally {
+                            if (lock.isHeldByCurrentThread())
+                                lock.unlock();
+                        }
                     }
                 }, 0, SETALL_INTERVAL_IN_MILLIS);
             }
@@ -91,10 +102,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             }
             setSendingFalse();
             last_sent = currentTime;
-            try {
-                doneSending.signal();
-            } catch (IllegalMonitorStateException e) {
-            }
             return sent;
         } else {
             // Not currently sending, and oldState and newState are the same
@@ -108,10 +115,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 }
                 setSendingFalse();
                 last_sent = currentTime;
-                try {
-                    doneSending.signal();
-                } catch (IllegalMonitorStateException e) {
-                }
                 return sent;
             }
         }
@@ -193,7 +196,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         conn.writeBytes(new byte[]{READ_ALL_CMD, '6'});
     }
 
-    public boolean setRbSOOutput(RobotStateObject oldobj, RobotStateObject newobj, int... values) {
+    private boolean setRbSOOutput(RobotStateObject oldobj, RobotStateObject newobj, int... values) {
         try {
             lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
             while (!newobj.equals(oldobj)) {
