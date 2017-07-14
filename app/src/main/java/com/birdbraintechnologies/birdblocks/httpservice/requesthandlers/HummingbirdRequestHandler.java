@@ -180,10 +180,9 @@ public class HummingbirdRequestHandler implements RequestHandler {
         // TODO: Handle errors when connecting to device
         try {
             UARTConnection conn = btHelper.connectToDeviceUART(deviceId, this.hbUARTSettings);
-            if (conn != null) {
+            if (conn != null && connectedDevices != null && conn.isConnected()) {
                 Hummingbird device = new Hummingbird(conn);
-                if (connectedDevices != null)
-                    connectedDevices.put(deviceId, device);
+                connectedDevices.put(deviceId, device);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(deviceId) + "', true);");
             }
         } catch (Exception e) {
@@ -210,7 +209,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
      */
     private synchronized String disconnectFromDevice(String deviceId) {
         Hummingbird device = getDeviceFromId(deviceId);
-        if (device != null) {
+        if (device != null && device.isConnected()) {
             Log.d(TAG, "Disconnecting from device: " + deviceId);
             device.disconnect();
             Log.d("TotStat", "Removing device: " + deviceId);

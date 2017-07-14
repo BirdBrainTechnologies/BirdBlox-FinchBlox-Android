@@ -140,6 +140,7 @@ public class FileManagementHandler implements RequestHandler {
             boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
             runJavascript("CallbackManager.data.setName('" + bbxEncode(newName) + "', " + isNamed + ");");
             filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
+            filesPrefs.edit().putString(CURRENT_PREFS_KEY, newName).apply();
         }
         try {
             File file = new File(getBirdblocksDir(), oldName);
@@ -314,7 +315,7 @@ public class FileManagementHandler implements RequestHandler {
                 FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8");
                 filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
                 // boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
-                runJavascript("CallbackManager.data.setName('test', false);");
+                runJavascript("CallbackManager.data.setName('" + bbxEncode(name) + "', false);");
                 filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully created new project: " + name);

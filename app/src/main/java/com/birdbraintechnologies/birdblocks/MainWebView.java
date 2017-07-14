@@ -70,8 +70,8 @@ public class MainWebView extends AppCompatActivity {
     private String TAG = this.getClass().getName();
 
     /*OLDER LOCATIONS FOR LOADING THE LAYOUT ARE IN THE TWO LINES BELOW*/
-    // public static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
-    // public static final String PAGE_URL = "http://rawgit.com/TomWildenhain/HummingbirdDragAndDrop-/dev/HummingbirdDragAndDrop.html";
+    // private static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
+    // private static final String PAGE_URL = "http://rawgit.com/TomWildenhain/HummingbirdDragAndDrop-/dev/HummingbirdDragAndDrop.html";
 
     // public static boolean locationPermission;
     public static final int MY_PERMISSIONS_ACCESS_FINE_LOCATION = 1;
@@ -307,7 +307,6 @@ public class MainWebView extends AppCompatActivity {
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
             // Inject the JavaScript command to resize into webView
             runJavascript("GuiElements.updateDimsPreview(" + metrics.widthPixels + ", " + metrics.heightPixels + ")");
-            Log.d("UpdateDims", "Calling updateDimsPreview(" + metrics.widthPixels + ", " + metrics.heightPixels + ")");
         } else {
             // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -419,13 +418,12 @@ public class MainWebView extends AppCompatActivity {
 
             // Download the layout from github
             try {
-//                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
-                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
             } catch (NetworkOnMainThreadException | SecurityException e) {
                 Log.e("Download", "Error occurred while downloading file: " + e.getMessage());
                 return;
             }
-
             // Unzip the downloaded file
             try {
                 unzip(f, f2);
@@ -644,7 +642,7 @@ public class MainWebView extends AppCompatActivity {
             // generate URI, with authority defined as the application ID in the Manifest, the last param is file I want to open
             Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID, new File((String) b.get("file_path")));
             sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
-            // We are sharing xml files, so we give it a valid MIME type
+            // We are sharing zip files, so we give it a valid MIME type
             // TODO: Change to bbx
             sendIntent.setType("application/zip");
             // Validate that the device can open the File

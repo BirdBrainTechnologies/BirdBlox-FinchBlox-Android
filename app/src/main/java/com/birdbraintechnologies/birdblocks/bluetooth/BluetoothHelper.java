@@ -23,7 +23,7 @@ import java.util.List;
  */
 public class BluetoothHelper {
     private static final String TAG = "BluetoothHelper";
-    private static final int SCAN_DURATION = 1100;  /* Length of time to perform a scan, in milliseconds */
+    private static final int SCAN_DURATION = 5000;  /* Length of time to perform a scan, in milliseconds */
     public static boolean currentlyScanning;
     private BluetoothAdapter btAdapter;
     private Handler handler;
