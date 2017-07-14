@@ -110,6 +110,9 @@ public class FlutterRequestHandler implements RequestHandler {
      */
     private synchronized String listDevices() {
         // List<BluetoothDevice> deviceList = btHelper.scanDevices(generateDeviceFilter());
+//        if (!BluetoothHelper.currentlyScanning) {
+//            btHelper.scanDevices(generateDeviceFilter());
+//        }
         if (!BluetoothHelper.currentlyScanning) {
             new Thread() {
                 @Override

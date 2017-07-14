@@ -2,6 +2,7 @@ package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.ScanFilter;
+import android.os.Handler;
 import android.os.ParcelUuid;
 import android.util.Log;
 
@@ -25,6 +26,7 @@ import java.util.UUID;
 import fi.iki.elonen.NanoHTTPD;
 
 import static com.birdbraintechnologies.birdblocks.MainWebView.bbxEncode;
+import static com.birdbraintechnologies.birdblocks.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper.currentlyScanning;
 
@@ -119,13 +121,13 @@ public class HummingbirdRequestHandler implements RequestHandler {
      */
     private synchronized String listDevices() {
         // List<BluetoothDevice> deviceList = btHelper.scanDevices(generateDeviceFilter());
-        if (!currentlyScanning) {
-            new Thread() {
+        if (!BluetoothHelper.currentlyScanning) {
+            new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
                 @Override
                 public void run() {
                     btHelper.scanDevices(generateDeviceFilter());
                 }
-            }.start();
+            });
         }
         // btHelper.scanDevices(generateDeviceFilter());
         List<BluetoothDevice> deviceList = (new ArrayList<>(btHelper.deviceList.values()));
@@ -257,7 +259,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
      *
      */
     private synchronized String stopDiscover() {
-        if (btHelper != null)
+        if (btHelper != null) ;
             btHelper.stopScan();
         return "Bluetooth discovery stopped.";
     }

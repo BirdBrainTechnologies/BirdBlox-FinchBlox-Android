@@ -67,7 +67,7 @@ public class PropertiesHandler implements RequestHandler {
     private String getDeviceOSVersion() {
         // Get device manufacturer
         String res;
-        Log.e("OS", Build.MANUFACTURER + " " + Build.MODEL);
+        Log.d("OS", Build.MANUFACTURER + " " + Build.MODEL);
         if (Build.MANUFACTURER.equals("Amazon")) {
             res = "Kindle (";
         } else {

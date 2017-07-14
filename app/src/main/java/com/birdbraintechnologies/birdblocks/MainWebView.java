@@ -23,7 +23,6 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.OrientationEventListener;
 import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -35,6 +34,8 @@ import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
 import com.dropbox.core.android.Auth;
+
+import org.apache.commons.io.FileUtils;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -55,6 +56,10 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.DB_PREFS_KEY;
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.CURRENT_PREFS_KEY;
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.FILES_PREFS_KEY;
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.NAMED_PREFS_KEY;
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.getBirdblocksDir;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler.metrics;
 
 
@@ -67,6 +72,8 @@ import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.P
 
 
 public class MainWebView extends AppCompatActivity {
+
+    private String TAG = this.getClass().getName();
 
     /*OLDER LOCATIONS FOR LOADING THE LAYOUT ARE IN THE TWO LINES BELOW*/
     // public static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
@@ -93,8 +100,7 @@ public class MainWebView extends AppCompatActivity {
     public static Context mainWebViewContext;
 
     LocalBroadcastManager bManager;
-    public static WebView webView;
-    private OrientationEventListener mOrientationListener;
+    private static WebView webView;
     private String importedFileName;
     private String encodedFileName;
     private long back_pressed;
@@ -219,11 +225,24 @@ public class MainWebView extends AppCompatActivity {
         intentFilter.addAction(LOCATION_PERMISSION);
         bManager.registerReceiver(bReceiver, intentFilter);
 
+        SharedPreferences filesPrefs = MainWebView.this.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
+        String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+        boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
+        if (currProj != null) {
+            try {
+                File file = new File(getBirdblocksDir(), currProj + "/program.xml");
+                if (file.exists())
+                    runJavascript("CallbackManager.data.open('" + currProj + "', \"" + FileUtils.readFileToString(file, "utf-8") + "\", " + isNamed + ");");
+            } catch (SecurityException | IOException e) {
+                Log.e(TAG, "Error while opening file: " + e.getMessage());
+            }
+        }
+
         if (encodedFileName != null) {
             // Inject the JavaScript command to open the imported file into the webView
             Log.d("MainWebView", "Final File Name: " + importedFileName);
             Log.d("MainWebView", "Encoded File Name: " + encodedFileName);
-            webView.loadUrl("javascript:SaveManager.import(\"" + encodedFileName + "\")");
+            runJavascript("SaveManager.import(\"" + encodedFileName + "\")");
         }
 
     }
@@ -247,16 +266,7 @@ public class MainWebView extends AppCompatActivity {
         super.onResume();
         webView.onResume();
         webView.resumeTimers();
-        if (mOrientationListener != null)
-            mOrientationListener.enable();
         micPermissions = hasMicrophonePermissions();
-//        String curr = MainWebView.this.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE)
-//                .getString(CURRENT_PREFS_KEY, null);
-//        boolean named = MainWebView.this.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE)
-//                .getBoolean(NAMED_PREFS_KEY, false);
-//        if (curr != null) {
-//            webView.loadUrl("CallbackManager.data.open('" + name + "', \"" + curr + "\", " + named + ");");
-//        }
         if (DropboxRequestHandler.DB_ACCESS_TOKEN == null) {
             DropboxRequestHandler.DB_ACCESS_TOKEN = Auth.getOAuth2Token();
             if (DropboxRequestHandler.DB_ACCESS_TOKEN != null) {
@@ -273,8 +283,6 @@ public class MainWebView extends AppCompatActivity {
         super.onPause();
         webView.pauseTimers();
         webView.onPause();
-        if (mOrientationListener != null)
-            mOrientationListener.disable();
     }
 
     @Override
@@ -282,8 +290,6 @@ public class MainWebView extends AppCompatActivity {
         super.onDestroy();
         bManager.unregisterReceiver(bReceiver);
         webView.destroy();
-        if (mOrientationListener != null)
-            mOrientationListener.disable();
         stopService(new Intent(this, HttpService.class));
         stopService(new Intent(this, BluetoothHelper.class));
     }

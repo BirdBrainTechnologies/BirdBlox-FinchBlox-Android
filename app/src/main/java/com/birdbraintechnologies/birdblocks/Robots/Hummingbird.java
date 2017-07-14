@@ -42,6 +42,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private static final int SETALL_INTERVAL_IN_MILLIS = 32;
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 4000;
+    private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
 
     private long last_sent;
 
@@ -79,7 +80,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                                 lock.unlock();
                         }
                     }
-                }, 0, SETALL_INTERVAL_IN_MILLIS);
+                }, START_SENDING_INTERVAL_IN_MILLIS, SETALL_INTERVAL_IN_MILLIS);
             }
         }.start();
     }
@@ -372,10 +373,12 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
      * Disconnects the device
      */
     public void disconnect() {
-        conn.removeRxDataListener(this);
-        stopPollingSensors();
-        conn.writeBytes(new byte[]{TERMINATE_CMD});
-        conn.disconnect();
+        if (conn != null) {
+            conn.removeRxDataListener(this);
+            stopPollingSensors();
+            conn.writeBytes(new byte[]{TERMINATE_CMD});
+            conn.disconnect();
+        }
     }
 
     @Override

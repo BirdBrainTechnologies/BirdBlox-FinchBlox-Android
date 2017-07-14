@@ -23,27 +23,19 @@ import java.util.List;
  */
 public class BluetoothHelper {
     private static final String TAG = "BluetoothHelper";
-    private static final int SCAN_DURATION = 3000;  /* Length of time to perform a scan */
-    public static boolean currentlyScanning = false;
+    private static final int SCAN_DURATION = 1100;  /* Length of time to perform a scan, in milliseconds */
+    public static boolean currentlyScanning;
     private BluetoothAdapter btAdapter;
     private Handler handler;
     private boolean btScanning;
     private Context context;
-    public static HashMap<String, BluetoothDevice> deviceList = new HashMap<>();
+    public static HashMap<String, BluetoothDevice> deviceList;
     private BluetoothLeScanner scanner;
 
     /* Callback for populating the device list */
     private ScanCallback populateDevices = new ScanCallback() {
         @Override
-        public void onScanFailed(int errorCode) {
-            super.onScanFailed(errorCode);
-            currentlyScanning = false;
-
-        }
-
-        @Override
         public void onScanResult(int callbackType, ScanResult result) {
-            currentlyScanning = false;
             synchronized (deviceList) {
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
             }
@@ -59,7 +51,7 @@ public class BluetoothHelper {
         this.context = context;
         this.btScanning = false;
         this.handler = new Handler();
-        // this.deviceList = new HashMap<>();
+        this.deviceList = new HashMap<>();
 
         // Acquire Bluetooth service
         final BluetoothManager btManager =
@@ -81,9 +73,12 @@ public class BluetoothHelper {
      * //@return List of devices that matches the filters
      */
     //synchronized public List<BluetoothDevice> scanDevices(List<ScanFilter> scanFilters) {
-    synchronized public void scanDevices(final List<ScanFilter> scanFilters) {
-        if (currentlyScanning) return;
+    synchronized public void scanDevices(List<ScanFilter> scanFilters) {
         Log.d("BLEScan", "About to start scan");
+        if (currentlyScanning) {
+            Log.d("BLEScan", "Scan already running.");
+            return;
+        }
         if (scanner == null) {
             // Start scanning for devices
             scanner = btAdapter.getBluetoothLeScanner();
@@ -92,8 +87,11 @@ public class BluetoothHelper {
                 @Override
                 public void run() {
                     btScanning = false;
-                    scanner.stopScan(populateDevices);
-                    scanner = null;
+                    if (scanner != null) {
+                        scanner.stopScan(populateDevices);
+                        Log.d("BLEScan", "Stopped scan.");
+                        scanner = null;
+                    }
                     currentlyScanning = false;
                 }
             }, SCAN_DURATION);
@@ -104,6 +102,8 @@ public class BluetoothHelper {
                     .build();
             currentlyScanning = true;
             scanner.startScan(scanFilters, scanSettings, populateDevices);
+        } else {
+            currentlyScanning = true;
         }
         //synchronized (deviceList) {
         //    return new ArrayList<>(deviceList.values());
@@ -149,10 +149,14 @@ public class BluetoothHelper {
     }
 
     public void stopScan() {
-        if (scanner != null)
+        if (scanner != null) {
             scanner.stopScan(populateDevices);
-        if (deviceList != null)
+            scanner = null;
+            Log.d("BLEScan", "Stopped scan.");
+        }
+        if (deviceList != null) {
             deviceList.clear();
+        }
         currentlyScanning = false;
     }
 
