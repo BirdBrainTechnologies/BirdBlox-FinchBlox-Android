@@ -28,6 +28,10 @@ import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.CURRENT_PREFS_KEY;
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.filesPrefs;
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.getBirdblocksDir;
+
 /**
  * Handler for handling recording and playback of (recorded) sounds,
  * as well as managing these recorded sound files.
@@ -75,7 +79,8 @@ public class RecordingHandler implements RequestHandler {
             }
         }
         // create directory for final recordings
-        recordedFilesDir = FileManagementHandler.SecretFileDirectory.getAbsolutePath() + "/Recordings";
+
+        recordedFilesDir = getBirdblocksDir() + "/" + filesPrefs.getString(CURRENT_PREFS_KEY, "") + "/recordings";
         recordDir = new File(recordedFilesDir);
         if (!recordDir.exists()) {
             try {
@@ -355,7 +360,7 @@ public class RecordingHandler implements RequestHandler {
     /**
      * Lists the recorded sounds on the device
      *
-     * @return List of recorded sounds stored on the device separated by \n, on success
+     * @return List of recorded sounds stored in the current project separated by \n, on success
      * Returns empty string otherwise
      */
     public String listRecordings() {
@@ -399,7 +404,7 @@ public class RecordingHandler implements RequestHandler {
 
     /**
      * Method to merge media files together.
-     *
+     * <p>
      * SOURCE: https://stackoverflow.com/questions/16435945/how-can-i-pause-voice-recording-in-android
      * Modified slightly to suit our needs.
      *

@@ -35,8 +35,6 @@ import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxR
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
 import com.dropbox.core.android.Auth;
 
-import org.apache.commons.io.FileUtils;
-
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -56,10 +54,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.DB_PREFS_KEY;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.CURRENT_PREFS_KEY;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.FILES_PREFS_KEY;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.NAMED_PREFS_KEY;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.getBirdblocksDir;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler.metrics;
 
 
@@ -224,19 +218,6 @@ public class MainWebView extends AppCompatActivity {
         intentFilter.addAction(EXIT);
         intentFilter.addAction(LOCATION_PERMISSION);
         bManager.registerReceiver(bReceiver, intentFilter);
-
-        SharedPreferences filesPrefs = MainWebView.this.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
-        String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
-        boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
-        if (currProj != null) {
-            try {
-                File file = new File(getBirdblocksDir(), currProj + "/program.xml");
-                if (file.exists())
-                    runJavascript("CallbackManager.data.open('" + currProj + "', \"" + FileUtils.readFileToString(file, "utf-8") + "\", " + isNamed + ");");
-            } catch (SecurityException | IOException e) {
-                Log.e(TAG, "Error while opening file: " + e.getMessage());
-            }
-        }
 
         if (encodedFileName != null) {
             // Inject the JavaScript command to open the imported file into the webView
@@ -438,8 +419,8 @@ public class MainWebView extends AppCompatActivity {
 
             // Download the layout from github
             try {
-                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
-//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
+//                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
             } catch (NetworkOnMainThreadException | SecurityException e) {
                 Log.e("Download", "Error occurred while downloading file: " + e.getMessage());
                 return;
@@ -735,7 +716,6 @@ public class MainWebView extends AppCompatActivity {
             public void run() {
                 if (webView != null) {
                     webView.evaluateJavascript(script, null);
-                    // webView.loadUrl("javascript:" + script);
                     Log.d("RUNJS", script);
                 }
             }

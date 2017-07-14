@@ -11,6 +11,7 @@ import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.Properti
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.RecordingHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SettingsHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SoundHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.UIRequestHandler;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,8 +54,7 @@ public class RequestRouter {
         addRoute("^/sound/(?!recording)(.*)$", new SoundHandler(service));
         addRoute("^/properties/(.*)$", new PropertiesHandler(service));
         addRoute("^/dropbox/(.*)$", new DropboxRequestHandler(service));
-        // TODO: Add UI commands
-        // addRoute("^/ui/(.*)$", new __Handler(service));
+        addRoute("^/ui/(.*)$", new UIRequestHandler(service));
     }
 
     /**

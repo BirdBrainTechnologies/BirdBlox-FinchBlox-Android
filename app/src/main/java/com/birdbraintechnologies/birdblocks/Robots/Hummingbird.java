@@ -40,7 +40,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private static final String RENAME_CMD = "AT+GAPDEVNAME";
 
     private static final int SETALL_INTERVAL_IN_MILLIS = 32;
-    private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
+    private static final int COMMAND_TIMEOUT_IN_MILLIS = 1000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 4000;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
 
@@ -68,10 +68,10 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 new Timer().scheduleAtFixedRate(new TimerTask() {
                     @Override
                     public void run() {
-                        // TODO: Error if sending fails
-                        sendToRobot();
                         try {
                             lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
+                            // TODO: Error if sending fails
+                            sendToRobot();
                             doneSending.signal();
                         } catch (InterruptedException | IllegalMonitorStateException e) {
                             Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
@@ -205,8 +205,10 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             }
             if (newobj.equals(oldobj)) {
                 newobj.setValue(values);
-                if (lock.isHeldByCurrentThread())
+                if (lock.isHeldByCurrentThread()) {
+                    doneSending.signal();
                     lock.unlock();
+                }
                 return true;
             }
         } catch (InterruptedException | IllegalMonitorStateException | IllegalStateException | IllegalThreadStateException e) {

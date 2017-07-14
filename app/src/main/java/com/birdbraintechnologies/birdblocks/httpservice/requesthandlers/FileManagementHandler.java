@@ -24,6 +24,7 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 
 import static com.birdbraintechnologies.birdblocks.MainWebView.bbxEncode;
+import static com.birdbraintechnologies.birdblocks.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
@@ -39,10 +40,11 @@ public class FileManagementHandler implements RequestHandler {
     private static final String FILE_NOT_FOUND_RESPONSE = "File Not Found";
     public static File SecretFileDirectory;
 
-    private SharedPreferences filesPrefs;
-    public static final String FILES_PREFS_KEY = "com.birdbraintechnologies.birdblocks.FILE_MANAGEMENT";
-    public static final String CURRENT_PREFS_KEY = "com.birdbraintechnologies.birdblocks.CURRENT_PROJECT";
-    public static final String NAMED_PREFS_KEY = "com.birdbraintechnologies.birdblocks.IS_FILE_NAMED";
+    private static final String FILES_PREFS_KEY = "com.birdbraintechnologies.birdblocks.FILE_MANAGEMENT";
+    static SharedPreferences filesPrefs = mainWebViewContext.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
+
+    static final String CURRENT_PREFS_KEY = "com.birdbraintechnologies.birdblocks.CURRENT_PROJECT";
+    static final String NAMED_PREFS_KEY = "com.birdbraintechnologies.birdblocks.IS_FILE_NAMED";
 
     private HttpService service;
 
@@ -311,9 +313,9 @@ public class FileManagementHandler implements RequestHandler {
                 session.parseBody(postFiles);
                 FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8");
                 filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
-                boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
-                runJavascript("CallbackManager.data.setName('" + bbxEncode(name) + "', " + isNamed + ");");
-                filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, false).apply();
+                // boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
+                runJavascript("CallbackManager.data.setName('test', false);");
+                filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully created new project: " + name);
             } catch (IOException e) {
