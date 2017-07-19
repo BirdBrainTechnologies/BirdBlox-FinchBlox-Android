@@ -174,7 +174,6 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 showDialog(title, question, placeholder, prefill, selectAll);
                 break;
             case "choice":
-                // showChoice(path[1], path[2], path[3], path[4]);
                 showChoice(m.get("title").get(0), m.get("question").get(0), m.get("button1").get(0), m.get("button2").get(0));
                 break;
             case "dialog_response":
@@ -186,6 +185,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             case "exit":
                 exitApp();
                 break;
+            case "availableSensors":
+                return NanoHTTPD.newFixedLengthResponse(
+                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "accelerometer\ngps\nmicrophone");
         }
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
