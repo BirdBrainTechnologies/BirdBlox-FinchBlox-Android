@@ -52,6 +52,8 @@ public class HummingbirdRequestHandler implements RequestHandler {
     private BluetoothHelper btHelper;
     private HashMap<String, Hummingbird> connectedDevices;
 
+    private Thread connectionThread;
+
     public HummingbirdRequestHandler(HttpService service) {
 
         this.service = service;
@@ -176,15 +178,24 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @param deviceId Device ID to connect to
      * @return No Response
      */
-    private synchronized String connectToDevice(String deviceId) {
+    private synchronized String connectToDevice(final String deviceId) {
         // TODO: Handle errors when connecting to device
+        final UARTSettings hbu = this.hbUARTSettings;
         try {
-            UARTConnection conn = btHelper.connectToDeviceUART(deviceId, this.hbUARTSettings);
-            if (conn != null && connectedDevices != null && conn.isConnected()) {
-                Hummingbird device = new Hummingbird(conn);
-                connectedDevices.put(deviceId, device);
-                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(deviceId) + "', true);");
-            }
+            connectionThread = new Thread() {
+                @Override
+                public synchronized void run() {
+                    Log.d("ConnectHB", "Reached first line");
+                    UARTConnection conn = btHelper.connectToDeviceUART(deviceId, hbu);
+                    Log.d("ConnectHB", "Reached second line");
+                    if (conn != null && connectedDevices != null && (conn.isConnected() || conn.isConnecting())) {
+                        Hummingbird device = new Hummingbird(conn);
+                        connectedDevices.put(deviceId, device);
+                        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(deviceId) + "', true);");
+                    }
+                }
+            };
+            connectionThread.start();
         } catch (Exception e) {
             Log.e("ConnectHB", " Error while connecting to HB " + e.getMessage());
         }
@@ -208,14 +219,22 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @return No Response
      */
     private synchronized String disconnectFromDevice(String deviceId) {
-        Hummingbird device = getDeviceFromId(deviceId);
-        if (device != null && device.isConnected()) {
-            Log.d(TAG, "Disconnecting from device: " + deviceId);
-            device.disconnect();
-            Log.d("TotStat", "Removing device: " + deviceId);
-            connectedDevices.remove(deviceId);
-            runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(deviceId) + "', false);");
+        try {
+            if (connectionThread != null) {
+                connectionThread.interrupt();
+            }
+            Hummingbird device = getDeviceFromId(deviceId);
+            if (device != null) {
+                Log.d(TAG, "Disconnecting from device: " + deviceId);
+                if (device.isConnected())
+                    device.disconnect();
+                Log.d("TotStat", "Removing device: " + deviceId);
+                connectedDevices.remove(deviceId);
+            }
+        } catch (Exception e) {
+            Log.e("ConnectHB", " Error while disconnecting from HB " + e.getMessage());
         }
+        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(deviceId) + "', false);");
         Log.d("TotStat", "Connected Hummingbirds: " + connectedDevices.toString());
         return "Hummingbird disconnected successfully.";
     }
@@ -259,7 +278,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
      */
     private synchronized String stopDiscover() {
         if (btHelper != null) ;
-            btHelper.stopScan();
+        btHelper.stopScan();
         return "Bluetooth discovery stopped.";
     }
 }

@@ -12,9 +12,8 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
-
-import static com.birdbraintechnologies.birdblocks.httpservice.HttpService.doneSending;
-import static com.birdbraintechnologies.birdblocks.httpservice.HttpService.lock;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Represents a Hummingbird device and all of its functionality: Setting outputs, reading sensors
@@ -40,7 +39,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private static final String RENAME_CMD = "AT+GAPDEVNAME";
 
     private static final int SETALL_INTERVAL_IN_MILLIS = 32;
-    private static final int COMMAND_TIMEOUT_IN_MILLIS = 1000;
+    private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 4000;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
 
@@ -49,6 +48,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private UARTConnection conn;
     private byte[] rawSensorValues;
     private Object rawSensorValuesLock = new Object();
+
+    private final ReentrantLock lock;
+    private final Condition doneSending;
 
     /**
      * Initializes a Hummingbird device
@@ -62,6 +64,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         newState = new HBState();
 
         last_sent = System.currentTimeMillis();
+
+        lock = new ReentrantLock();
+        doneSending = lock.newCondition();
 
         new Thread() {
             public void run() {

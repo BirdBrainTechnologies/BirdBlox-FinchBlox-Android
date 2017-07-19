@@ -8,8 +8,6 @@ import android.util.Log;
 import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
 
 import java.io.IOException;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -23,9 +21,6 @@ public class HttpService extends Service {
     public static final int DEFAULT_PORT = 22179;
     private Server server;
     private BluetoothHelper btService;
-
-    public static final ReentrantLock lock = new ReentrantLock();
-    public static final Condition doneSending = lock.newCondition();
 
     // To allow external requests (for debugging purposes),
     // just make the String below null.

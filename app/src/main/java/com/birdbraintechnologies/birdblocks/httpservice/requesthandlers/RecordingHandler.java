@@ -28,6 +28,7 @@ import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static com.birdbraintechnologies.birdblocks.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.CURRENT_PREFS_KEY;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.filesPrefs;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.getBirdblocksDir;
@@ -64,12 +65,14 @@ public class RecordingHandler implements RequestHandler {
     private static String currState = "Stopped";
     HttpService service;
 
+    private String currProj;
+
     public RecordingHandler(HttpService service) {
         this.service = service;
         mediaRecorder = new MediaRecorder();
 
         // create directory for temp recording chunks
-        tempRecordedFilesDir = FileManagementHandler.SecretFileDirectory.getAbsolutePath() + "/RecordingChunks";
+        tempRecordedFilesDir = mainWebViewContext.getFilesDir().getAbsolutePath() + "/RecordingChunks";
         tempRecordDir = new File(tempRecordedFilesDir);
         if (!tempRecordDir.exists()) {
             try {
@@ -78,15 +81,19 @@ public class RecordingHandler implements RequestHandler {
                 Log.e("RecordingHandler", "Recordings' Directory: " + e.getMessage());
             }
         }
-        // create directory for final recordings
 
-        recordedFilesDir = getBirdblocksDir() + "/" + filesPrefs.getString(CURRENT_PREFS_KEY, "") + "/recordings";
-        recordDir = new File(recordedFilesDir);
-        if (!recordDir.exists()) {
-            try {
-                recordDir.mkdirs();
-            } catch (SecurityException e) {
-                Log.e("RecordingHandler", "Recordings' Directory: " + e.getMessage());
+        // create directory for final recordings
+        // create directory for final recordings
+        currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+        if (currProj != null) {
+            recordedFilesDir = getBirdblocksDir() + "/" + currProj + "/recordings";
+            recordDir = new File(recordedFilesDir);
+            if (!recordDir.exists()) {
+                try {
+                    recordDir.mkdirs();
+                } catch (SecurityException e) {
+                    Log.e("RecordingHandler", "Recordings' Directory: " + e.getMessage());
+                }
             }
         }
     }
@@ -96,7 +103,7 @@ public class RecordingHandler implements RequestHandler {
             mediaRecorder = new MediaRecorder();
 
         // create directory for temp recording chunks
-        tempRecordedFilesDir = FileManagementHandler.SecretFileDirectory.getAbsolutePath() + "/RecordingChunks";
+        tempRecordedFilesDir = mainWebViewContext.getFilesDir().getAbsolutePath() + "/RecordingChunks";
         tempRecordDir = new File(tempRecordedFilesDir);
         if (!tempRecordDir.exists()) {
             try {
@@ -105,14 +112,18 @@ public class RecordingHandler implements RequestHandler {
                 Log.e("RecordingHandler", "Recordings' Directory: " + e.getMessage());
             }
         }
+
         // create directory for final recordings
-        recordedFilesDir = FileManagementHandler.SecretFileDirectory.getAbsolutePath() + "/Recordings";
-        recordDir = new File(recordedFilesDir);
-        if (!recordDir.exists()) {
-            try {
-                recordDir.mkdirs();
-            } catch (SecurityException e) {
-                Log.e("RecordingHandler", "Recordings' Directory: " + e.getMessage());
+        currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+        if (currProj != null) {
+            recordedFilesDir = getBirdblocksDir() + "/" + currProj + "/recordings";
+            recordDir = new File(recordedFilesDir);
+            if (!recordDir.exists()) {
+                try {
+                    recordDir.mkdirs();
+                } catch (SecurityException e) {
+                    Log.e("RecordingHandler", "Recordings' Directory: " + e.getMessage());
+                }
             }
         }
     }
@@ -213,7 +224,7 @@ public class RecordingHandler implements RequestHandler {
      * @return Returns the String "Paused" if success.
      * Returns null in case of error.
      */
-    public String pauseRecording() {
+    String pauseRecording() {
         try {
             if (currState.equals("Recording") && mediaRecorder != null) {
                 mediaRecorder.stop();
@@ -234,7 +245,7 @@ public class RecordingHandler implements RequestHandler {
      * @return Returns the String "Resumed" if success.
      * Returns null in case of error.
      */
-    public String resumeRecording() {
+    String resumeRecording() {
         if (currState.equals("Paused"))
             currState = "Recording";
         return startRecording() == null ? null : "Resumed";
@@ -246,7 +257,7 @@ public class RecordingHandler implements RequestHandler {
      * @return Returns the String "Stopped" if success.
      * Returns null in case of error.
      */
-    private String stopRecording() {
+    public String stopRecording() {
         try {
             if (currState.equals("Recording") && mediaRecorder != null) {
                 mediaRecorder.stop();
@@ -303,13 +314,15 @@ public class RecordingHandler implements RequestHandler {
      * @param filename Filename of the recording to be played.
      * @return "Playing" if successful, "Error" otherwise.
      */
-    public synchronized String playAudio(String filename) {
+    synchronized String playAudio(String filename) {
         try {
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mediaPlayer.setDataSource(recordedFilesDir + "/" + filename + ".m4a");
-            mediaPlayer.prepare();
-            mediaPlayer.start();
+            if (currProj != null) {
+                mediaPlayer = new MediaPlayer();
+                mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                mediaPlayer.setDataSource(recordedFilesDir + "/" + filename + ".m4a");
+                mediaPlayer.prepare();
+                mediaPlayer.start();
+            }
             return "Playing";
         } catch (IOException e) {
             Log.e("RecordingHandler", "Playing Audio: " + e.getMessage());
@@ -322,7 +335,7 @@ public class RecordingHandler implements RequestHandler {
      *
      * @return "StoppedPlayback" if successful, "Error" otherwise.
      */
-    public String stopPlayback() {
+    String stopPlayback() {
         try {
             if (mediaPlayer != null) {
                 mediaPlayer.stop();
@@ -342,19 +355,21 @@ public class RecordingHandler implements RequestHandler {
      * @return Duration in milliseconds of the requested sound, if success.
      * Returns "0" otherwise.
      */
-    public synchronized String getDuration(String filename) {
+    synchronized String getDuration(String filename) {
         try {
-            MediaPlayer mediaPlayer = new MediaPlayer();
-            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mediaPlayer.setDataSource(recordedFilesDir + "/" + filename + ".m4a");
-            mediaPlayer.prepare();
-            String response = Integer.toString(mediaPlayer.getDuration());
-            mediaPlayer.release();
-            return response;
+            if (currProj != null) {
+                MediaPlayer mediaPlayer = new MediaPlayer();
+                mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                mediaPlayer.setDataSource(recordedFilesDir + "/" + filename + ".m4a");
+                mediaPlayer.prepare();
+                String response = Integer.toString(mediaPlayer.getDuration());
+                mediaPlayer.release();
+                return response;
+            }
         } catch (IOException e) {
             Log.e("RecordingHandler", "Playing Audio: " + e.getMessage());
-            return "0";
         }
+        return "0";
     }
 
     /**
@@ -363,7 +378,7 @@ public class RecordingHandler implements RequestHandler {
      * @return List of recorded sounds stored in the current project separated by \n, on success
      * Returns empty string otherwise
      */
-    public String listRecordings() {
+    String listRecordings() {
         try {
             File[] files = recordDir.listFiles();
             String response = "";
@@ -412,7 +427,7 @@ public class RecordingHandler implements RequestHandler {
      */
     private boolean mergeMediaFiles() {
         try {
-            if (sourceFiles != null && sourceFiles.size() > 0) {
+            if (sourceFiles != null && sourceFiles.size() > 0 && recordDir.exists()) {
                 String targetFile = recordedFilesDir + "/" + currFilename + ".m4a";
                 String mediaKey = "soun";
                 List<Movie> listMovies = new ArrayList<>();

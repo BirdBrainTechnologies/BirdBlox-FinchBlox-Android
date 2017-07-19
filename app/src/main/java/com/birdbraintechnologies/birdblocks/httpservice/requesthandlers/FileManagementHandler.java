@@ -62,11 +62,17 @@ public class FileManagementHandler implements RequestHandler {
             case "open":
                 return openProject(m.get("filename").get(0));
             case "rename":
-                return renameProject(m.get("oldFilename").get(0), m.get("newFilename").get(0));
+                if (m.get("type").get(0).equals("file"))
+                    return renameProject(m.get("oldFilename").get(0), m.get("newFilename").get(0));
+                else if (m.get("type").get(0).equals("recording"))
+                    return renameRecording(m.get("oldFilename").get(0), m.get("newFilename").get(0));
             case "close":
                 return closeProject();
             case "delete":
-                return deleteProject(m.get("filename").get(0));
+                if (m.get("type").get(0).equals("file"))
+                    return deleteProject(m.get("filename").get(0));
+                else if (m.get("type").get(0).equals("recording"))
+                    return deleteRecording(m.get("filename").get(0));
             case "files":
                 return listProjects();
             case "export":
@@ -76,7 +82,10 @@ public class FileManagementHandler implements RequestHandler {
             case "new":
                 return newProject(session);
             case "getAvailableName":
-                return getProjectName(m.get("filename").get(0));
+                if (m.get("type").get(0).equals("file"))
+                    return getProjectName(m.get("filename").get(0));
+                else if (m.get("type").get(0).equals("recording"))
+                    return getRecordingName(m.get("filename").get(0));
             case "duplicate":
                 return duplicateProject(m.get("filename").get(0), m.get("newFilename").get(0));
         }
@@ -130,6 +139,7 @@ public class FileManagementHandler implements RequestHandler {
      * and an 'ERROR' response otherwise.
      */
     private NanoHTTPD.Response renameProject(String oldName, String newName) {
+        // Not a recording
         if (!projectExists(oldName) || !isNameSanitized(newName)) {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Given name(s) invalid, or project " + oldName + " doesn't exist.");
@@ -155,6 +165,37 @@ public class FileManagementHandler implements RequestHandler {
                 NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while renaming " + oldName + " to " + newName + ".");
     }
 
+
+    private NanoHTTPD.Response renameRecording(String oldName, String newName) {
+        if (!isNameSanitized(newName)) {
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Given newName is invalid.");
+        }
+        String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+        if (currProj != null) {
+            File dir = new File(getBirdblocksDir(), currProj + "/recordings/");
+            if (dir.exists()) {
+                File oldFile = new File(dir, oldName + ".m4a");
+                File newFile = new File(dir, newName + ".m4a");
+                if (oldFile.exists()) {
+                    if (!newFile.exists()) {
+                        if (oldFile.renameTo(newFile)) {
+                            return NanoHTTPD.newFixedLengthResponse(
+                                    NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Recording " + oldName + " renamed to " + newName + " successfully");
+                        } else {
+                            return NanoHTTPD.newFixedLengthResponse(
+                                    NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while renaming " + oldName + " to " + newName + ".");
+                        }
+                    } else {
+                        return NanoHTTPD.newFixedLengthResponse(
+                                NanoHTTPD.Response.Status.CONFLICT, MIME_PLAINTEXT, "Recording called " + newName + " already exists");
+                    }
+                }
+            }
+        }
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "File " + oldName + " was not found.");
+    }
 
     /**
      * Closes the currently opened project, if any.
@@ -194,6 +235,24 @@ public class FileManagementHandler implements RequestHandler {
         }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while deleting " + name);
+    }
+
+    private NanoHTTPD.Response deleteRecording(String name) {
+        String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+        if (currProj != null) {
+            File rec = new File(getBirdblocksDir(), currProj + "/recordings/" + name + ".m4a");
+            if (rec.exists()) {
+                if (rec.delete()) {
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, name + " successfully deleted.");
+                } else {
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while deleting " + name);
+                }
+            }
+        }
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Recording " + name + " was not found!");
     }
 
     /**
@@ -351,6 +410,26 @@ public class FileManagementHandler implements RequestHandler {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error getting available project name for: " + name);
         }
+    }
+
+    private NanoHTTPD.Response getRecordingName(String name) {
+        String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+        if (currProj != null) {
+            try {
+                File dir = new File(getBirdblocksDir(), currProj + "/recordings");
+                if (!dir.exists()) dir.mkdirs();
+                JSONObject nameObject = new JSONObject();
+                nameObject.put("availableName", findAvailableName(dir, name, ".m4a"));
+                nameObject.put("alreadySanitized", isNameSanitized(name));
+                nameObject.put("alreadyAvailable", isNameAvailable(dir, name, ".m4a"));
+                return NanoHTTPD.newFixedLengthResponse(
+                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, nameObject.toString());
+            } catch (JSONException | NullPointerException | SecurityException e) {
+                Log.e("AvailableName", e.getMessage());
+            }
+        }
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error getting available project name for: " + name);
     }
 
     /**

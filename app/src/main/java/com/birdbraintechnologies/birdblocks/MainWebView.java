@@ -33,6 +33,7 @@ import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.RecordingHandler;
 import com.dropbox.core.android.Auth;
 
 import java.io.BufferedInputStream;
@@ -182,7 +183,7 @@ public class MainWebView extends AppCompatActivity {
         }
 
         // Get location of downloaded layout as a 'File'
-        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
+        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--stable/HummingbirdDragAndDrop.html");
         if (!lFile.exists()) try {
             lFile.createNewFile();
         } catch (IOException | SecurityException e) {
@@ -262,6 +263,8 @@ public class MainWebView extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        (new RecordingHandler()).stopRecording();
+        runJavascript("CallbackManager.sounds.recordingEnded()");
         webView.pauseTimers();
         webView.onPause();
     }
@@ -418,8 +421,9 @@ public class MainWebView extends AppCompatActivity {
 
             // Download the layout from github
             try {
-                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+//                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
 //                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/stable.zip", f);
             } catch (NetworkOnMainThreadException | SecurityException e) {
                 Log.e("Download", "Error occurred while downloading file: " + e.getMessage());
                 return;

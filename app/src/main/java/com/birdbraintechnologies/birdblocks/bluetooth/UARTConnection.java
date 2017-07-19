@@ -39,7 +39,6 @@ public class UARTConnection extends BluetoothGattCallback {
     private BluetoothGattCharacteristic tx;
     private BluetoothGattCharacteristic rx;
 
-
     /**
      * Initializes a UARTConnection. This needs to know the context the bluetooth connection is
      * being made from (Activity, Service, etc)
@@ -48,7 +47,7 @@ public class UARTConnection extends BluetoothGattCallback {
      * @param device   Device to connect to
      * @param settings Settings for connecting via UART
      */
-    public UARTConnection(Context context, BluetoothDevice device, UARTSettings settings) {
+    public UARTConnection(final Context context, final BluetoothDevice device, UARTSettings settings) {
         this.uartUUID = settings.getUARTServiceUUID();
         this.txUUID = settings.getTxCharacteristicUUID();
         this.rxUUID = settings.getRxCharacteristicUUID();
@@ -65,29 +64,33 @@ public class UARTConnection extends BluetoothGattCallback {
      * @return True on success, false otherwise
      */
     synchronized public boolean writeBytes(byte[] bytes) {
-        startLatch = new CountDownLatch(1);
-        doneLatch = new CountDownLatch(1);
-
-        tx.setValue(bytes);
-        boolean res;
-        int retryCount = 0;
-        while (!(res = btGatt.writeCharacteristic(tx))) {
-            if (retryCount > MAX_RETRIES) {
-                break;
-            }
-            retryCount++;
-        }
-
-        // Wait for operation to complete
-        startLatch.countDown();
         try {
-            doneLatch.await();
-        } catch (InterruptedException e) {
-            Log.e(TAG, "Error: " + e);
-            return false;
-        }
+            startLatch = new CountDownLatch(1);
+            doneLatch = new CountDownLatch(1);
 
-        return res;
+            tx.setValue(bytes);
+            boolean res;
+            int retryCount = 0;
+            while (!(res = btGatt.writeCharacteristic(tx))) {
+                if (retryCount > MAX_RETRIES) {
+                    break;
+                }
+                retryCount++;
+            }
+
+            // Wait for operation to complete
+            startLatch.countDown();
+            try {
+                doneLatch.await();
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Error: " + e);
+                return false;
+            }
+
+            return res;
+        } catch (Exception e) {
+        }
+        return false;
     }
 
     /**
@@ -97,33 +100,37 @@ public class UARTConnection extends BluetoothGattCallback {
      * @return Response from the device
      */
     synchronized public byte[] writeBytesWithResponse(byte[] bytes) {
-        startLatch = new CountDownLatch(1);
-        doneLatch = new CountDownLatch(1);
-        resultLatch = new CountDownLatch(1);
+        try {
+            startLatch = new CountDownLatch(1);
+            doneLatch = new CountDownLatch(1);
+            resultLatch = new CountDownLatch(1);
 
-        tx.setValue(bytes);
-        boolean success;
-        int retryCount = 0;
-        while (!(success = btGatt.writeCharacteristic(tx))) {
-            if (retryCount > MAX_RETRIES) {
-                break;
+            tx.setValue(bytes);
+            boolean success;
+            int retryCount = 0;
+            while (!(success = btGatt.writeCharacteristic(tx))) {
+                if (retryCount > MAX_RETRIES) {
+                    break;
+                }
+                retryCount++;
             }
-            retryCount++;
-        }
-        if (success) {
-            // Wait for a successful write and a response
-            startLatch.countDown();
-            try {
-                doneLatch.await();
-                resultLatch.await();
-            } catch (InterruptedException e) {
-                Log.e(TAG, "Error: " + e);
-                return new byte[]{};
-            }
+            if (success) {
+                // Wait for a successful write and a response
+                startLatch.countDown();
+                try {
+                    doneLatch.await();
+                    resultLatch.await();
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "Error: " + e);
+                    return new byte[]{};
+                }
 
-            // Retrieve and return response
-            byte[] res = rx.getValue();
-            return Arrays.copyOf(res, res.length);
+                // Retrieve and return response
+                byte[] res = rx.getValue();
+                return Arrays.copyOf(res, res.length);
+            }
+        } catch (Exception e) {
+
         }
         Log.e(TAG, "Unable to write bytes to tx");
         return new byte[]{};
@@ -237,11 +244,29 @@ public class UARTConnection extends BluetoothGattCallback {
     }
 
     /**
+     * Returns whether or not this connection is being established currently
+     *
+     * @return True if connecting, false otherwise
+     */
+    public boolean isConnecting() {
+        return this.connectionState == BluetoothGatt.STATE_CONNECTING;
+    }
+
+    /**
      * Disconnects and closes the connection with the device
      */
     public void disconnect() {
         btGatt.disconnect();
         btGatt.close();
+//        try {
+//            // connectionThread.interrupt();
+//            if (btGatt != null) {
+//                btGatt.abortReliableWrite();
+//
+//            }
+//        } catch (Exception e) {
+//            Log.e("ConnectHB", "Exception inside: " + e.getMessage());
+//        }
     }
 
     public void addRxDataListener(RXDataListener l) {
