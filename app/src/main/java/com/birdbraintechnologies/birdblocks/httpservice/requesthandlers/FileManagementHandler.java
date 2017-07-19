@@ -165,7 +165,14 @@ public class FileManagementHandler implements RequestHandler {
                 NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while renaming " + oldName + " to " + newName + ".");
     }
 
-
+    /**
+     * Rename a given recording associated with the currently opened project.
+     *
+     * @param oldName The old name of the recording
+     * @param newName The new name of the recording
+     * @return A 'OK' response if renaming was successful,
+     * and an 'ERROR' response otherwise.
+     */
     private NanoHTTPD.Response renameRecording(String oldName, String newName) {
         if (!isNameSanitized(newName)) {
             return NanoHTTPD.newFixedLengthResponse(
@@ -237,6 +244,13 @@ public class FileManagementHandler implements RequestHandler {
                 NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while deleting " + name);
     }
 
+    /**
+     * Deletes a given recording associated with the currently opened project, if it exists.
+     *
+     * @param name The name of the recording.
+     * @return A 'OK' response if deletion was successful,
+     * and an 'ERROR' response otherwise.
+     */
     private NanoHTTPD.Response deleteRecording(String name) {
         String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
         if (currProj != null) {
@@ -391,7 +405,7 @@ public class FileManagementHandler implements RequestHandler {
     }
 
     /**
-     * Gets a available project name, for the given 'name'.
+     * Gets an available project name, for the given 'name'.
      *
      * @param name The project name for which we need to find an available name.
      * @return A 'OK' response containing an available name for 'name',
@@ -412,6 +426,14 @@ public class FileManagementHandler implements RequestHandler {
         }
     }
 
+    /**
+     * Gets an available recording name (associated with the currently opened project),
+     * for the given 'name'.
+     *
+     * @param name The recording name for which we need to find an available name.
+     * @return A 'OK' response containing an available name for 'name',
+     * if successful, and an 'ERROR' response otherwise.
+     */
     private NanoHTTPD.Response getRecordingName(String name) {
         String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
         if (currProj != null) {
