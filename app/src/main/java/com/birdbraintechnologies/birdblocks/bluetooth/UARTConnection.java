@@ -13,6 +13,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import static com.birdbraintechnologies.birdblocks.MainWebView.bbxEncode;
+import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
 
 /**
  * Represents a UART connection established via Bluetooth Low Energy. Communicates using the RX and
@@ -151,7 +155,9 @@ public class UARTConnection extends BluetoothGattCallback {
         // Initialize serialization
         startLatch.countDown();
         try {
-            doneLatch.await();
+            if (!doneLatch.await(30000, TimeUnit.MILLISECONDS)) {
+                return false;
+            }
         } catch (InterruptedException e) {
             // TODO: Handle error
             return false;
@@ -179,6 +185,9 @@ public class UARTConnection extends BluetoothGattCallback {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (newState == BluetoothGatt.STATE_CONNECTED) {
                 gatt.discoverServices();
+                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', true);");
+            } else {
+                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', false);");
             }
         }
     }

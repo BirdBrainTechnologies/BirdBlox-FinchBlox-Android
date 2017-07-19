@@ -12,6 +12,7 @@ import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 import com.birdbraintechnologies.birdblocks.util.ZipUtility;
 
 import org.apache.commons.io.FileUtils;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -41,7 +42,7 @@ public class FileManagementHandler implements RequestHandler {
     public static File SecretFileDirectory;
 
     private static final String FILES_PREFS_KEY = "com.birdbraintechnologies.birdblocks.FILE_MANAGEMENT";
-    static SharedPreferences filesPrefs = mainWebViewContext.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
+    public static SharedPreferences filesPrefs = mainWebViewContext.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
 
     static final String CURRENT_PREFS_KEY = "com.birdbraintechnologies.birdblocks.CURRENT_PROJECT";
     static final String NAMED_PREFS_KEY = "com.birdbraintechnologies.birdblocks.IS_FILE_NAMED";
@@ -276,16 +277,22 @@ public class FileManagementHandler implements RequestHandler {
      * and an 'ERROR' response otherwise.
      */
     private NanoHTTPD.Response listProjects() {
-        File[] files = getBirdblocksDir().listFiles();
-        String responseBody = "";
-        if (files != null) {
-            for (File file : files) {
-                if (file.isDirectory()) {
-                    responseBody += file.getName() + "\n";
+        try {
+            File[] files = getBirdblocksDir().listFiles();
+            JSONArray fileList = new JSONArray();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isDirectory()) {
+                        fileList.put(file.getName());
+                    }
                 }
+                JSONObject sendObj = new JSONObject();
+                sendObj.put("files", fileList);
+                return NanoHTTPD.newFixedLengthResponse(
+                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, sendObj.toString());
             }
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody.trim());
+        } catch (JSONException | SecurityException | NullPointerException e) {
+            Log.e(TAG, "List Projects: " + e.getMessage());
         }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while listing projects.");
@@ -330,7 +337,7 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if autosaving was successful,
      * and an 'ERROR' response otherwise.
      */
-    private NanoHTTPD.Response autosaveProject(NanoHTTPD.IHTTPSession session) {
+    public static NanoHTTPD.Response autosaveProject(NanoHTTPD.IHTTPSession session) {
         if (session.getMethod() != NanoHTTPD.Method.POST) {
             Log.d(TAG, "Autosave: Save must be done via POST request");
             return NanoHTTPD.newFixedLengthResponse(
@@ -388,6 +395,7 @@ public class FileManagementHandler implements RequestHandler {
                 FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8");
                 filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
                 // boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
+                filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, false).apply();
                 runJavascript("CallbackManager.data.setName('" + bbxEncode(name) + "', false);");
                 filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
                 return NanoHTTPD.newFixedLengthResponse(

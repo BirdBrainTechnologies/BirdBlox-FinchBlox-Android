@@ -73,7 +73,7 @@ public class BluetoothHelper {
      * //@return List of devices that matches the filters
      */
     //synchronized public List<BluetoothDevice> scanDevices(List<ScanFilter> scanFilters) {
-    synchronized public void scanDevices(List<ScanFilter> scanFilters) {
+    public void scanDevices(List<ScanFilter> scanFilters) {
         Log.d("BLEScan", "About to start scan");
         if (currentlyScanning) {
             Log.d("BLEScan", "Scan already running.");
@@ -117,8 +117,11 @@ public class BluetoothHelper {
      * @param settings Settings to define the UART connection's TX and RX lines
      * @return Result connection, null if the given MAC Address doesn't match any scanned device
      */
-    synchronized public UARTConnection connectToDeviceUART(String addr, UARTSettings settings) {
-        BluetoothDevice device = deviceList.get(addr);
+    public UARTConnection connectToDeviceUART(String addr, UARTSettings settings) {
+        BluetoothDevice device;
+        synchronized (deviceList) {
+            device = deviceList.get(addr);
+        }
         if (device == null) {
             Log.e(TAG, "Unable to connect to device: " + addr);
             return null;

@@ -12,6 +12,7 @@ import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.bluetooth.UARTSettings;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
+import com.birdbraintechnologies.birdblocks.util.NamingHandler;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -51,14 +52,14 @@ public class HummingbirdRequestHandler implements RequestHandler {
     private UARTSettings hbUARTSettings;
     private BluetoothHelper btHelper;
     private HashMap<String, Hummingbird> connectedDevices;
-
-    private Thread connectionThread;
+    private HashMap<String, Thread> threadMap;
 
     public HummingbirdRequestHandler(HttpService service) {
 
         this.service = service;
         this.btHelper = service.getBluetoothHelper();
         this.connectedDevices = new HashMap<>();
+        this.threadMap = new HashMap<>();
 
         // Build UART settings
         this.hbUARTSettings = (new UARTSettings.Builder())
@@ -131,15 +132,24 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 }
             });
         }
+//        if (!BluetoothHelper.currentlyScanning) {
+//            new Thread() {
+//                @Override
+//                public void run() {
+//                    btHelper.scanDevices(generateDeviceFilter());
+//                }
+//            }.start();
+//        }
         // btHelper.scanDevices(generateDeviceFilter());
         List<BluetoothDevice> deviceList = (new ArrayList<>(btHelper.deviceList.values()));
         // TODO: Change this behavior to display correctly on device
         JSONArray devices = new JSONArray();
         for (BluetoothDevice device : deviceList) {
+            String name = NamingHandler.GenerateName(service.getApplicationContext(), device.getAddress());
             JSONObject humm = new JSONObject();
             try {
                 humm.put("id", device.getAddress());
-                humm.put("name", device.getName());
+                humm.put("name", name);
             } catch (JSONException e) {
                 Log.e("JSON", "JSONException while discovering hummingbirds");
             }
@@ -178,24 +188,36 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @param deviceId Device ID to connect to
      * @return No Response
      */
-    private synchronized String connectToDevice(final String deviceId) {
+    private String connectToDevice(final String deviceId) {
         // TODO: Handle errors when connecting to device
         final UARTSettings hbu = this.hbUARTSettings;
+        // stopDiscover();
         try {
-            connectionThread = new Thread() {
+//            btHelper.stopScanNoClear();
+            Thread t = new Thread() {
                 @Override
-                public synchronized void run() {
-                    Log.d("ConnectHB", "Reached first line");
+                public void run() {
                     UARTConnection conn = btHelper.connectToDeviceUART(deviceId, hbu);
-                    Log.d("ConnectHB", "Reached second line");
-                    if (conn != null && connectedDevices != null && (conn.isConnected() || conn.isConnecting())) {
+                    if (conn != null && connectedDevices != null) {
+//                    if (conn != null && connectedDevices != null && (conn.isConnected() || conn.isConnecting())) {
                         Hummingbird device = new Hummingbird(conn);
                         connectedDevices.put(deviceId, device);
-                        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(deviceId) + "', true);");
+//                        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(deviceId) + "', true);");
                     }
+//                    btHelper.clearList();
                 }
             };
-            connectionThread.start();
+            t.start();
+            final Thread oldThread = threadMap.put(deviceId, t);
+            if (oldThread != null) {
+                new Thread() {
+                    @Override
+                    public void run() {
+                        super.run();
+                        oldThread.interrupt();
+                    }
+                }.start();
+            }
         } catch (Exception e) {
             Log.e("ConnectHB", " Error while connecting to HB " + e.getMessage());
         }
@@ -218,11 +240,19 @@ public class HummingbirdRequestHandler implements RequestHandler {
      * @param deviceId Device ID of the device to disconnect from
      * @return No Response
      */
-    private synchronized String disconnectFromDevice(String deviceId) {
+    private synchronized String disconnectFromDevice(final String deviceId) {
         try {
-            if (connectionThread != null) {
-                connectionThread.interrupt();
-            }
+//            if (connectionThread != null) {
+//                connectionThread.interrupt();
+//            }
+            new Thread() {
+                @Override
+                public void run() {
+                    super.run();
+                    Thread connThread = threadMap.get(deviceId);
+                    if (connThread != null) connThread.interrupt();
+                }
+            }.start();
             Hummingbird device = getDeviceFromId(deviceId);
             if (device != null) {
                 Log.d(TAG, "Disconnecting from device: " + deviceId);

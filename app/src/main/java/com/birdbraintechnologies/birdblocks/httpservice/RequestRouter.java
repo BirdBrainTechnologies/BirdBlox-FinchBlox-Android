@@ -53,7 +53,7 @@ public class RequestRouter {
         addRoute("^/sound/recording/(.*)$", new RecordingHandler(service));
         addRoute("^/sound/(?!recording)(.*)$", new SoundHandler(service));
         addRoute("^/properties/(.*)$", new PropertiesHandler(service));
-        addRoute("^/dropbox/(.*)$", new DropboxRequestHandler(service));
+        addRoute("^/cloud/(.*)$", new DropboxRequestHandler(service));
         addRoute("^/ui/(.*)$", new UIRequestHandler(service));
     }
 

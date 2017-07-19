@@ -46,10 +46,11 @@ public class UIRequestHandler implements RequestHandler {
                 NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Error in UI command.");
     }
 
-    private NanoHTTPD.Response loadContent() {
-        String currProj = bbxEncode(filesPrefs.getString(CURRENT_PREFS_KEY, null));
+    public static NanoHTTPD.Response loadContent() {
+        String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
         boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
         if (currProj != null) {
+            currProj = bbxEncode(currProj);
             try {
                 File file = new File(getBirdblocksDir(), currProj + "/program.xml");
                 if (file.exists()) {

@@ -56,6 +56,7 @@ import java.util.zip.ZipInputStream;
 
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.DB_PREFS_KEY;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler.metrics;
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.UIRequestHandler.loadContent;
 
 
 /**
@@ -183,7 +184,7 @@ public class MainWebView extends AppCompatActivity {
         }
 
         // Get location of downloaded layout as a 'File'
-        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--stable/HummingbirdDragAndDrop.html");
+        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
         if (!lFile.exists()) try {
             lFile.createNewFile();
         } catch (IOException | SecurityException e) {
@@ -199,7 +200,7 @@ public class MainWebView extends AppCompatActivity {
         // Create webview
         webView = (WebView) findViewById(R.id.main_webview);
         webView.loadUrl("file:///" + lFile.getAbsolutePath());
-        // webView.loadUrl(PAGE_URL);
+//        webView.loadUrl(PAGE_URL);
         webView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
@@ -241,6 +242,12 @@ public class MainWebView extends AppCompatActivity {
                     | View.SYSTEM_UI_FLAG_FULLSCREEN
                     | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        loadContent();
     }
 
     @Override
@@ -421,9 +428,9 @@ public class MainWebView extends AppCompatActivity {
 
             // Download the layout from github
             try {
-//                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
 //                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
-                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/stable.zip", f);
+//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/stable.zip", f);
             } catch (NetworkOnMainThreadException | SecurityException e) {
                 Log.e("Download", "Error occurred while downloading file: " + e.getMessage());
                 return;
