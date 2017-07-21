@@ -26,6 +26,15 @@ public abstract class RobotState<T extends RobotState<T>> {
     public abstract boolean equals_helper(T rbs);
 
     /**
+     * Compares the current ('this') RobotState object with another object for equality.
+     *
+     * @param rbs The other object.
+     * @return Returns true if they're equal (their types are the same, and
+     * all their attributes have the same values), false otherwise.
+     */
+    public abstract boolean equals(Object rbs);
+
+    /**
      * Copies all attributes of the input RobotState into the current ('this') RobotState.
      *
      * @param source The RobotState from which the attributes are copied.

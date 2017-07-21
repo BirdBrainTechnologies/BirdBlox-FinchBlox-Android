@@ -17,10 +17,6 @@ public abstract class Robot<T extends RobotState<T>> {
         sending = false;
     }
 
-//    public synchronized boolean statesEqual() {
-//        return oldState.equals(newState);
-//    }
-
     public synchronized boolean isCurrentlySending() {
         return sending;
     }

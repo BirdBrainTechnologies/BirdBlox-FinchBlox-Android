@@ -154,7 +154,6 @@ public class FlutterRequestHandler implements RequestHandler {
                 .build();
         List<ScanFilter> flutterDeviceFilters = new ArrayList<>();
         flutterDeviceFilters.add(flScanFilter);
-        Log.d("FlutterList", flutterDeviceFilters.toString());
         return flutterDeviceFilters;
     }
 

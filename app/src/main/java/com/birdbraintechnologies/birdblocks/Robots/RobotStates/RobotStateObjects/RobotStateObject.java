@@ -11,6 +11,15 @@ public abstract class RobotStateObject {
     public abstract void setValue(byte... values);
 
     /**
+     * Compares the current ('this') RobotStateObject object with another object for equality.
+     *
+     * @param rbso The other object.
+     * @return Returns true if they're equal (their types are the same, and
+     * all their attributes have the same values), false otherwise.
+     */
+    public abstract boolean equals(Object rbso);
+
+    /**
      * Returns a value that is bounded by min and max
      *
      * @param value Value to be clamped

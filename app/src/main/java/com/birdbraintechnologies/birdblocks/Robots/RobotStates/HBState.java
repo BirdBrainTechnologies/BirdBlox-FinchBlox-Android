@@ -155,27 +155,9 @@ public class HBState extends RobotState<HBState> {
      */
     @Override
     public synchronized boolean equals_helper(HBState hbs) {
-        for (int i = 0; i < 4; i++) {
-            if (leds[i].getIntensity() != hbs.leds[i].getIntensity())
-                return false;
-        }
-        for (int i = 0; i < 2; i++) {
-            if (!Arrays.equals(trileds[i].getRGB(), hbs.trileds[i].getRGB()))
-                return false;
-        }
-        for (int i = 0; i < 4; i++) {
-            if (servos[i].getAngle() != hbs.servos[i].getAngle())
-                return false;
-        }
-        for (int i = 0; i < 2; i++) {
-            if (motors[i].getSpeed() != hbs.motors[i].getSpeed())
-                return false;
-        }
-        for (int i = 0; i < 2; i++) {
-            if (vibrators[i].getIntensity() != hbs.vibrators[i].getIntensity())
-                return false;
-        }
-        return true;
+        return Arrays.equals(leds, hbs.leds) && Arrays.equals(trileds, hbs.trileds) &&
+                Arrays.equals(servos, hbs.servos) && Arrays.equals(motors, hbs.motors) &&
+                Arrays.equals(vibrators, hbs.vibrators);
     }
 
 
@@ -208,19 +190,19 @@ public class HBState extends RobotState<HBState> {
      */
     @Override
     public synchronized void copy(HBState source) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < leds.length; i++) {
             leds[i].setValue(source.leds[i].getIntensity());
         }
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < trileds.length; i++) {
             trileds[i].setValue(source.trileds[i].getRGB());
         }
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < servos.length; i++) {
             servos[i].setValue(source.servos[i].getAngle());
         }
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < motors.length; i++) {
             motors[i].setValue(source.motors[i].getSpeed());
         }
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < vibrators.length; i++) {
             vibrators[i].setValue(source.vibrators[i].getIntensity());
         }
     }
@@ -264,11 +246,11 @@ public class HBState extends RobotState<HBState> {
      */
     @Override
     public synchronized void resetAll() {
-        for (LED led : leds) led = new LED();
-        for (TriLED triled : trileds) triled = new TriLED();
-        for (Servo servo : servos) servo = new Servo();
-        for (Motor motor : motors) motor = new Motor();
-        for (LED led : leds) led = new LED();
+        for (int i = 0; i < leds.length; i++) leds[i] = new LED();
+        for (int i = 0; i < trileds.length; i++) trileds[i] = new TriLED();
+        for (int i = 0; i < servos.length; i++) servos[i] = new Servo();
+        for (int i = 0; i < motors.length; i++) motors[i] = new Motor();
+        for (int i = 0; i < vibrators.length; i++) vibrators[i] = new Vibrator();
     }
 
 }

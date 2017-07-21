@@ -2,6 +2,7 @@ package com.birdbraintechnologies.birdblocks.Robots;
 
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblocks.Robots.RobotStates.FLState;
 import com.birdbraintechnologies.birdblocks.bluetooth.MelodySmartConnection;
 import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
 
@@ -15,7 +16,7 @@ import java.util.Map;
  * @author Terence Sun (tsun1215)
  * @author Shreyan Bakshi (AppyFizz)
  */
-public class Flutter {
+public class Flutter extends Robot<FLState> {
     private static final String TAG = Flutter.class.getName();
 
     /* Commands for Flutter */
@@ -56,6 +57,17 @@ public class Flutter {
             case "buzzer":
                 return setBuzzer(Integer.parseInt(args.get("volume").get(0)), Integer.parseInt(args.get("frequency").get(0)));
         }
+        return false;
+    }
+
+    // TODO: Should be almost same as Hummingbird's. So, I suggest implementing this in the Robot class.
+
+    /**
+     * Actually sends the commands to the physical Flutter,
+     * based on certain conditions.
+     */
+    @Override
+    public boolean sendToRobot() {
         return false;
     }
 

@@ -13,10 +13,6 @@ public class Motor extends RobotStateObject{
     }
 
     public Motor(byte s) {
-        if (s < 0) {
-            s = (byte) (-s);
-            s |= (1 << 7);
-        }
         speed = s;
     }
 
@@ -25,17 +21,13 @@ public class Motor extends RobotStateObject{
     }
 
     private synchronized void setSpeed(byte s) {
-        if (s < 0) {
-            s = (byte) (-s);
-            s |= (1 << 7);
-        }
         speed = s;
     }
 
-    // TODO: Fix this
     private synchronized void setSpeed(int s) {
+        s = clamp(s, -100, 100);
         if (s < 0) {
-            speed = (byte) (-s);
+            speed = (byte) (Math.abs(s));
             speed |= (1 << 7);
         } else {
             speed = (byte) s;
@@ -68,6 +60,16 @@ public class Motor extends RobotStateObject{
         if (getClass() != motor.getClass())
             return false;
         return speed == ((Motor) motor).speed;
+    }
+
+    private static int clamp(int value, int min, int max) {
+        if (value > max) {
+            return max;
+        } else if (value < min) {
+            return min;
+        } else {
+            return value;
+        }
     }
 
 }
