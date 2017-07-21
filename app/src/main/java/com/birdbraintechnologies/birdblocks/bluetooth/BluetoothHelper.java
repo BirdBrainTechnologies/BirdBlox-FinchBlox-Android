@@ -70,9 +70,7 @@ public class BluetoothHelper {
      * Scans for Bluetooth devices that matches the filter.
      *
      * @param scanFilters List of bluetooth.le.ScanFilter to filter by
-     * //@return List of devices that matches the filters
      */
-    //synchronized public List<BluetoothDevice> scanDevices(List<ScanFilter> scanFilters) {
     public void scanDevices(List<ScanFilter> scanFilters) {
         Log.d("BLEScan", "About to start scan");
         if (currentlyScanning) {
@@ -105,9 +103,6 @@ public class BluetoothHelper {
         } else {
             currentlyScanning = true;
         }
-        //synchronized (deviceList) {
-        //    return new ArrayList<>(deviceList.values());
-        //}
     }
 
     /**
@@ -161,6 +156,7 @@ public class BluetoothHelper {
             deviceList.clear();
         }
         currentlyScanning = false;
+
     }
 
 }

@@ -132,17 +132,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
                 }
             });
         }
-//        if (!BluetoothHelper.currentlyScanning) {
-//            new Thread() {
-//                @Override
-//                public void run() {
-//                    btHelper.scanDevices(generateDeviceFilter());
-//                }
-//            }.start();
-//        }
-        // btHelper.scanDevices(generateDeviceFilter());
         List<BluetoothDevice> deviceList = (new ArrayList<>(btHelper.deviceList.values()));
-        // TODO: Change this behavior to display correctly on device
         JSONArray devices = new JSONArray();
         for (BluetoothDevice device : deviceList) {
             String name = NamingHandler.GenerateName(service.getApplicationContext(), device.getAddress());
@@ -155,7 +145,9 @@ public class HummingbirdRequestHandler implements RequestHandler {
             }
             devices.put(humm);
         }
-        return devices.toString();
+        String robotList = devices.toString();
+        runJavascript("CallbackManager.discovered('hummingbird', " + bbxEncode(robotList) + ");");
+        return robotList;
     }
 
     /**
@@ -309,6 +301,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
     private synchronized String stopDiscover() {
         if (btHelper != null) ;
         btHelper.stopScan();
+        runJavascript("CallbackManager.robot.stopDiscover('hummingbird');");
         return "Bluetooth discovery stopped.";
     }
 }

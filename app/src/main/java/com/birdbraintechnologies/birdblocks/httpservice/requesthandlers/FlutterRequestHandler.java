@@ -25,6 +25,9 @@ import java.util.UUID;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static com.birdbraintechnologies.birdblocks.MainWebView.bbxEncode;
+import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
+
 /**
  * Class for handling requests from the router to Flutter devices
  *
@@ -135,7 +138,9 @@ public class FlutterRequestHandler implements RequestHandler {
             }
             devices.put(flutt);
         }
-        return devices.toString();
+        String robotList = devices.toString();
+        runJavascript("CallbackManager.discovered('flutter', " + bbxEncode(robotList) + ");");
+        return robotList;
     }
 
     /**
@@ -232,6 +237,7 @@ public class FlutterRequestHandler implements RequestHandler {
     private String stopDiscover() {
         if (btHelper != null)
             btHelper.stopScan();
+        runJavascript("CallbackManager.robot.stopDiscover('flutter');");
         return "Bluetooth discovery stopped.";
     }
 
