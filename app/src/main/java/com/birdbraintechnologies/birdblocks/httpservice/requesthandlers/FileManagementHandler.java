@@ -27,6 +27,8 @@ import fi.iki.elonen.NanoHTTPD;
 import static com.birdbraintechnologies.birdblocks.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblocks.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.dropboxSignedIn;
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.getDropboxSignIn;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
@@ -42,7 +44,7 @@ public class FileManagementHandler implements RequestHandler {
     public static File SecretFileDirectory;
 
     private static final String FILES_PREFS_KEY = "com.birdbraintechnologies.birdblocks.FILE_MANAGEMENT";
-    public static SharedPreferences filesPrefs = mainWebViewContext.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
+    static SharedPreferences filesPrefs = mainWebViewContext.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
 
     static final String CURRENT_PREFS_KEY = "com.birdbraintechnologies.birdblocks.CURRENT_PROJECT";
     static final String NAMED_PREFS_KEY = "com.birdbraintechnologies.birdblocks.IS_FILE_NAMED";
@@ -89,6 +91,8 @@ public class FileManagementHandler implements RequestHandler {
                     return getRecordingName(m.get("filename").get(0));
             case "duplicate":
                 return duplicateProject(m.get("filename").get(0), m.get("newFilename").get(0));
+            case "markAsNamed":
+
         }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Bad Request");
@@ -288,6 +292,10 @@ public class FileManagementHandler implements RequestHandler {
                 }
                 JSONObject sendObj = new JSONObject();
                 sendObj.put("files", fileList);
+                if (dropboxSignedIn()) {
+                    sendObj.put("signedIn", true);
+                    sendObj.put("account", getDropboxSignIn());
+                }
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, sendObj.toString());
             }
@@ -496,6 +504,17 @@ public class FileManagementHandler implements RequestHandler {
                 NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error duplicating project " + name + " to " + newName);
     }
 
+    /**
+     * Sets the 'isNamed' value stored in SharedPreferences to true.
+     *
+     * @return A 'OK' response
+     */
+    private NanoHTTPD.Response markNamed() {
+        filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully marked named");
+    }
+
 
     // -----------------------------------------------------------------------------
 
@@ -600,7 +619,7 @@ public class FileManagementHandler implements RequestHandler {
 
     /**
      * Recursive function to delete a file / directory and all of its contents.
-     *
+     * <p>
      * SOURCE: https://stackoverflow.com/questions/4943629/how-to-delete-a-whole-folder-and-content
      *
      * @param fileOrDirectory The file or directory to be deleted.

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.birdbraintechnologies.birdblocks">
+          package="com.birdbraintechnologies.birdblocks">
 
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -34,6 +34,13 @@
             <!-- <category android:name="android.intent.category.LAUNCHER" /> -->
             <!-- </intent-filter> -->
 
+            <intent-filter>
+                <data android:scheme="db-fgml2igl5ka67lr"/>
+                <action android:name="android.intent.action.VIEW"/>
+
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
         </activity>
 
         <service
@@ -76,19 +83,13 @@
         </activity>
 
         <activity
-            android:name="com.dropbox.core.android.AuthActivity"
-            android:configChanges="orientation|keyboard"
-            android:launchMode="singleTask">
-            <intent-filter>
-
-                <!-- Change this to be db- followed by your app key -->
-                <data android:scheme="db-fgml2igl5ka67lr" />
-
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.BROWSABLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
+            android:name="com.dropbox.core.android.AuthActivity">
+            <!--<intent-filter>-->
+            <!--&lt;!&ndash;<data android:scheme="db-fgml2igl5ka67lr" />&ndash;&gt;-->
+            <!--<action android:name="android.intent.action.VIEW" />-->
+            <!--<category android:name="android.intent.category.BROWSABLE" />-->
+            <!--<category android:name="android.intent.category.DEFAULT" />-->
+            <!--</intent-filter>-->
         </activity>
 
         <provider

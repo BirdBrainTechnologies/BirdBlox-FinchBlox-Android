@@ -2,7 +2,7 @@ package com.birdbraintechnologies.birdblocks.util;
 
 /**
  * @author Shreyan Bakshi (AppyFizz)
- * <p>
+ *
  * SOURCE: https://stackoverflow.com/questions/20774525/is-it-possible-to-convert-a-folder-into-a-file
  */
 

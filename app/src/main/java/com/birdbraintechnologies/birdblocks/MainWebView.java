@@ -5,7 +5,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -34,7 +33,8 @@ import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.RecordingHandler;
-import com.dropbox.core.android.Auth;
+import com.dropbox.core.DbxRequestConfig;
+import com.dropbox.core.v2.DbxClientV2;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -55,6 +55,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.DB_PREFS_KEY;
+import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.dropboxConfig;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler.metrics;
 import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.UIRequestHandler.loadContent;
 
@@ -184,7 +185,8 @@ public class MainWebView extends AppCompatActivity {
         }
 
         // Get location of downloaded layout as a 'File'
-        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
+//        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
+        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--b5e38c77c0991ebc83d8869fc5275f74cc7d6ed6/HummingbirdDragAndDrop.html");
         if (!lFile.exists()) try {
             lFile.createNewFile();
         } catch (IOException | SecurityException e) {
@@ -256,13 +258,22 @@ public class MainWebView extends AppCompatActivity {
         webView.onResume();
         webView.resumeTimers();
         micPermissions = hasMicrophonePermissions();
-        if (DropboxRequestHandler.DB_ACCESS_TOKEN == null) {
-            DropboxRequestHandler.DB_ACCESS_TOKEN = Auth.getOAuth2Token();
-            if (DropboxRequestHandler.DB_ACCESS_TOKEN != null) {
-                SharedPreferences sharedPrefs = MainWebView.this.getSharedPreferences(DropboxRequestHandler.DB_PREFS_KEY, MODE_PRIVATE);
-                SharedPreferences.Editor editor = sharedPrefs.edit();
-                editor.putString(DB_PREFS_KEY, DropboxRequestHandler.DB_ACCESS_TOKEN);
-                editor.apply();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        Uri uri = intent.getData();
+        if (uri != null && uri.toString().startsWith("db-" + getString(R.string.APP_KEY))) {
+            Log.d("DROPBOXINTENT", "URI:" + uri.toString());
+            String accessToken = uri.getQueryParameter("oauth_token_secret");
+            Log.d("DROPBOXINTENT", "Access Token: " + accessToken);
+            if (accessToken != null) {
+                this.getSharedPreferences(DB_PREFS_KEY, MODE_PRIVATE).edit().putString("access-token", accessToken).apply();
+                DropboxRequestHandler.dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
+                DropboxRequestHandler.dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
+                Log.d("DROPBOXINTENT", "Initialized");
+                runJavascript("CallbackManager.cloud.signIn()");
             }
         }
     }
@@ -428,7 +439,8 @@ public class MainWebView extends AppCompatActivity {
 
             // Download the layout from github
             try {
-                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+//                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/b5e38c77c0991ebc83d8869fc5275f74cc7d6ed6.zip", f);
 //                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
 //                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/stable.zip", f);
             } catch (NetworkOnMainThreadException | SecurityException e) {
