@@ -1,29 +1,31 @@
-package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
+package com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Handler;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblocks.Dropbox.DropboxDownloadTask;
+import com.birdbraintechnologies.birdblocks.Dropbox.DropboxZipTask;
+import com.birdbraintechnologies.birdblocks.R;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
-import com.birdbraintechnologies.birdblocks.util.ProgressOutputStream;
-import com.dropbox.core.DbxDownloader;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.android.Auth;
+import com.dropbox.core.android.AuthActivity;
 import com.dropbox.core.v2.DbxClientV2;
-import com.dropbox.core.v2.files.FileMetadata;
-import com.dropbox.core.v2.files.GetMetadataErrorException;
 import com.dropbox.core.v2.files.ListFolderResult;
 import com.dropbox.core.v2.files.Metadata;
 import com.dropbox.core.v2.users.FullAccount;
 
+import org.apache.commons.io.FilenameUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +35,9 @@ import fi.iki.elonen.NanoHTTPD;
 import static android.content.Context.MODE_PRIVATE;
 import static com.birdbraintechnologies.birdblocks.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler.getBirdblocksDir;
+import static com.dropbox.core.android.AuthActivity.EXTRA_ACCESS_SECRET;
+import static com.dropbox.core.android.AuthActivity.EXTRA_ACCESS_TOKEN;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
@@ -40,6 +45,8 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
  */
 
 public class DropboxRequestHandler implements RequestHandler {
+
+    // TODO: Percent-encode CallBacks
 
     private final String TAG = this.getClass().getName();
 
@@ -64,6 +71,7 @@ public class DropboxRequestHandler implements RequestHandler {
             // Create Dropbox client
             dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
             dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
+            runJavascript("CallbackManager.cloud.signIn()");
         }
     }
 
@@ -83,11 +91,9 @@ public class DropboxRequestHandler implements RequestHandler {
             case "upload":
                 return startDropboxUpload(m.get("filename").get(0));
             case "rename":
-                break;
+                return renameDropboxProject(m.get("filename").get(0));
             case "delete":
-                break;
-            default:
-                break;
+                return deleteDropboxProject(m.get("filename").get(0));
         }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Bad Request");
@@ -110,7 +116,7 @@ public class DropboxRequestHandler implements RequestHandler {
         new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
-                Auth.startOAuth2Authentication(mainWebViewContext.getApplicationContext(), DB_APP_KEY);
+                Auth.startOAuth2Authentication(mainWebViewContext, DB_APP_KEY);
             }
         });
     }
@@ -120,7 +126,7 @@ public class DropboxRequestHandler implements RequestHandler {
             try {
                 // Get current account email
                 FullAccount account = dropboxClient.users().getCurrentAccount();
-                return account.getEmail();
+                return account.getName().getDisplayName();
             } catch (DbxException e) {
                 Log.e("DropboxRequestHandler", "Exception getting dropbox account ID: " + e.getMessage());
             }
@@ -153,15 +159,6 @@ public class DropboxRequestHandler implements RequestHandler {
     }
 
     private NanoHTTPD.Response listDropboxFolder() {
-        String accessToken = dropboxPrefs.getString("access-token", null);
-        if (accessToken == null) {
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "No Dropbox account detected.");
-        } else if (dropboxClient == null) {
-            // Create Dropbox client
-            dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
-            dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
-        }
         JSONObject obj = dropboxAppFolderContents();
         if (obj != null) {
             return NanoHTTPD.newFixedLengthResponse(
@@ -171,13 +168,13 @@ public class DropboxRequestHandler implements RequestHandler {
                 NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Error while listing contents of Dropbox folder.");
     }
 
-    private JSONObject dropboxAppFolderContents() {
+    public static JSONObject dropboxAppFolderContents() {
         try {
             JSONArray arr = new JSONArray();
             ListFolderResult result = dropboxClient.files().listFolder("");
             while (true) {
                 for (Metadata metadata : result.getEntries()) {
-                    arr.put(metadata.getPathLower());
+                    arr.put(FilenameUtils.getBaseName(metadata.getName()));
                 }
                 if (!result.getHasMore()) {
                     break;
@@ -188,63 +185,99 @@ public class DropboxRequestHandler implements RequestHandler {
             obj.put("files", arr);
             return obj;
         } catch (DbxException | JSONException e) {
-            Log.e(TAG, "listFolder: " + e.getMessage());
+            Log.e("DropboxRequestHandler", "listFolder: " + e.getMessage());
         }
         return null;
     }
 
     private NanoHTTPD.Response startDropboxDownload(final String name) {
+        new DropboxDownloadTask(dropboxClient).execute(name);
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started download and unzip of project: " + name);
     }
 
-    private void dropboxDownload(final String name) {
-        /**
-         * Implemented own {@link ProgressOutputStream}, since Dropbox API V2 has no built-in download progress.
-         */
-        String dropboxPath = "/" + name + ".bbx";
-        File dbxDown = new File(mainWebViewContext.getFilesDir(), dropboxPath);
+    private NanoHTTPD.Response startDropboxUpload(String name) {
         try {
-            try {
-                dropboxClient.files().getMetadata(dropboxPath);
-            } catch (GetMetadataErrorException e) {
-                if (e.errorValue.isPath() && e.errorValue.getPathValue().isNotFound()) {
-                    Log.e(TAG, "Download: File " + name + " not found.");
-                    // TODO: Display this error to the user
-                    runJavascript("CallbackManager.cloud.filesChanged(" + dropboxAppFolderContents().toString() + ")");
-                } else {
-                    throw e;
-                }
+            File projectDir = new File(getBirdblocksDir(), name);
+            File toDir = new File(mainWebViewContext.getFilesDir(), "DbxZip");
+            if (!toDir.exists()) {
+                toDir.mkdirs();
             }
-            if (!dbxDown.exists()) {
-                dbxDown.getParentFile().mkdirs();
-                dbxDown.createNewFile();
-            }
-            FileOutputStream fout = new FileOutputStream(dbxDown);
-            try {
-                DbxDownloader<FileMetadata> dbxDownloader = dropboxClient.files().download("/" + name + ".bbx");
-                long size = dbxDownloader.getResult().getSize();
-                dbxDownloader.download(new ProgressOutputStream(size, fout, new ProgressOutputStream.Listener() {
-                    @Override
-                    public void progress(long completed, long totalSize) {
-                        // TODO: Display progress dialog to the user
-                        // update progress bar here ...
-                        if (completed == totalSize) {
-                            runJavascript("CallbackManager.cloud.downloadComplete(" + name + ")");
-                        }
-                    }
-                }));
-            } finally {
-                fout.close();
-            }
-        } catch (DbxException | IOException e) {
-            Log.e(TAG, "Unable to download file " + name + ": " + e);
+            File toFile = new File(toDir, name + ".bbx");
+            if (!toFile.exists()) toFile.createNewFile();
+            new DropboxZipTask(dropboxClient).execute(projectDir, toFile);
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started upload of project: " + name);
+        } catch (IOException | SecurityException e) {
+            Log.e(TAG, "ZipAndUpload: " + e.getMessage());
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Could not upload project: " + name);
         }
     }
 
-    private NanoHTTPD.Response startDropboxUpload(String name) {
+    private NanoHTTPD.Response renameDropboxProject(final String filename) {
+        new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                try {
+                    // TODO: IMPLEMENT CORRECTLY
+                    Metadata moveFile = dropboxClient.files().move("/" + filename + ".bbx", "/" + filename + filename + ".bbx");
+                    JSONObject newFiles = dropboxAppFolderContents();
+                    if (newFiles != null)
+                        runJavascript("CallbackManager.cloud.filesChanged(" + newFiles.toString() + ")");
+                    Log.d(TAG, "MetadataRename: " + moveFile);
+                } catch (DbxException e) {
+                    Log.e(TAG, "Rename: " + e.getMessage());
+                }
+            }
+        }.start();
         return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started upload of project: " + name);
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully renamed project: " + filename);
+    }
+
+    private NanoHTTPD.Response deleteDropboxProject(final String filename) {
+        new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                try {
+                    Metadata deleteFile = dropboxClient.files().delete("/" + filename + ".bbx");
+                    JSONObject newFiles = dropboxAppFolderContents();
+                    if (newFiles != null)
+                        runJavascript("CallbackManager.cloud.filesChanged(" + newFiles.toString() + ")");
+                    Log.d(TAG, "MetadataDelete: " + deleteFile);
+                } catch (DbxException e) {
+                    Log.e(TAG, "Delete: " + e.getMessage());
+                }
+            }
+        }.start();
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started deletion of: " + filename);
+    }
+
+    private static void initializeDropbox(String secret) {
+        if (secret != null && !secret.equals("")) {
+            Log.d("DROPBOXINTENT", "OAUTH-SECRET: " + secret);
+            mainWebViewContext.getSharedPreferences(DB_PREFS_KEY, MODE_PRIVATE).edit().putString("access-token", secret).apply();
+            dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
+            DropboxRequestHandler.dropboxClient = new DbxClientV2(dropboxConfig, secret);
+            runJavascript("CallbackManager.cloud.signIn()");
+        }
+    }
+
+    public static void dropboxAppOAuth() {
+        Intent intent = AuthActivity.result;
+        if (intent == null || !intent.hasExtra(EXTRA_ACCESS_TOKEN)) return;
+        initializeDropbox(intent.getStringExtra(EXTRA_ACCESS_SECRET));
+    }
+
+    public static void dropboxWebOAuth(Intent intent) {
+        if (intent == null) return;
+        Uri uri = intent.getData();
+        if (uri != null && uri.toString().startsWith("db-" + mainWebViewContext.getString(R.string.APP_KEY))) {
+            initializeDropbox(uri.getQueryParameter("oauth_token_secret"));
+        }
     }
 
 }

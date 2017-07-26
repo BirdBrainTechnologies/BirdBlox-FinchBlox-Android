@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -27,12 +28,12 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Toast;
 
-import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
-import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
+import com.birdbraintechnologies.birdblocks.Bluetooth.BluetoothHelper;
+import com.birdbraintechnologies.birdblocks.Dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.RecordingHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.DropboxRequestHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.RecordingHandler;
 import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.v2.DbxClientV2;
 
@@ -54,10 +55,12 @@ import java.net.URLEncoder;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.DB_PREFS_KEY;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.dropboxConfig;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler.metrics;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.UIRequestHandler.loadContent;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.DropboxRequestHandler.DB_PREFS_KEY;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.DropboxRequestHandler.dropboxAppOAuth;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.DropboxRequestHandler.dropboxConfig;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.DropboxRequestHandler.dropboxWebOAuth;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.PropertiesHandler.metrics;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.UIRequestHandler.loadContent;
 
 
 /**
@@ -78,7 +81,7 @@ public class MainWebView extends AppCompatActivity {
 
     // public static boolean locationPermission;
     public static final int MY_PERMISSIONS_ACCESS_FINE_LOCATION = 1;
-    /* Broadcast receiver for displaying dialogs */
+    /* Broadcast receiver for displaying Dialogs */
     public static final String SHOW_DIALOG = "com.birdbraintechnologies.birdblocks.DIALOG";
     public static final String SHARE_FILE = "com.birdbraintechnologies.birdblocks.SHARE_FILE";
     public static final String EXIT = "com.birdbraintechnologies.birdblocks.EXIT";
@@ -106,7 +109,7 @@ public class MainWebView extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             Log.d("LocPerm", "Entered onReceive Method");
             if (intent.getAction().equals(SHOW_DIALOG)) {
-                // Handles showing Choice and Text dialogs
+                // Handles showing Choice and Text Dialogs
                 showDialog(intent.getExtras());
             } else if (intent.getAction().equals(SHARE_FILE)) {
                 // Handles opening a share dialog
@@ -230,6 +233,13 @@ public class MainWebView extends AppCompatActivity {
             runJavascript("SaveManager.import(\"" + encodedFileName + "\")");
         }
 
+        SharedPreferences dropboxPrefs = this.getSharedPreferences(DB_PREFS_KEY, MODE_PRIVATE);
+        String accessToken = dropboxPrefs.getString("access-token", null);
+        if (accessToken != null) {
+            // Create Dropbox client
+            DropboxRequestHandler.dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
+            DropboxRequestHandler.dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
+        }
     }
 
 
@@ -258,24 +268,13 @@ public class MainWebView extends AppCompatActivity {
         webView.onResume();
         webView.resumeTimers();
         micPermissions = hasMicrophonePermissions();
+        dropboxAppOAuth();
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        Uri uri = intent.getData();
-        if (uri != null && uri.toString().startsWith("db-" + getString(R.string.APP_KEY))) {
-            Log.d("DROPBOXINTENT", "URI:" + uri.toString());
-            String accessToken = uri.getQueryParameter("oauth_token_secret");
-            Log.d("DROPBOXINTENT", "Access Token: " + accessToken);
-            if (accessToken != null) {
-                this.getSharedPreferences(DB_PREFS_KEY, MODE_PRIVATE).edit().putString("access-token", accessToken).apply();
-                DropboxRequestHandler.dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
-                DropboxRequestHandler.dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
-                Log.d("DROPBOXINTENT", "Initialized");
-                runJavascript("CallbackManager.cloud.signIn()");
-            }
-        }
+        dropboxWebOAuth(intent);
     }
 
     @Override

@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
+package com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers;
 
 import android.Manifest;
 import android.content.BroadcastReceiver;
@@ -24,8 +24,8 @@ import android.view.Display;
 import android.view.Surface;
 import android.view.WindowManager;
 
+import com.birdbraintechnologies.birdblocks.Dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.MainWebView;
-import com.birdbraintechnologies.birdblocks.dialogs.BirdblocksDialog;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
@@ -37,7 +37,7 @@ import fi.iki.elonen.NanoHTTPD;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
- * Handler for getting sensor data from the host device and showing dialogs
+ * Handler for getting sensor data from the host device and showing Dialogs
  *
  * @author Terence Sun (tsun1215)
  */
@@ -66,7 +66,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             deviceAccelX, deviceAccelY, deviceAccelZ;
 
 
-    /* For dialogs */
+    /* For Dialogs */
     public static final String DIALOG_RESPONSE = "com.birdbraintechnologies.birdblocks.DIALOG_RESPONSE";
     private String dialogResponse = null;
     private BroadcastReceiver bReceiver = new BroadcastReceiver() {
@@ -88,7 +88,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     }
 
     /**
-     * Initializes the broadcast manager endpoint for dialogs
+     * Initializes the broadcast manager endpoint for Dialogs
      */
     private void initBroadcastManager() {
         bManager = LocalBroadcastManager.getInstance(service);

@@ -2,10 +2,10 @@ package com.birdbraintechnologies.birdblocks.Robots;
 
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblocks.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblocks.Robots.RobotStates.HBState;
 import com.birdbraintechnologies.birdblocks.Robots.RobotStates.RobotStateObjects.RobotStateObject;
-import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
-import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
+import com.birdbraintechnologies.birdblocks.Util.DeviceUtil;
 
 import java.util.List;
 import java.util.Map;

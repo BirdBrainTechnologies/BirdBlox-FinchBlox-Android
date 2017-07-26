@@ -2,9 +2,9 @@ package com.birdbraintechnologies.birdblocks.Robots;
 
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblocks.Bluetooth.MelodySmartConnection;
 import com.birdbraintechnologies.birdblocks.Robots.RobotStates.FLState;
-import com.birdbraintechnologies.birdblocks.bluetooth.MelodySmartConnection;
-import com.birdbraintechnologies.birdblocks.util.DeviceUtil;
+import com.birdbraintechnologies.birdblocks.Util.DeviceUtil;
 
 import java.util.Arrays;
 import java.util.List;

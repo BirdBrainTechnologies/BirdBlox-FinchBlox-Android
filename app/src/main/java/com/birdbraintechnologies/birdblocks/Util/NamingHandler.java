@@ -1,8 +1,7 @@
-package com.birdbraintechnologies.birdblocks.util;
+package com.birdbraintechnologies.birdblocks.Util;
 
 
 import android.content.Context;
-import android.util.Log;
 
 import com.birdbraintechnologies.birdblocks.R;
 

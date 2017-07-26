@@ -1,17 +1,17 @@
-package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
+package com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers;
 
 import android.bluetooth.le.ScanFilter;
 import android.os.ParcelUuid;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblocks.Bluetooth.BluetoothHelper;
+import com.birdbraintechnologies.birdblocks.Bluetooth.MelodySmartConnection;
+import com.birdbraintechnologies.birdblocks.Bluetooth.UARTConnection;
+import com.birdbraintechnologies.birdblocks.Bluetooth.UARTSettings;
 import com.birdbraintechnologies.birdblocks.Robots.Flutter;
 import com.birdbraintechnologies.birdblocks.Robots.Hummingbird;
 import com.birdbraintechnologies.birdblocks.Robots.Robot;
 import com.birdbraintechnologies.birdblocks.Robots.RobotType;
-import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
-import com.birdbraintechnologies.birdblocks.bluetooth.MelodySmartConnection;
-import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
-import com.birdbraintechnologies.birdblocks.bluetooth.UARTSettings;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
 
@@ -154,7 +154,7 @@ public class RobotRequestHandler implements RequestHandler {
     }
 
     /**
-     * Creates a bluetooth scan Robot filter that only matches the required 'type' of Robot.
+     * Creates a Bluetooth scan Robot filter that only matches the required 'type' of Robot.
      *
      * @param robotType The 'type' of Robot to be scanned for (Hummingbird or Flutter).
      * @return List of scan filters.

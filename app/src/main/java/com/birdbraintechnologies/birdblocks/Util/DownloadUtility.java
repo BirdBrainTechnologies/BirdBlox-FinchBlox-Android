@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.util;
+package com.birdbraintechnologies.birdblocks.Util;
 
 import android.util.Log;
 
@@ -48,7 +48,7 @@ public class DownloadUtility {
      * TODO: Add 'downloadFileWithProgress(String url, File outputFile)', if required
      * Use {@link ProgressOutputStream} instead of {@link java.io.OutputStream}.
      * Example implementation of {@link ProgressOutputStream} can be found in
-     * {@link com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler},
+     * {@link com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.DropboxRequestHandler},
      * inside the {@link dropboxDownload} function.
      * Can also be found here: https://github.com/dropbox/dropbox-sdk-java/issues/66
      */

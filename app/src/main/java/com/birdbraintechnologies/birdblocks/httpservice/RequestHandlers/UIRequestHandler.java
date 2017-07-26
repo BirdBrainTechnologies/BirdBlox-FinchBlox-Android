@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
+package com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers;
 
 import android.util.Log;
 
@@ -16,10 +16,10 @@ import fi.iki.elonen.NanoHTTPD;
 import static com.birdbraintechnologies.birdblocks.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblocks.httpservice.HttpService.TAG;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.CURRENT_PREFS_KEY;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.NAMED_PREFS_KEY;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.filesPrefs;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.getBirdblocksDir;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler.CURRENT_PREFS_KEY;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler.NAMED_PREFS_KEY;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler.filesPrefs;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler.getBirdblocksDir;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**

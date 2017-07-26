@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.bluetooth;
+package com.birdbraintechnologies.birdblocks.Bluetooth;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 
 /**
- * Helper class for basic bluetooth connectivity
+ * Helper class for basic Bluetooth connectivity
  *
  * @author Terence Sun (tsun1215)
  */
@@ -45,7 +45,7 @@ public class BluetoothHelper {
     /**
      * Initializes a Bluetooth helper
      *
-     * @param context Context that bluetooth is being used by
+     * @param context Context that Bluetooth is being used by
      */
     public BluetoothHelper(Context context) {
         this.context = context;
@@ -69,7 +69,7 @@ public class BluetoothHelper {
     /**
      * Scans for Bluetooth devices that matches the filter.
      *
-     * @param scanFilters List of bluetooth.le.ScanFilter to filter by
+     * @param scanFilters List of Bluetooth.le.ScanFilter to filter by
      */
     public void scanDevices(List<ScanFilter> scanFilters) {
         Log.d("BLEScan", "About to start scan");

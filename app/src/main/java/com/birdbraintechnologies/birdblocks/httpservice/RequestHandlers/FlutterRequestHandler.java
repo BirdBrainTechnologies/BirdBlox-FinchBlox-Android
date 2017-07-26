@@ -1,17 +1,17 @@
-package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
+package com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.ScanFilter;
 import android.os.ParcelUuid;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblocks.Bluetooth.BluetoothHelper;
+import com.birdbraintechnologies.birdblocks.Bluetooth.MelodySmartConnection;
+import com.birdbraintechnologies.birdblocks.Bluetooth.UARTSettings;
 import com.birdbraintechnologies.birdblocks.Robots.Flutter;
-import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
-import com.birdbraintechnologies.birdblocks.bluetooth.MelodySmartConnection;
-import com.birdbraintechnologies.birdblocks.bluetooth.UARTSettings;
+import com.birdbraintechnologies.birdblocks.Util.NamingHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
-import com.birdbraintechnologies.birdblocks.util.NamingHandler;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -144,7 +144,7 @@ public class FlutterRequestHandler implements RequestHandler {
     }
 
     /**
-     * Creates a bluetooth scan device filter that only matches Flutter devices
+     * Creates a Bluetooth scan device filter that only matches Flutter devices
      *
      * @return List of scan filters
      */

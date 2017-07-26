@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
+package com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers;
 
 import android.os.Build;
 import android.util.DisplayMetrics;

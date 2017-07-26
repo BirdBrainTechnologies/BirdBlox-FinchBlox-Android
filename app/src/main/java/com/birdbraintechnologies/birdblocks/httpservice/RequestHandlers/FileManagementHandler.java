@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
+package com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers;
 
 import android.content.Context;
 import android.content.Intent;
@@ -7,9 +7,9 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblocks.MainWebView;
+import com.birdbraintechnologies.birdblocks.Util.ZipUtility;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
-import com.birdbraintechnologies.birdblocks.util.ZipUtility;
 
 import org.apache.commons.io.FileUtils;
 import org.json.JSONArray;
@@ -27,8 +27,8 @@ import fi.iki.elonen.NanoHTTPD;
 import static com.birdbraintechnologies.birdblocks.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblocks.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.dropboxSignedIn;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler.getDropboxSignIn;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.DropboxRequestHandler.dropboxSignedIn;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.DropboxRequestHandler.getDropboxSignIn;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**

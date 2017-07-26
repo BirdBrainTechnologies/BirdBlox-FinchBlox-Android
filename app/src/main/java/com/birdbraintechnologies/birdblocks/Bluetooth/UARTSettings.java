@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.bluetooth;
+package com.birdbraintechnologies.birdblocks.Bluetooth;
 
 import java.util.UUID;
 

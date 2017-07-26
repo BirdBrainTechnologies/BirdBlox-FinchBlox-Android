@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
+package com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers;
 
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -29,9 +29,9 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 
 import static com.birdbraintechnologies.birdblocks.MainWebView.mainWebViewContext;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.CURRENT_PREFS_KEY;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.filesPrefs;
-import static com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler.getBirdblocksDir;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler.CURRENT_PREFS_KEY;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler.filesPrefs;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler.getBirdblocksDir;
 
 /**
  * Handler for handling recording and playback of (recorded) sounds,

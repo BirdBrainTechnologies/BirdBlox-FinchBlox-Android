@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.util;
+package com.birdbraintechnologies.birdblocks.Util;
 
 /**
  * Utility class for the Hummingbird. Contains library functions for converting from raw sensor

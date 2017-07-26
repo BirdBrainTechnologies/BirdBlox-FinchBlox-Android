@@ -5,14 +5,14 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
 
-import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
+import com.birdbraintechnologies.birdblocks.Bluetooth.BluetoothHelper;
 
 import java.io.IOException;
 
 import fi.iki.elonen.NanoHTTPD;
 
 /**
- * Service that bundles the HTTP server and bluetooth
+ * Service that bundles the HTTP server and Bluetooth
  *
  * @author Terence Sun (tsun1215)
  */
@@ -53,7 +53,7 @@ public class HttpService extends Service {
     }
 
     /**
-     * Gets the bluetooth helper object
+     * Gets the Bluetooth helper object
      * @return Bluetooth helper object
      */
     public BluetoothHelper getBluetoothHelper() {

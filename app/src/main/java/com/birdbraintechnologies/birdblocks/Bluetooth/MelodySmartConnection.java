@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.bluetooth;
+package com.birdbraintechnologies.birdblocks.Bluetooth;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -44,7 +44,7 @@ public class MelodySmartConnection extends BluetoothGattCallback {
 
 
     /**
-     * Initializes a UARTConnection. This needs to know the context the bluetooth connection is
+     * Initializes a UARTConnection. This needs to know the context the Bluetooth connection is
      * being made from (Activity, Service, etc)
      *
      * @param context  Context that the connection is begin made from

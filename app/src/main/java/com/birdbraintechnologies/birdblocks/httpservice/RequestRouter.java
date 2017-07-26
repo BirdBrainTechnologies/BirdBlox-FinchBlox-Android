@@ -2,16 +2,16 @@ package com.birdbraintechnologies.birdblocks.httpservice;
 
 import android.util.Log;
 
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.DropboxRequestHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FileManagementHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.FlutterRequestHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HummingbirdRequestHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.PropertiesHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.RecordingHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SettingsHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.SoundHandler;
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.UIRequestHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.DropboxRequestHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FlutterRequestHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.HostDeviceHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.HummingbirdRequestHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.PropertiesHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.RecordingHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.SettingsHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.SoundHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.UIRequestHandler;
 
 import java.util.ArrayList;
 import java.util.HashMap;

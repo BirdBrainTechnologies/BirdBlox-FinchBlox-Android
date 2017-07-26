@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.httpservice.requesthandlers;
+package com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.ScanFilter;
@@ -6,13 +6,13 @@ import android.os.Handler;
 import android.os.ParcelUuid;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblocks.Bluetooth.BluetoothHelper;
+import com.birdbraintechnologies.birdblocks.Bluetooth.UARTConnection;
+import com.birdbraintechnologies.birdblocks.Bluetooth.UARTSettings;
 import com.birdbraintechnologies.birdblocks.Robots.Hummingbird;
-import com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper;
-import com.birdbraintechnologies.birdblocks.bluetooth.UARTConnection;
-import com.birdbraintechnologies.birdblocks.bluetooth.UARTSettings;
+import com.birdbraintechnologies.birdblocks.Util.NamingHandler;
 import com.birdbraintechnologies.birdblocks.httpservice.HttpService;
 import com.birdbraintechnologies.birdblocks.httpservice.RequestHandler;
-import com.birdbraintechnologies.birdblocks.util.NamingHandler;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -26,10 +26,10 @@ import java.util.UUID;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static com.birdbraintechnologies.birdblocks.Bluetooth.BluetoothHelper.currentlyScanning;
 import static com.birdbraintechnologies.birdblocks.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblocks.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
-import static com.birdbraintechnologies.birdblocks.bluetooth.BluetoothHelper.currentlyScanning;
 
 /**
  * Class for handling requests from the router to Hummingbird devices
@@ -262,7 +262,7 @@ public class HummingbirdRequestHandler implements RequestHandler {
     }
 
     /**
-     * Creates a bluetooth scan device filter that only matches Hummingbird devices
+     * Creates a Bluetooth scan device filter that only matches Hummingbird devices
      *
      * @return List of scan filters
      */

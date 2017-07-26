@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.util;
+package com.birdbraintechnologies.birdblocks.Util;
 
 /**
  * @author Shreyan Bakshi (AppyFizz)

@@ -1,4 +1,4 @@
-package com.birdbraintechnologies.birdblocks.dialogs;
+package com.birdbraintechnologies.birdblocks.Dialogs;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -11,7 +11,7 @@ import android.text.InputType;
 import android.util.Log;
 import android.widget.EditText;
 
-import com.birdbraintechnologies.birdblocks.httpservice.requesthandlers.HostDeviceHandler;
+import com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.HostDeviceHandler;
 
 /**
  * Created by tsun on 2/21/17.
