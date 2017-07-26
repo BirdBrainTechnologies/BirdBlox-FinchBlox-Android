@@ -7,12 +7,12 @@ import com.dropbox.core.v2.DbxClientV2;
  * @author Shreyan Bakshi (AppyFizz)
  */
 
-public class DropboxZipTask extends ZipTask {
+public class DropboxZipAndUploadTask extends ZipTask {
     String TAG = this.getClass().getName();
 
     private DbxClientV2 dropboxClient;
 
-    public DropboxZipTask(DbxClientV2 dropboxClient) {
+    public DropboxZipAndUploadTask(DbxClientV2 dropboxClient) {
         super();
         this.dropboxClient = dropboxClient;
     }

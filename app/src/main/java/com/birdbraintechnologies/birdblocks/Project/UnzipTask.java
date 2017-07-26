@@ -5,8 +5,13 @@ import android.util.Log;
 
 import com.birdbraintechnologies.birdblocks.Util.ZipUtility;
 
+import org.apache.commons.io.FilenameUtils;
+
 import java.io.File;
 import java.io.IOException;
+
+import static com.birdbraintechnologies.birdblocks.MainWebView.bbxEncode;
+import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
 
 /**
  * @author Shreyan Bakshi (AppyFizz)
@@ -25,10 +30,17 @@ public class UnzipTask extends AsyncTask<File, Long, String> {
             File zip = files[0];
             File to = files[1];
             ZipUtility.unzip(zip, to);
-            return to.getName();
+            Log.d("DROPBOX", "Unzipped to " + to.getAbsolutePath());
+            return FilenameUtils.getBaseName(to.getName());
         } catch (IOException | SecurityException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             Log.e(TAG, "Unzip: " + e.getMessage());
             return null;
+        } finally {
+            try {
+                files[0].delete();
+            } catch (SecurityException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                Log.e(TAG, "DeleteAfterUnzip: " + e.getMessage());
+            }
         }
     }
 
@@ -39,8 +51,11 @@ public class UnzipTask extends AsyncTask<File, Long, String> {
     }
 
     @Override
-    protected void onPostExecute(String s) {
-        if (s != null) super.onPostExecute(s);
+    protected void onPostExecute(String name) {
+        if (name != null) {
+            super.onPostExecute(name);
+            runJavascript("CallbackManager.cloud.downloadComplete('" + bbxEncode(name) + "')");
+        }
     }
 
     @Override

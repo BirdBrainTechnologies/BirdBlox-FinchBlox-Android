@@ -265,6 +265,7 @@ public class MainWebView extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        mainWebViewContext = MainWebView.this;
         webView.onResume();
         webView.resumeTimers();
         micPermissions = hasMicrophonePermissions();

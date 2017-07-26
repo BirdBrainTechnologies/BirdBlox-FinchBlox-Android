@@ -612,7 +612,7 @@ public class FileManagementHandler implements RequestHandler {
      * @param name The input project name
      * @return True if the given project exists on disk, false otherwise.
      */
-    private boolean projectExists(String name) {
+    static boolean projectExists(String name) {
         return isNameSanitized(name) && new File(getBirdblocksDir(), name).exists();
     }
 

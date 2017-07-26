@@ -20,7 +20,7 @@ import java.util.zip.ZipOutputStream;
 
 public class ZipUtility {
 
-    public static void zipDirectory(File directory, File zip) throws IOException {
+    public static final void zipDirectory(File directory, File zip) throws IOException {
         if (!zip.exists()) {
             zip.getParentFile().mkdirs();
             zip.createNewFile();
@@ -32,8 +32,8 @@ public class ZipUtility {
         zos.close();
     }
 
-    private static void zip(File directory, File base,
-                            ZipOutputStream zos) throws IOException {
+    private static final void zip(File directory, File base,
+                                  ZipOutputStream zos) throws IOException {
         File[] files = directory.listFiles();
         byte[] buffer = new byte[8192];
         int read = 0;
@@ -53,11 +53,7 @@ public class ZipUtility {
         }
     }
 
-    public static void unzip(File zip, File extractTo) throws IOException {
-        if (!extractTo.exists()) {
-            extractTo.getParentFile().mkdirs();
-            extractTo.createNewFile();
-        }
+    public static final void unzip(File zip, File extractTo) throws IOException {
         ZipFile archive = new ZipFile(zip);
         Enumeration e = archive.entries();
         while (e.hasMoreElements()) {
@@ -81,4 +77,5 @@ public class ZipUtility {
             }
         }
     }
+
 }

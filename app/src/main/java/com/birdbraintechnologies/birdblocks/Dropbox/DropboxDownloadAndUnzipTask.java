@@ -19,6 +19,7 @@ import java.io.IOException;
 
 import static com.birdbraintechnologies.birdblocks.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblocks.MainWebView.runJavascript;
+import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.DropboxRequestHandler.DBX_DOWN_DIR;
 import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.DropboxRequestHandler.dropboxAppFolderContents;
 import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler.findAvailableName;
 import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.FileManagementHandler.getBirdblocksDir;
@@ -27,12 +28,12 @@ import static com.birdbraintechnologies.birdblocks.httpservice.RequestHandlers.F
  * @author Shreyan Bakshi (AppyFizz)
  */
 
-public class DropboxDownloadTask extends AsyncTask<String, Long, String> {
+public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Long, String> {
     private final String TAG = this.getClass().getName();
 
     private DbxClientV2 dropboxClient;
 
-    public DropboxDownloadTask(DbxClientV2 dropboxClient) {
+    public DropboxDownloadAndUnzipTask(DbxClientV2 dropboxClient) {
         super();
         this.dropboxClient = dropboxClient;
     }
@@ -44,7 +45,9 @@ public class DropboxDownloadTask extends AsyncTask<String, Long, String> {
          */
         try {
             final String name = names[0];
-            File dbxDown = new File(mainWebViewContext.getFilesDir(), name + ".bbx");
+            File dbxDownDir = new File(mainWebViewContext.getFilesDir(), DBX_DOWN_DIR);
+            if (!dbxDownDir.exists()) dbxDownDir.mkdirs();
+            File dbxDown = new File(dbxDownDir, name + ".bbx");
             try {
                 dropboxClient.files().getMetadata("/" + name + ".bbx");
             } catch (GetMetadataErrorException e) {
@@ -106,8 +109,7 @@ public class DropboxDownloadTask extends AsyncTask<String, Long, String> {
         if (name != null) {
             super.onPostExecute(name);
             try {
-                runJavascript("CallbackManager.cloud.downloadComplete(" + name + ")");
-                File zip = new File(mainWebViewContext.getFilesDir(), name + ".bbx");
+                File zip = new File(mainWebViewContext.getFilesDir() + "/" + DBX_DOWN_DIR, name + ".bbx");
                 String availableName = findAvailableName(getBirdblocksDir(), name, "");
                 File to = new File(getBirdblocksDir(), availableName);
                 new UnzipTask().execute(zip, to);
