@@ -528,7 +528,7 @@ public class FileManagementHandler implements RequestHandler {
      * @return Returns false if 'name' contains any illegal characters,
      * and true otherwise.
      */
-    private static boolean isNameSanitized(String name) {
+    static boolean isNameSanitized(String name) {
         // Illegal characters are:
         // '\', '/', ':', '*', '?', '<', '>', '|', '.', '\n', '\r', '\0', '"', '$'
         return (name != null) && !name.matches(".*[\\\\/:*?<>|.\n\r\0\"$].*");

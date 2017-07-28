@@ -1,12 +1,17 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Handler;
+import android.text.InputType;
 import android.util.Log;
+import android.widget.EditText;
 
 import com.birdbraintechnologies.birdblox.Dropbox.DropboxDownloadAndUnzipTask;
+import com.birdbraintechnologies.birdblox.Dropbox.DropboxOperation;
 import com.birdbraintechnologies.birdblox.Dropbox.DropboxZipAndUploadTask;
 import com.birdbraintechnologies.birdblox.R;
 import com.birdbraintechnologies.birdblox.httpservice.HttpService;
@@ -35,7 +40,10 @@ import static android.content.Context.MODE_PRIVATE;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.findAvailableName;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.getBirdbloxDir;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.isNameSanitized;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.projectExists;
 import static com.dropbox.core.android.AuthActivity.EXTRA_ACCESS_SECRET;
 import static com.dropbox.core.android.AuthActivity.EXTRA_ACCESS_TOKEN;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
@@ -46,9 +54,7 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 public class DropboxRequestHandler implements RequestHandler {
 
-    // TODO: Percent-encode CallBacks
-    // TODO: Rename
-    // TODO: Dialogs
+    // TODO: Progress Dialogs
 
     private final String TAG = this.getClass().getName();
 
@@ -93,9 +99,9 @@ public class DropboxRequestHandler implements RequestHandler {
             case "upload":
                 return startDropboxUpload(m.get("filename").get(0));
             case "rename":
-                return renameDropboxProject(m.get("filename").get(0));
+                return startDropboxRename(m.get("filename").get(0));
             case "delete":
-                return deleteDropboxProject(m.get("filename").get(0));
+                return startDropboxDelete(m.get("filename").get(0));
         }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Bad Request");
@@ -110,15 +116,6 @@ public class DropboxRequestHandler implements RequestHandler {
         }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Sign In Process started");
-    }
-
-    private void obtainDropboxAccessToken() {
-        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                Auth.startOAuth2Authentication(mainWebViewContext, mainWebViewContext.getString(R.string.APP_KEY));
-            }
-        });
     }
 
     private NanoHTTPD.Response dropboxSignOut() {
@@ -157,18 +154,11 @@ public class DropboxRequestHandler implements RequestHandler {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Not signed in to Dropbox");
         }
-//        if (projectExists(name)) {
-//            String availableName = findAvailableName(getBirdbloxDir(), name, "");
-//            Intent showDialog = new Intent(MainWebView.SHOW_DIALOG);
-//            showDialog.putExtra("type", BirdBloxDialog.DialogType.INPUT.toString());
-//            showDialog.putExtra("title", "Download Name");
-//            showDialog.putExtra("message", "\"" + name + "\"already exists. Please choose a different name. If you choose the same name, the existing project will be overwritten.");
-//            showDialog.putExtra("hint", availableName);
-//            showDialog.putExtra("default", availableName);
-//            showDialog.putExtra("select", true);
-//            LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
-//        }
-        new DropboxDownloadAndUnzipTask(dropboxClient).execute(name);
+        if (checkValidName(name, DropboxOperation.DOWNLOAD)) {
+            startDropboxOperation(name, DropboxOperation.DOWNLOAD);
+        } else {
+            showDropboxDialog(name, DropboxOperation.DOWNLOAD);
+        }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started download and unzip of project: " + name);
     }
@@ -178,92 +168,44 @@ public class DropboxRequestHandler implements RequestHandler {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Not signed in to Dropbox");
         }
-        try {
-            File projectDir = new File(getBirdbloxDir(), name);
-            File toDir = new File(mainWebViewContext.getFilesDir(), DBX_ZIP_DIR);
-            if (!toDir.exists()) toDir.mkdirs();
-            File toFile = new File(toDir, name + ".bbx");
-            if (!toFile.exists()) toFile.createNewFile();
-            new DropboxZipAndUploadTask(dropboxClient).execute(projectDir, toFile);
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started upload of project: " + name);
-        } catch (IOException | SecurityException e) {
-            Log.e(TAG, "ZipAndUpload: " + e.getMessage());
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Could not upload project: " + name);
+        if (checkValidName(name, DropboxOperation.UPLOAD)) {
+            startDropboxOperation(name, DropboxOperation.UPLOAD);
+        } else {
+            showDropboxDialog(name, DropboxOperation.UPLOAD);
+
         }
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started upload of project: " + name);
     }
 
-    private NanoHTTPD.Response renameDropboxProject(final String filename) {
+    private NanoHTTPD.Response startDropboxRename(final String name) {
         if (!dropboxSignedIn()) {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Not signed in to Dropbox");
         }
-        new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                try {
-                    // TODO: IMPLEMENT CORRECTLY
-                    Metadata moveFile = dropboxClient.files().move("/" + filename + ".bbx", "/" + filename + filename + ".bbx");
-                    JSONObject newFiles = dropboxAppFolderContents();
-                    if (newFiles != null)
-                        runJavascript("CallbackManager.cloud.filesChanged(" + bbxEncode(newFiles.toString()) + ")");
-                    Log.d(TAG, "MetadataRename: " + moveFile);
-                } catch (DbxException e) {
-                    Log.e(TAG, "Rename: " + e.getMessage());
-                }
-            }
-        }.start();
+        showRenameDialog(name, DropboxOperation.RENAME);
         return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully renamed project: " + filename);
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully renamed project: " + name);
     }
 
-    private NanoHTTPD.Response deleteDropboxProject(final String filename) {
+
+    private NanoHTTPD.Response startDropboxDelete(final String name) {
         if (!dropboxSignedIn()) {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Not signed in to Dropbox");
         }
-        new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                try {
-                    Metadata deleteFile = dropboxClient.files().delete("/" + filename + ".bbx");
-                    JSONObject newFiles = dropboxAppFolderContents();
-                    if (newFiles != null)
-                        runJavascript("CallbackManager.cloud.filesChanged(" + bbxEncode(newFiles.toString()) + ")");
-                    Log.d(TAG, "MetadataDelete: " + deleteFile);
-                } catch (DbxException e) {
-                    Log.e(TAG, "Delete: " + e.getMessage());
-                }
-            }
-        }.start();
+        checkInput(name, DropboxOperation.DELETE);
         return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started deletion of: " + filename);
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started deletion of: " + name);
     }
 
-    public static JSONObject dropboxAppFolderContents() {
-        if (!dropboxSignedIn()) return null;
-        try {
-            JSONArray arr = new JSONArray();
-            ListFolderResult result = dropboxClient.files().listFolder("");
-            while (true) {
-                for (Metadata metadata : result.getEntries()) {
-                    arr.put(FilenameUtils.getBaseName(metadata.getName()));
-                }
-                if (!result.getHasMore()) {
-                    break;
-                }
-                result = dropboxClient.files().listFolderContinue(result.getCursor());
+    private void obtainDropboxAccessToken() {
+        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                Auth.startOAuth2Authentication(mainWebViewContext, mainWebViewContext.getString(R.string.APP_KEY));
             }
-            JSONObject obj = new JSONObject();
-            obj.put("files", arr);
-            return obj;
-        } catch (DbxException | JSONException e) {
-            Log.e("DropboxRequestHandler", "listFolder: " + e.getMessage());
-        }
-        return null;
+        });
     }
 
     public static void dropboxAppOAuth() {
@@ -278,10 +220,6 @@ public class DropboxRequestHandler implements RequestHandler {
         if (uri != null && uri.toString().startsWith("db-" + mainWebViewContext.getString(R.string.APP_KEY))) {
             initializeDropbox(uri.getQueryParameter("oauth_token_secret"));
         }
-    }
-
-    static boolean dropboxSignedIn() {
-        return mainWebViewContext.getSharedPreferences(DB_PREFS_KEY, MODE_PRIVATE).getString("access-token", null) != null;
     }
 
     private static void initializeDropbox(String secret) {
@@ -307,6 +245,10 @@ public class DropboxRequestHandler implements RequestHandler {
         }
     }
 
+    static boolean dropboxSignedIn() {
+        return mainWebViewContext.getSharedPreferences(DB_PREFS_KEY, MODE_PRIVATE).getString("access-token", null) != null;
+    }
+
     private static String getDropboxSignInInfo() {
         if (dropboxClient != null) {
             try {
@@ -317,6 +259,233 @@ public class DropboxRequestHandler implements RequestHandler {
             }
         }
         return null;
+    }
+
+    public static JSONObject dropboxAppFolderContents() {
+        if (!dropboxSignedIn()) return null;
+        try {
+            JSONArray arr = new JSONArray();
+            ListFolderResult result = dropboxClient.files().listFolder("");
+            while (true) {
+                for (Metadata metadata : result.getEntries()) {
+                    arr.put(FilenameUtils.getBaseName(metadata.getName()));
+                }
+                if (!result.getHasMore()) {
+                    break;
+                }
+                result = dropboxClient.files().listFolderContinue(result.getCursor());
+            }
+            JSONObject obj = new JSONObject();
+            obj.put("files", arr);
+            return obj;
+        } catch (DbxException | JSONException e) {
+            Log.e("DropboxRequestHandler", "listFolder: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private static void showDropboxDialog(final String name, final DropboxOperation dbxOperation) {
+        final AlertDialog.Builder builder = new AlertDialog.Builder(mainWebViewContext);
+        builder.setTitle(dbxOperation.toString());
+        builder.setMessage(getNameError(name, dbxOperation));
+        builder.setCancelable(true);
+        builder.setPositiveButton(
+                "Rename",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.cancel();
+                        showRenameDialog(name, dbxOperation);
+                    }
+                });
+        builder.setNegativeButton(
+                "Overwrite",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.cancel();
+                        startDropboxOperation(name, dbxOperation);
+                    }
+                });
+        builder.setNeutralButton(
+                "Cancel",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.cancel();
+                    }
+                });
+        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                final AlertDialog alert = builder.create();
+                alert.show();
+            }
+        });
+    }
+
+    private static String getNameError(final String name, DropboxOperation dbxOperation) {
+        switch (dbxOperation) {
+            case DOWNLOAD:
+                return "A project with the name " + name + " already exists on disk. Please choose one of the following: ";
+            case UPLOAD:
+                return "A project with the name " + name + " already exists on Dropbox. Please choose one of the following: ";
+            case RENAME:
+                return "Please enter a different name for the project " + name + " : ";
+        }
+        return "Error";
+    }
+
+    private static void showRenameDialog(final String name, final DropboxOperation dbxOperation) {
+        final AlertDialog.Builder builder = new AlertDialog.Builder(mainWebViewContext);
+        builder.setTitle("Rename");
+        builder.setMessage(getNameError(name, DropboxOperation.RENAME));
+        final EditText input = new EditText(mainWebViewContext);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setText(findAvailableName(getBirdbloxDir(), name, ""));
+        input.setSelectAllOnFocus(true);
+        builder.setView(input);
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+                if (dbxOperation == DropboxOperation.RENAME) {
+                    checkInput(name, input.getText().toString(), dbxOperation);
+                } else {
+                    checkInput(input.getText().toString(), dbxOperation);
+                }
+            }
+        });
+        if (dbxOperation != DropboxOperation.RENAME) {
+            builder.setNegativeButton("Back", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.cancel();
+                    showDropboxDialog(name, dbxOperation);
+                }
+            });
+        }
+        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                final AlertDialog alert = builder.create();
+                alert.show();
+            }
+        });
+    }
+
+    private static void checkInput(String name, DropboxOperation dbxOperation) {
+        boolean validName = checkValidName(name, dbxOperation);
+        if (validName) {
+            startDropboxOperation(name, dbxOperation);
+        } else {
+            showDropboxDialog(name, dbxOperation);
+        }
+    }
+
+    private static void checkInput(String oldName, String newName, DropboxOperation dbxOperation) {
+        boolean validName = checkValidName(oldName, newName, dbxOperation);
+        if (validName) {
+            startDropboxOperation(oldName, newName, dbxOperation);
+        } else {
+            showRenameDialog(oldName, dbxOperation);
+        }
+    }
+
+    private static boolean checkValidName(String name, DropboxOperation dbxOperation) {
+        if (!isNameSanitized(name)) return false;
+        switch (dbxOperation) {
+            case DOWNLOAD:
+                return !projectExists(name);
+            case UPLOAD:
+                // TODO: Correct
+                return true;
+            case DELETE:
+                // TODO: Correct
+                return true;
+        }
+        return false;
+    }
+
+    private static boolean checkValidName(String oldName, String newName, DropboxOperation dropboxOperation) {
+        if (!isNameSanitized(newName)) return false;
+        switch (dropboxOperation) {
+            case RENAME:
+                // TODO: Correct
+                return true;
+        }
+        return false;
+    }
+
+    private static void startDropboxOperation(final String name, DropboxOperation dbxOperation) {
+        switch (dbxOperation) {
+            case DOWNLOAD:
+                dropboxDownload(name);
+                break;
+            case UPLOAD:
+                dropboxUpload(name);
+                break;
+            case DELETE:
+                dropboxDelete(name);
+                break;
+        }
+    }
+
+    private static void startDropboxOperation(final String oldName, final String newName, DropboxOperation dropboxOperation) {
+        switch (dropboxOperation) {
+            case RENAME:
+                dropboxRename(oldName, newName);
+        }
+    }
+
+    private static void dropboxDownload(final String name) {
+        new DropboxDownloadAndUnzipTask(dropboxClient).execute(name);
+    }
+
+    private static void dropboxUpload(final String name) {
+        try {
+            File projectDir = new File(getBirdbloxDir(), name);
+            File toDir = new File(mainWebViewContext.getFilesDir(), DBX_ZIP_DIR);
+            if (!toDir.exists()) toDir.mkdirs();
+            File toFile = new File(toDir, name + ".bbx");
+            if (!toFile.exists()) toFile.createNewFile();
+            new DropboxZipAndUploadTask(dropboxClient).execute(projectDir, toFile);
+        } catch (IOException | SecurityException e) {
+            Log.e("DropboxRequestHandler", "ZipAndUpload: " + e.getMessage());
+        }
+    }
+
+    private static void dropboxRename(final String oldName, final String newName) {
+        new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                try {
+                    Metadata moveFile = dropboxClient.files().move("/" + oldName + ".bbx", "/" + newName + ".bbx");
+                    JSONObject newFiles = dropboxAppFolderContents();
+                    if (newFiles != null)
+                        runJavascript("CallbackManager.cloud.filesChanged(" + bbxEncode(newFiles.toString()) + ")");
+                    Log.d("DropboxRequestHandler", "MetadataRename: " + moveFile);
+                } catch (DbxException e) {
+                    Log.e("DropboxRequestHandler", "Rename: " + e.getMessage());
+                }
+            }
+        }.start();
+    }
+
+    private static void dropboxDelete(final String name) {
+        new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                try {
+                    Metadata deleteFile = dropboxClient.files().delete("/" + name + ".bbx");
+                    JSONObject newFiles = dropboxAppFolderContents();
+                    if (newFiles != null)
+                        runJavascript("CallbackManager.cloud.filesChanged(" + bbxEncode(newFiles.toString()) + ")");
+                    Log.d("DropboxRequestHandler", "MetadataDelete: " + deleteFile);
+                } catch (DbxException e) {
+                    Log.e("DropboxRequestHandler", "Delete: " + e.getMessage());
+                }
+            }
+        }.start();
     }
 
 }

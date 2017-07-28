@@ -65,17 +65,16 @@ public class BirdBloxDialog extends DialogFragment {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                     sendResponseBroadcast("1");
-                    runJavascript("CallbackManager.dialog.choiceResponded(true, true)");
+                    runJavascript("CallbackManager.dialog.choiceResponded(false, true)");
                 }
             }).setPositiveButton(button2Text, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                     sendResponseBroadcast("2");
-                    runJavascript("CallbackManager.dialog.choiceResponded(true, false)");
+                    runJavascript("CallbackManager.dialog.choiceResponded(false, false)");
                 }
             });
         }
-
         return builder.create();
     }
 

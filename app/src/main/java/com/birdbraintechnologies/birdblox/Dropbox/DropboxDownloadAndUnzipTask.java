@@ -22,7 +22,6 @@ import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.DBX_DOWN_DIR;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxAppFolderContents;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.findAvailableName;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.getBirdbloxDir;
 
 /**
@@ -113,8 +112,7 @@ public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Long, String>
             super.onPostExecute(name);
             try {
                 File zip = new File(mainWebViewContext.getFilesDir() + "/" + DBX_DOWN_DIR, name + ".bbx");
-                String availableName = findAvailableName(getBirdbloxDir(), name, "");
-                File to = new File(getBirdbloxDir(), availableName);
+                File to = new File(getBirdbloxDir(), name);
                 new UnzipTask().execute(zip, to);
             } catch (SecurityException e) {
                 Log.e(TAG, "Error while unzipping project: " + name);
