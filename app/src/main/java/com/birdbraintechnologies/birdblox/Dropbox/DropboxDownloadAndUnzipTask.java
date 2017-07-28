@@ -1,9 +1,14 @@
 package com.birdbraintechnologies.birdblox.Dropbox;
 
+import android.app.AlertDialog;
 import android.os.AsyncTask;
+import android.os.Handler;
 import android.util.Log;
+import android.view.View;
+import android.widget.ProgressBar;
 
 import com.birdbraintechnologies.birdblox.Project.UnzipTask;
+import com.birdbraintechnologies.birdblox.R;
 import com.birdbraintechnologies.birdblox.Util.ProgressOutputStream;
 import com.dropbox.core.DbxDownloader;
 import com.dropbox.core.DbxException;
@@ -28,14 +33,43 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Fil
  * @author Shreyan Bakshi (AppyFizz)
  */
 
-public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Long, String> {
+public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Integer, String> {
     private final String TAG = this.getClass().getName();
 
     private DbxClientV2 dropboxClient;
 
+    private final AlertDialog.Builder builder;
+    private AlertDialog downloadDialog;
+    private ProgressBar progressBar;
+
     public DropboxDownloadAndUnzipTask(DbxClientV2 dropboxClient) {
         super();
         this.dropboxClient = dropboxClient;
+
+        builder = new AlertDialog.Builder(mainWebViewContext);
+    }
+
+    @Override
+    protected void onPreExecute() {
+        super.onPreExecute();
+        // TODO: Implement cancel button
+        // TODO: Sanitize and check downloaded file
+        // And this: https://stackoverflow.com/questions/6039158/android-cancel-async-task
+        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                builder.setCancelable(false);
+                downloadDialog = builder.create();
+                final View dialogView = downloadDialog.getLayoutInflater().inflate(R.layout.progress_determinate, null);
+                builder.setView(dialogView);
+                progressBar = (ProgressBar) dialogView.findViewById(R.id.determinate_pb);
+                progressBar.setMax(100);
+                progressBar.setVisibility(View.VISIBLE);
+                progressBar.setProgress(0);
+                downloadDialog = builder.create();
+                downloadDialog.show();
+            }
+        });
     }
 
     @Override
@@ -44,19 +78,21 @@ public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Long, String>
          * Implemented own {@link ProgressOutputStream}, since Dropbox API V2 has no built-in download progress.
          */
         try {
-            final String name = names[0];
+            final String dbxName = names[0];
+            final String localName = names[1];
             File dbxDownDir = new File(mainWebViewContext.getFilesDir(), DBX_DOWN_DIR);
             if (!dbxDownDir.exists()) dbxDownDir.mkdirs();
-            File dbxDown = new File(dbxDownDir, name + ".bbx");
+            File dbxDown = new File(dbxDownDir, localName + ".bbx");
             try {
-                dropboxClient.files().getMetadata("/" + name + ".bbx");
+                dropboxClient.files().getMetadata("/" + dbxName + ".bbx");
             } catch (GetMetadataErrorException e) {
                 if (e.errorValue.isPath() && e.errorValue.getPathValue().isNotFound()) {
-                    Log.e(TAG, "Download: File " + name + " not found.");
+                    Log.e(TAG, "Download: File " + dbxName + " not found.");
+                    downloadDialog.cancel();
                     // TODO: Display this error to the user
                     JSONObject obj = dropboxAppFolderContents();
                     if (obj != null)
-                        runJavascript("CallbackManager.cloud.filesChanged(" + bbxEncode(obj.toString()) + ")");
+                        runJavascript("CallbackManager.cloud.filesChanged('" + bbxEncode(obj.toString()) + "')");
                 } else {
                     throw e;
                 }
@@ -68,17 +104,17 @@ public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Long, String>
             FileOutputStream fout = new FileOutputStream(dbxDown);
             FileMetadata downloadData = null;
             try {
-                DbxDownloader<FileMetadata> dbxDownloader = dropboxClient.files().download("/" + name + ".bbx");
+                DbxDownloader<FileMetadata> dbxDownloader = dropboxClient.files().download("/" + dbxName + ".bbx");
                 long size = dbxDownloader.getResult().getSize();
                 downloadData = dbxDownloader.download(new ProgressOutputStream(size, fout, new ProgressOutputStream.Listener() {
                     @Override
                     public void progress(long completed, long totalSize) {
-                        publishProgress((long) ((completed / (double) totalSize) * 100));
+                        publishProgress((int) ((completed / (double) totalSize) * 100));
                         // Escape early if cancel() is called
                         // if (isCancelled())
                     }
                 }));
-                return name;
+                return localName;
             } finally {
                 fout.close();
                 if (downloadData != null)
@@ -86,24 +122,16 @@ public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Long, String>
             }
         } catch (DbxException | IOException | SecurityException | IllegalStateException | ArrayIndexOutOfBoundsException e) {
             Log.e(TAG, "Unable to download file: " + e.getMessage());
+            downloadDialog.cancel();
             return null;
         }
     }
 
     @Override
-    protected void onPreExecute() {
-        super.onPreExecute();
-        // TODO: Display download progress dialog to the user
-        // Might help: https://stackoverflow.com/questions/5028421/android-unzip-a-folder
-        // And this: https://stackoverflow.com/questions/6039158/android-cancel-async-task
-
-//        AlertDialog downloaDialog
-    }
-
-    @Override
-    protected void onProgressUpdate(Long... progress) {
+    protected void onProgressUpdate(Integer... progress) {
         super.onProgressUpdate(progress);
         // update download progress in the progress bar here ...
+        progressBar.setProgress(progress[0]);
     }
 
     @Override
@@ -111,6 +139,7 @@ public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Long, String>
         if (name != null) {
             super.onPostExecute(name);
             try {
+                downloadDialog.cancel();
                 File zip = new File(mainWebViewContext.getFilesDir() + "/" + DBX_DOWN_DIR, name + ".bbx");
                 File to = new File(getBirdbloxDir(), name);
                 new UnzipTask().execute(zip, to);

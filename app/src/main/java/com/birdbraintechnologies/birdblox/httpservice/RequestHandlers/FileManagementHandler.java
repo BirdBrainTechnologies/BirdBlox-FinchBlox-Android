@@ -542,7 +542,7 @@ public class FileManagementHandler implements RequestHandler {
      * @return Returns sanitized name.
      * (Returns null if name is null).
      */
-    private static String sanitizeName(String name) {
+    static String sanitizeName(String name) {
         if (name == null) return null;
         if (isNameSanitized(name)) return name;
         // else

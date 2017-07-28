@@ -12,7 +12,7 @@
         android:id="@+id/determinate_tv"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="0"
+        android:text="Downloading..."
         android:textColor="@color/colorPrimaryDark"
         android:textSize="20sp"
         tools:text="Downloading ..."
