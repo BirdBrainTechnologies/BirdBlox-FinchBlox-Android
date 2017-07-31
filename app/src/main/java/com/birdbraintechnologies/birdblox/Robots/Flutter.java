@@ -5,10 +5,13 @@ import android.util.Log;
 import com.birdbraintechnologies.birdblox.Bluetooth.MelodySmartConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.FLState;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
+import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
+import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 
 /**
  * Represents a Flutter device and all of its functionality: Setting outputs, reading sensors
@@ -47,6 +50,7 @@ public class Flutter extends Robot<FLState> {
      * @param args       Arguments for setting the output
      * @return True if the output was successfully set, false otherwise
      */
+    @Override
     public boolean setOutput(String outputType, Map<String, List<String>> args) {
         switch (outputType) {
             case "servo":
@@ -229,4 +233,25 @@ public class Flutter extends Robot<FLState> {
     public void disconnect() {
         conn.disconnect();
     }
+
+    public String getMacAddress() {
+        return conn.getBLEDevice().getAddress();
+    }
+
+    public String getName() {
+        return NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), conn.getBLEDevice().getAddress());
+    }
+
+    public String getGAPName() {
+        return conn.getBLEDevice().getName();
+    }
+
+    public boolean hasMinFirmware() {
+        return true;
+    }
+
+    public boolean hasLatestFirmware() {
+        return true;
+    }
+
 }

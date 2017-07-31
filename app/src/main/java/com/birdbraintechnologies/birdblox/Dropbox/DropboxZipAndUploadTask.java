@@ -24,6 +24,7 @@ public class DropboxZipAndUploadTask extends ZipTask {
     protected void onPostExecute(String file) {
         if (file != null) {
             super.onPostExecute(file);
+            if (isCancelled()) return;
             new DropboxUploadTask(dropboxClient, uploadMode).execute(file);
         }
     }

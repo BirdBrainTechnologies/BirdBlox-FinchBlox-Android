@@ -58,9 +58,9 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 public class DropboxRequestHandler implements RequestHandler {
 
-    // TODO: Progress Dialogs
     // TODO: Compare errors with frontend
     // TODO: Separate UNZIP Directory, and invalid file handling
+    // TODO: Separate illegal characters dialog
 
     private final String TAG = this.getClass().getName();
 
@@ -160,7 +160,6 @@ public class DropboxRequestHandler implements RequestHandler {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Not signed in to Dropbox");
         }
-        name = sanitizeName(name);
         if (checkValidName(name, DropboxOperation.DOWNLOAD)) {
             startDropboxOperation(name, DropboxOperation.DOWNLOAD);
         } else {
@@ -495,23 +494,24 @@ public class DropboxRequestHandler implements RequestHandler {
     }
 
     private static boolean checkValidName(String name, DropboxOperation dbxOperation) {
-        if (!isNameSanitized(name)) return false;
         switch (dbxOperation) {
             case DOWNLOAD:
                 return !projectExists(name);
             case UPLOAD:
+                if (!isNameSanitized(name)) return false;
             case DELETE:
+                if (!isNameSanitized(name)) return false;
                 return true;
         }
         return false;
     }
 
     private static boolean checkValidName(String oldName, String newName, DropboxOperation dropboxOperation) {
-        if (!isNameSanitized(newName)) return false;
         switch (dropboxOperation) {
             case DOWNLOAD:
                 return !projectExists(newName);
             case UPLOAD:
+                if (!isNameSanitized(newName)) return false;
                 return true;
             case RENAME:
                 // TODO: RENAME CASE HERE
@@ -521,9 +521,9 @@ public class DropboxRequestHandler implements RequestHandler {
     }
 
     private static boolean checkValidName(String oldName, String newName, DropboxOperation dropboxOperation, WriteMode mode) {
-        if (!isNameSanitized(newName)) return false;
         switch (dropboxOperation) {
             case UPLOAD:
+                if (!isNameSanitized(newName)) return false;
                 return true;
         }
         return false;

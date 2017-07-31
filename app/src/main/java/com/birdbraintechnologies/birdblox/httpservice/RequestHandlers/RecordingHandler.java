@@ -1,8 +1,13 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.MainWebView;
@@ -134,9 +139,6 @@ public class RecordingHandler implements RequestHandler {
         Map<String, List<String>> m = session.getParameters();
         String responseBody = "";
         switch (path[0]) {
-            case "checkmic":
-                responseBody = String.valueOf(checkMic());
-                break;
             case "start":
                 responseBody = startRecording();
                 break;
@@ -161,21 +163,12 @@ public class RecordingHandler implements RequestHandler {
     }
 
     /**
-     * Checks if device has a microphone.
-     *
-     * @return Returns true if device has a mic, false otherwise.
-     */
-    private boolean checkMic() {
-        return MainWebView.deviceHasMicrophone;
-    }
-
-    /**
      * Checks if user has provided permissions tp access mic.
      *
      * @return Returns true if user has provided these permissions, and false otherwise.
      */
     private boolean checkMicPermission() {
-        return MainWebView.micPermissions;
+        return (ActivityCompat.checkSelfPermission(service, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED);
     }
 
     /**
@@ -185,10 +178,7 @@ public class RecordingHandler implements RequestHandler {
      * Returns null in case of error.
      */
     private String startRecording() {
-        if (checkMic()) {
-            if (!checkMicPermission()) {
-                return "Permission denied";
-            }
+        if (checkMicPermission()) {
             currState = "Recording";
             try {
                 Calendar c = Calendar.getInstance();
@@ -214,6 +204,9 @@ public class RecordingHandler implements RequestHandler {
                 // Stop recording and save here.
                 Log.e("RecordingHandler", "Start Recording: " + e.getMessage());
             }
+        } else {
+            Intent getMicPerm = new Intent(MainWebView.MICROPHONE_PERMISSION);
+            LocalBroadcastManager.getInstance(service).sendBroadcast(getMicPerm);
         }
         return null;
     }

@@ -42,6 +42,7 @@ public class MelodySmartConnection extends BluetoothGattCallback {
     private BluetoothGatt btGatt;
     private BluetoothGattCharacteristic dataBus;
 
+    private BluetoothDevice bluetoothDevice;
 
     /**
      * Initializes a UARTConnection. This needs to know the context the Bluetooth connection is
@@ -101,6 +102,8 @@ public class MelodySmartConnection extends BluetoothGattCallback {
             }
             retryCount++;
         }
+
+        this.bluetoothDevice = device;
 
         return res;
     }
@@ -247,5 +250,12 @@ public class MelodySmartConnection extends BluetoothGattCallback {
     public void disconnect() {
         btGatt.disconnect();
         btGatt.close();
+    }
+
+    /**
+     * @return
+     */
+    public BluetoothDevice getBLEDevice() {
+        return this.bluetoothDevice;
     }
 }

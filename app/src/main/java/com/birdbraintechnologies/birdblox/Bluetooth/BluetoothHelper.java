@@ -13,8 +13,20 @@ import android.content.Intent;
 import android.os.Handler;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblox.Util.NamingHandler;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
+import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
+import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
+import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.lastScanType;
 
 /**
  * Helper class for basic Bluetooth connectivity
@@ -38,6 +50,20 @@ public class BluetoothHelper {
         public void onScanResult(int callbackType, ScanResult result) {
             synchronized (deviceList) {
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
+                List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
+                JSONArray robots = new JSONArray();
+                for (BluetoothDevice device : BLEDeviceList) {
+                    String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
+                    JSONObject robot = new JSONObject();
+                    try {
+                        robot.put("id", device.getAddress());
+                        robot.put("name", name);
+                    } catch (JSONException e) {
+                        Log.e("JSON", "JSONException while discovering " + lastScanType);
+                    }
+                    robots.put(robot);
+                }
+                runJavascript("CallbackManager.robot.discovered('" + lastScanType + "', '" + bbxEncode(robots.toString()) + "');");
             }
         }
     };
@@ -51,7 +77,7 @@ public class BluetoothHelper {
         this.context = context;
         this.btScanning = false;
         this.handler = new Handler();
-        this.deviceList = new HashMap<>();
+        deviceList = new HashMap<>();
 
         // Acquire Bluetooth service
         final BluetoothManager btManager =
@@ -91,6 +117,7 @@ public class BluetoothHelper {
                         scanner = null;
                     }
                     currentlyScanning = false;
+                    runJavascript("CallbackManager.robot.discoverTimeOut('" + lastScanType + "');");
                 }
             }, SCAN_DURATION);
             btScanning = true;

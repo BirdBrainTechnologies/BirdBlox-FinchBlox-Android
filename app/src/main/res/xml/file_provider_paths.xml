@@ -5,4 +5,7 @@
     <files-path
         name="files"
         path="/Saved/" />
+    <files-path
+        name="log"
+        path="/LOG/"/>
 </paths>

@@ -19,6 +19,7 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Display;
 import android.view.Surface;
@@ -29,11 +30,13 @@ import com.birdbraintechnologies.birdblox.MainWebView;
 import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static android.content.Context.SENSOR_SERVICE;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
@@ -45,8 +48,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private static final String TAG = HostDeviceHandler.class.getName();
 
     /* Constants for location */
-    private static final int LOCATION_UPDATE_MILLIS = 100;
-    private static final float LOCATION_UPDATE_THRESHOLD = 0.0f;  // in meters
+    public static final int LOCATION_UPDATE_MILLIS = 100;
+    public static final float LOCATION_UPDATE_THRESHOLD = 0.0f;  // in meters
 
     /* Constants for shake detection */
     private static final int FORCE_THRESHOLD = 350;  // How forceful a shake movement needs to be
@@ -102,7 +105,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * Initializes the sensor manager with sensors that BirdBlocks uses
      */
     private void initSensors() {
-        SensorManager manager = (SensorManager) service.getSystemService(Context.SENSOR_SERVICE);
+        SensorManager manager = (SensorManager) service.getSystemService(SENSOR_SERVICE);
         manager.registerListener(this, manager.getDefaultSensor(Sensor.TYPE_PRESSURE),
                 SensorManager.SENSOR_DELAY_UI);
         manager.registerListener(this, manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
@@ -116,13 +119,13 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         LocationManager locationManager =
                 (LocationManager) service.getSystemService(Context.LOCATION_SERVICE);
         if (ActivityCompat.checkSelfPermission(service,
-                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(service,
-                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "Unable to obtain location");
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "Location permissions not granted.");
             // TODO: Handler error and API 25+ permissions
             // See: https://developer.android.com/training/permissions/requesting.html
             // Probably should setup another BroadcastReceiver on the MainWebView
+            Intent getLocPerm = new Intent(MainWebView.LOCATION_PERMISSION);
+            LocalBroadcastManager.getInstance(service).sendBroadcast(getLocPerm);
         } else {
             Criteria criteria = new Criteria();
             criteria.setAccuracy(Criteria.ACCURACY_FINE);
@@ -186,8 +189,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 exitApp();
                 break;
             case "availableSensors":
-                return NanoHTTPD.newFixedLengthResponse(
-                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "accelerometer\ngps\nmicrophone");
+                return getAvailableSensors();
         }
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
@@ -201,7 +203,6 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      */
     private String getDeviceLocation() {
         Log.d("LocPerm", "Entered getDeviceLocation() function in HostHandler");
-
         if (ActivityCompat.checkSelfPermission(service,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(service,
@@ -459,5 +460,34 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
+    }
+
+    /**
+     * @return
+     */
+    private NanoHTTPD.Response getAvailableSensors() {
+        SensorManager sensorManager = (SensorManager) service.getSystemService(SENSOR_SERVICE);
+        List<String> sensorList = new ArrayList<>();
+        boolean accelerometer = sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
+        if (accelerometer) {
+            sensorList.add("accelerometer");
+        }
+        boolean pressure = sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE), SensorManager.SENSOR_DELAY_NORMAL);
+        if (pressure) {
+            sensorList.add("barometer");
+        }
+        LocationManager locationManager = (LocationManager) service.getSystemService(Context.LOCATION_SERVICE);
+        boolean location = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        if (location) {
+            sensorList.add("gps");
+        }
+        PackageManager packageManager = service.getPackageManager();
+        boolean microphone = packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE);
+        if (microphone) {
+            sensorList.add("microphone");
+        }
+        String response = TextUtils.join("\n", sensorList);
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, response);
     }
 }

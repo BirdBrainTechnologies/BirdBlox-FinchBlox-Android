@@ -236,6 +236,8 @@ public class FileManagementHandler implements RequestHandler {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " was not found!");
         } else if (filesPrefs.getString(CURRENT_PREFS_KEY, "").equals(name)) {
+            filesPrefs.edit().putString(CURRENT_PREFS_KEY, null).apply();
+            filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, false).apply();
             runJavascript("CallbackManager.data.close();");
         }
         try {
@@ -364,7 +366,7 @@ public class FileManagementHandler implements RequestHandler {
                 // Parse POST body to get parameters
                 session.parseBody(postFiles);
                 // Write POST["data"] to file
-                FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8");
+                FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8", false);
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully saved project: " + name);
             } catch (IOException | NanoHTTPD.ResponseException e) {
@@ -400,7 +402,7 @@ public class FileManagementHandler implements RequestHandler {
                 }
                 // Parse POST body to get parameters
                 session.parseBody(postFiles);
-                FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8");
+                FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8", false);
                 filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
                 // boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
                 filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, false).apply();
@@ -542,7 +544,7 @@ public class FileManagementHandler implements RequestHandler {
      * @return Returns sanitized name.
      * (Returns null if name is null).
      */
-    static String sanitizeName(String name) {
+    public static String sanitizeName(String name) {
         if (name == null) return null;
         if (isNameSanitized(name)) return name;
         // else

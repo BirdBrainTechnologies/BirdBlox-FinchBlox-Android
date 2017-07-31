@@ -43,6 +43,9 @@ public class UARTConnection extends BluetoothGattCallback {
     private BluetoothGattCharacteristic tx;
     private BluetoothGattCharacteristic rx;
 
+    private BluetoothDevice bluetoothDevice;
+    private byte[] G4Response;
+
     /**
      * Initializes a UARTConnection. This needs to know the context the Bluetooth connection is
      * being made from (Activity, Service, etc)
@@ -56,6 +59,8 @@ public class UARTConnection extends BluetoothGattCallback {
         this.txUUID = settings.getTxCharacteristicUUID();
         this.rxUUID = settings.getRxCharacteristicUUID();
         this.rxConfigUUID = settings.getRxConfig();
+
+        this.bluetoothDevice = device;
 
         establishUARTConnection(context, device);
         // TODO: Handle failure to establish UART connection
@@ -174,7 +179,6 @@ public class UARTConnection extends BluetoothGattCallback {
             Log.e(TAG, "Unable to set descriptor");
             return false;
         }
-
         Log.d(TAG, "Successfully established connection to " + device);
         return true;
     }
@@ -185,6 +189,7 @@ public class UARTConnection extends BluetoothGattCallback {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (newState == BluetoothGatt.STATE_CONNECTED) {
                 gatt.discoverServices();
+//                G4Response = this.writeBytesWithResponse("G4".getBytes());
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', true);");
             } else {
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', false);");
@@ -267,15 +272,21 @@ public class UARTConnection extends BluetoothGattCallback {
     public void disconnect() {
         btGatt.disconnect();
         btGatt.close();
-//        try {
-//            // connectionThread.interrupt();
-//            if (btGatt != null) {
-//                btGatt.abortReliableWrite();
-//
-//            }
-//        } catch (Exception e) {
-//            Log.e("ConnectHB", "Exception inside: " + e.getMessage());
-//        }
+        this.bluetoothDevice = null;
+    }
+
+    /**
+     * @return
+     */
+    public BluetoothDevice getBLEDevice() {
+        return this.bluetoothDevice;
+    }
+
+    /**
+     * @return
+     */
+    public byte[] getG4Response() {
+        return this.G4Response;
     }
 
     public void addRxDataListener(RXDataListener l) {

@@ -2,6 +2,7 @@ package com.birdbraintechnologies.birdblox.httpservice;
 
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DebugRequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FlutterRequestHandler;
@@ -9,6 +10,7 @@ import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.HostDevice
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.HummingbirdRequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.PropertiesHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RecordingHandler;
+import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.SettingsHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.SoundHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.UIRequestHandler;
@@ -28,13 +30,13 @@ import fi.iki.elonen.NanoHTTPD;
  * @author Terence Sun (tsun1215)
  * @author Shreyan Bakshi (AppyFizz)
  */
-public class RequestRouter {
+class RequestRouter {
 
     private HashMap<Pattern, RequestHandler> routes;
     private HttpService service;
 
-    public RequestRouter(HttpService service) {
-        this.routes = new HashMap();
+    RequestRouter(HttpService service) {
+        this.routes = new HashMap<>();
         this.service = service;
         initRoutes();
     }
@@ -55,6 +57,8 @@ public class RequestRouter {
         addRoute("^/properties/(.*)$", new PropertiesHandler(service));
         addRoute("^/cloud/(.*)$", new DropboxRequestHandler(service));
         addRoute("^/ui/(.*)$", new UIRequestHandler(service));
+        addRoute("^/robot/(.*)$", new RobotRequestHandler(service));
+        addRoute("^/debug/(.*)$", new DebugRequestHandler(service));
     }
 
     /**
@@ -73,7 +77,7 @@ public class RequestRouter {
      * @param session HttpRequest from the server
      * @return Response to the request
      */
-    public NanoHTTPD.Response routeAndDispatch(NanoHTTPD.IHTTPSession session) {
+    NanoHTTPD.Response routeAndDispatch(NanoHTTPD.IHTTPSession session) {
 
         String path = session.getUri();
 

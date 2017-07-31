@@ -23,7 +23,7 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Fil
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
- * @author AppyFizz (Shreyan Bakshi)
+ * @author Shreyan Bakshi (AppyFizz)
  */
 
 public class UIRequestHandler implements RequestHandler {
@@ -37,7 +37,6 @@ public class UIRequestHandler implements RequestHandler {
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
-        String responseBody = "";
         switch (path[0]) {
             case "contentLoaded":
                 return loadContent();

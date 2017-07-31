@@ -2,6 +2,9 @@ package com.birdbraintechnologies.birdblox.Robots;
 
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotState;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * @author Shreyan Bakshi (AppyFizz).
  */
@@ -40,5 +43,29 @@ public abstract class Robot<T extends RobotState<T>> {
      * based on certain conditions.
      */
     public abstract boolean sendToRobot();
+
+    /**
+     * @param outputType
+     * @param args
+     * @return
+     */
+    public abstract boolean setOutput(String outputType, Map<String, List<String>> args);
+
+    /**
+     * @param sensorType
+     * @param portString
+     * @return
+     */
+    public abstract String readSensor(String sensorType, String portString);
+
+    public abstract String getMacAddress();
+
+    public abstract String getName();
+
+    public abstract String getGAPName();
+
+    public abstract boolean hasMinFirmware();
+
+    public abstract boolean hasLatestFirmware();
 
 }

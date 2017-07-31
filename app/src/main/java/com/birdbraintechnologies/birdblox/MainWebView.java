@@ -1,8 +1,10 @@
 package com.birdbraintechnologies.birdblox;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -17,7 +19,6 @@ import android.os.Handler;
 import android.os.NetworkOnMainThreadException;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
@@ -79,23 +80,28 @@ public class MainWebView extends AppCompatActivity {
     // private static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
     // private static final String PAGE_URL = "http://rawgit.com/TomWildenhain/HummingbirdDragAndDrop-/dev/HummingbirdDragAndDrop.html";
 
-    // public static boolean locationPermission;
-    public static final int MY_PERMISSIONS_ACCESS_FINE_LOCATION = 1;
+    /* Permission request codes */
+    public static final int MY_PERMISSIONS_REQUEST_LOCATION = 1;
+    public static final int MY_PERMISSIONS_REQUEST_MICROPHONE = 2;
+    public static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 3;
+    public static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 4;
+
     /* Broadcast receiver for displaying Dialogs */
     public static final String SHOW_DIALOG = "com.birdbraintechnologies.birdblox.DIALOG";
     public static final String SHARE_FILE = "com.birdbraintechnologies.birdblox.SHARE_FILE";
+    public static final String SHARE_LOG = "com.birdbraintechnologies.birdblox.SHARE_LOG";
     public static final String EXIT = "com.birdbraintechnologies.birdblox.EXIT";
     public static final String LOCATION_PERMISSION = "com.birdbraintechnologies.birdblox.REQUEST_LOCATION_PERMISSION";
-    private static final String BIRDBLOCKS_UNZIP_DIR = "Unzipped";
-    private static final String BIRDBLOCKS_ZIP_DIR = "Zipped";
-    private static final String BIRDBLOCKS_DIR = "BirdBlox";
+    public static final String MICROPHONE_PERMISSION = "com.birdbraintechnologies.birdblox.REQUEST_MICROPHONE_PERMISSION";
+    public static final String READ_EXTERNAL_STORAGE_PERMISSION = "com.birdbraintechnologies.birdblox.REQUEST_READ_EXTERNAL_STORAGE_PERMISSION";
+    public static final String WRITE_EXTERNAL_STORAGE_PERMISSION = "com.birdbraintechnologies.birdblox.REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION";
+
+    private static final String BIRDBLOX_UNZIP_DIR = "Unzipped";
+    private static final String BIRDBLOX_ZIP_DIR = "Zipped";
+    private static final String BIRDBLOX_DIR = "BirdBlox";
+
     /* For double back exit */
     private static final int DOUBLE_BACK_DELAY = 2000;
-
-    // True if device has microphone
-    public static boolean deviceHasMicrophone;
-    // True if user has provided microphone permissions
-    public static boolean micPermissions;
 
     public static Context mainWebViewContext;
 
@@ -107,19 +113,42 @@ public class MainWebView extends AppCompatActivity {
     private BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.d("LocPerm", "Entered onReceive Method");
-            if (intent.getAction().equals(SHOW_DIALOG)) {
-                // Handles showing Choice and Text Dialogs
-                showDialog(intent.getExtras());
-            } else if (intent.getAction().equals(SHARE_FILE)) {
-                // Handles opening a share dialog
-                showShareDialog(intent.getExtras());
-            } else if (intent.getAction().equals(EXIT)) {
-                exitApp();
-            } else if (intent.getAction().equals(LOCATION_PERMISSION)) {
-                // Handles requesting the user for location permissions
-                Log.d("LocPerm", "Location Permission Intent Received");
-                requestLocationPermissions();
+            if (intent.getAction() == null) return;
+            switch (intent.getAction()) {
+                case SHOW_DIALOG:
+                    // Handles showing Choice and Text Dialogs
+                    showDialog(intent.getExtras());
+                    break;
+                case SHARE_FILE:
+                    // Handles opening a share dialog
+                    showShareDialog(intent.getExtras());
+                    break;
+                case SHARE_LOG:
+                    // Handles opening a share log file dialog
+                    showShareLogDialog(intent.getExtras());
+                    break;
+                case EXIT:
+                    exitApp();
+                    break;
+                case LOCATION_PERMISSION:
+                    // Handles requesting the user for location permission
+                    requestLocationPermission();
+                    break;
+                case MICROPHONE_PERMISSION:
+                    // Handles requesting the user for microphone permission
+                    requestMicrophonePermission();
+                    break;
+                case READ_EXTERNAL_STORAGE_PERMISSION:
+                    // Handles requesting the user for reading external storage permission
+                    requestReadExternalStoragePermission();
+                    break;
+                case WRITE_EXTERNAL_STORAGE_PERMISSION:
+                    // Handles requesting the user for (reading and) writing external storage permissions
+                    requestWriteExternalStoragePermission();
+                    break;
+                default:
+                    Log.e(TAG, "Received unknown intent broadcast.");
+                    break;
             }
         }
     };
@@ -131,7 +160,7 @@ public class MainWebView extends AppCompatActivity {
 
         FileManagementHandler.SecretFileDirectory = getFilesDir();
         // FileManagementHandler.SecretFileDirectory = new File(Environment.getExternalStoragePublicDirectory(
-        //        Environment.DIRECTORY_DOCUMENTS), BIRDBLOCKS_DIR);
+        //        Environment.DIRECTORY_DOCUMENTS), BIRDBLOX_DIR);
 
         // Get intent
         Intent intent = getIntent();
@@ -164,12 +193,6 @@ public class MainWebView extends AppCompatActivity {
         if (getActionBar() != null)
             getActionBar().hide();
 
-        deviceHasMicrophone = hasMicrophone();
-        micPermissions = hasMicrophonePermissions();
-
-        // locationPermission = (ContextCompat.checkSelfPermission(MainWebView.this,
-        //        Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
-
         // Set hardware volume buttons to control media volume
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
@@ -188,8 +211,8 @@ public class MainWebView extends AppCompatActivity {
         }
 
         // Get location of downloaded layout as a 'File'
-        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
-//        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOCKS_UNZIP_DIR + "/HummingbirdDragAndDrop--b5e38c77c0991ebc83d8869fc5275f74cc7d6ed6/HummingbirdDragAndDrop.html");
+        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOX_UNZIP_DIR + "/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
+//        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOX_UNZIP_DIR + "/HummingbirdDragAndDrop--b5e38c77c0991ebc83d8869fc5275f74cc7d6ed6/HummingbirdDragAndDrop.html");
         if (!lFile.exists()) try {
             lFile.createNewFile();
         } catch (IOException | SecurityException e) {
@@ -222,8 +245,12 @@ public class MainWebView extends AppCompatActivity {
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(SHOW_DIALOG);
         intentFilter.addAction(SHARE_FILE);
+        intentFilter.addAction(SHARE_LOG);
         intentFilter.addAction(EXIT);
         intentFilter.addAction(LOCATION_PERMISSION);
+        intentFilter.addAction(MICROPHONE_PERMISSION);
+        intentFilter.addAction(READ_EXTERNAL_STORAGE_PERMISSION);
+        intentFilter.addAction(WRITE_EXTERNAL_STORAGE_PERMISSION);
         bManager.registerReceiver(bReceiver, intentFilter);
 
         if (encodedFileName != null) {
@@ -268,13 +295,48 @@ public class MainWebView extends AppCompatActivity {
         mainWebViewContext = MainWebView.this;
         webView.onResume();
         webView.resumeTimers();
-        micPermissions = hasMicrophonePermissions();
         dropboxAppOAuth();
+        requestLocationPermission();
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+
+        String action = intent.getAction();
+        String scheme = intent.getScheme();
+        String data = (intent.getData() != null) ? intent.getData().toString() : null;
+        String dataString = intent.getDataString();
+        String extras = (intent.getExtras() != null) ? intent.getExtras().toString() : null;
+        String categories = (intent.getCategories() != null) ? intent.getCategories().toString() : null;
+        String type = intent.getType();
+        String clipData = (intent.getClipData() != null) ? intent.getClipData().toString() : null;
+
+        if (action != null)
+            Log.d("INTENTTEST", "Action: " + action);
+        if (scheme != null)
+            Log.d("INTENTTEST", "Scheme: " + scheme);
+        if (type != null)
+            Log.d("INTENTTEST", "Type: " + type);
+        if (data != null)
+            Log.d("INTENTTEST", "Data: " + data);
+        if (dataString != null)
+            Log.d("INTENTTEST", "DataString: " + dataString);
+        if (extras != null)
+            Log.d("INTENTTEST", "Extras: " + extras);
+        if (categories != null)
+            Log.d("INTENTTEST", "Categories: " + categories);
+
+
+        Bundle bundle = intent.getExtras();
+        if (bundle != null) {
+            for (String key : bundle.keySet()) {
+                Object value = bundle.get(key);
+                Log.d("INTENTTEST", "EXTRA: " + String.format("%s %s (%s)", key,
+                        value.toString(), value.getClass().getName()));
+            }
+        }
+
         dropboxWebOAuth(intent);
     }
 
@@ -327,7 +389,7 @@ public class MainWebView extends AppCompatActivity {
             // 6.5 inch device screen or bigger - In this case rotation is allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
             // Inject the JavaScript command to resize into webView
-            runJavascript("GuiElements.updateDimsPreview(" + metrics.widthPixels + ", " + metrics.heightPixels + ")");
+//            runJavascript("GuiElements.updateDimsPreview(" + metrics.widthPixels + ", " + metrics.heightPixels + ")");
         } else {
             // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -422,7 +484,7 @@ public class MainWebView extends AppCompatActivity {
 
             //Check if the locations to download and unzip already exist in the internal storage
             // If they don't, create them
-            File f = new File(parent_dir + "/" + BIRDBLOCKS_ZIP_DIR + "/UI.zip");
+            File f = new File(parent_dir + "/" + BIRDBLOX_ZIP_DIR + "/UI.zip");
             if (!f.exists()) try {
                 if (!f.getParentFile().exists())
                     f.getParentFile().mkdirs();
@@ -430,7 +492,7 @@ public class MainWebView extends AppCompatActivity {
             } catch (IOException | SecurityException e) {
                 Log.e("Download", e.getMessage());
             }
-            File f2 = new File(parent_dir + "/" + BIRDBLOCKS_UNZIP_DIR);
+            File f2 = new File(parent_dir + "/" + BIRDBLOX_UNZIP_DIR);
             if (!f2.exists()) try {
                 f2.mkdirs();
             } catch (SecurityException e) {
@@ -607,45 +669,6 @@ public class MainWebView extends AppCompatActivity {
         }
     }
 
-    private void requestLocationPermissions() {
-        if (ContextCompat.checkSelfPermission(MainWebView.this,
-                Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            Log.d("LocPerm", "Location Permissions are Not Granted");
-            ActivityCompat.requestPermissions(MainWebView.this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    MY_PERMISSIONS_ACCESS_FINE_LOCATION);
-            Log.d("LocPerm", "Location Permission REquested from user");
-        }
-    }
-
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
-        Log.d("LocPerm", "Location Permission Response obtained");
-        switch (requestCode) {
-            case MY_PERMISSIONS_ACCESS_FINE_LOCATION: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted, yay! Do the
-                    // contacts-related task you need to do.
-                    // locationPermission = true;
-                    Log.d("LocPerm", "Location Permissions allowed by user");
-                } else {
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
-                    // locationPermission = false;
-                    Log.d("LocPerm", "Location Permissions not allowed by user");
-                }
-                return;
-            }
-            // other 'case' lines to check for other
-            // permissions this app might request
-        }
-    }
-
     private void showDialog(Bundle b) {
         BirdBloxDialog dialog = new BirdBloxDialog();
         dialog.setArguments(b);
@@ -677,21 +700,33 @@ public class MainWebView extends AppCompatActivity {
         }
     }
 
+    /**
+     * @param b
+     */
+    private void showShareLogDialog(Bundle b) {
+        try {
+            // create new intent
+            Intent sendIntent = new Intent(Intent.ACTION_SEND);
+            // set flag to give temporary permission to external app to use your FileProvider
+            sendIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            // generate URI, with authority defined as the application ID in the Manifest, the last param is file I want to open
+            Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID, new File((String) b.get("log_file_path")));
+            sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
+            // We are sharing txt files, so we give it a valid MIME type
+            sendIntent.setType("text/*");
+            // Validate that the device can open the File
+            if (sendIntent.resolveActivity(MainWebView.this.getPackageManager()) != null) {
+                startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.share_with)));
+            }
+        } catch (Exception e) {
+            Log.e("FileProvider", e.getMessage());
+        }
+    }
+
     private void exitApp() {
         Log.d("APP", "Exiting");
         this.stopService(getIntent());
         this.finishAndRemoveTask();
-    }
-
-    private boolean hasMicrophone() {
-        PackageManager pManager = this.getPackageManager();
-        return pManager.hasSystemFeature(
-                PackageManager.FEATURE_MICROPHONE);
-    }
-
-    private boolean hasMicrophonePermissions() {
-        return (ContextCompat.checkSelfPermission(MainWebView.this,
-                Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED);
     }
 
     /**
@@ -761,6 +796,202 @@ public class MainWebView extends AppCompatActivity {
             Log.e("bbxEncode", " " + e.getMessage());
         }
         return "";
+    }
+
+    private boolean requestLocationPermission() {
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Should we show an explanation?
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.ACCESS_FINE_LOCATION)) {
+                // Show an explanation to the user *asynchronously* -- don't block
+                // this thread waiting for the user's response! After the user
+                // sees the explanation, try again to request the permission.
+                new AlertDialog.Builder(this)
+                        .setTitle("Location Permission")
+                        .setMessage("BirdBlox requires location permission in order to perform Bluetooth scans.")
+                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                //Prompt the user once explanation has been shown
+                                ActivityCompat.requestPermissions(MainWebView.this,
+                                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                                        MY_PERMISSIONS_REQUEST_LOCATION);
+                            }
+                        })
+                        .create()
+                        .show();
+            } else {
+                // No explanation needed, we can request the permission.
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                        MY_PERMISSIONS_REQUEST_LOCATION);
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    private boolean requestMicrophonePermission() {
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Should we show an explanation?
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.RECORD_AUDIO)) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Microphone Permission")
+                        .setMessage("BirdBlox requires microphone permissions in order to record audio.")
+                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                ActivityCompat.requestPermissions(MainWebView.this,
+                                        new String[]{Manifest.permission.RECORD_AUDIO},
+                                        MY_PERMISSIONS_REQUEST_MICROPHONE);
+                            }
+                        })
+                        .create()
+                        .show();
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.RECORD_AUDIO},
+                        MY_PERMISSIONS_REQUEST_MICROPHONE);
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    private boolean requestReadExternalStoragePermission() {
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Read External Storage Permission")
+                        .setMessage("BirdBlox requires permission to read external storage, in order to import certain files from external storage.")
+                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                ActivityCompat.requestPermissions(MainWebView.this,
+                                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                                        MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
+                            }
+                        })
+                        .create()
+                        .show();
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                        MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    private boolean requestWriteExternalStoragePermission() {
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Write External Storage Permission")
+                        .setMessage("BirdBlox requires permission to (read and) write external storage, in order to ... not required as of yet.")
+                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                ActivityCompat.requestPermissions(MainWebView.this,
+                                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                        MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
+                            }
+                        })
+                        .create()
+                        .show();
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     * @param requestCode
+     * @param permissions
+     * @param grantResults
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_LOCATION: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay! Do the
+                    // location-related task you need to do.
+                    if (ActivityCompat.checkSelfPermission(this,
+                            Manifest.permission.ACCESS_FINE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED) {
+                        // DO REQUIRED TASK HERE
+                    }
+                } else {
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+                }
+            }
+            break;
+
+            case MY_PERMISSIONS_REQUEST_MICROPHONE: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    if (ActivityCompat.checkSelfPermission(this,
+                            Manifest.permission.RECORD_AUDIO)
+                            == PackageManager.PERMISSION_GRANTED) {
+                    }
+                } else {
+                }
+            }
+            break;
+
+            case MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    if (ActivityCompat.checkSelfPermission(this,
+                            Manifest.permission.READ_EXTERNAL_STORAGE)
+                            == PackageManager.PERMISSION_GRANTED) {
+                    }
+                } else {
+                }
+            }
+            break;
+
+            case MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    if (ActivityCompat.checkSelfPermission(this,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            == PackageManager.PERMISSION_GRANTED) {
+                    }
+                } else {
+                }
+            }
+            break;
+
+            default:
+                Log.e(TAG, "Unrecognized permission request code.");
+                break;
+        }
     }
 
 }

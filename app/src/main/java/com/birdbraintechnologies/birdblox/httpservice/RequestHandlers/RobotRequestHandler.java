@@ -1,6 +1,12 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
+import android.app.AlertDialog;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.ScanFilter;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Handler;
 import android.os.ParcelUuid;
 import android.util.Log;
 
@@ -12,8 +18,13 @@ import com.birdbraintechnologies.birdblox.Robots.Flutter;
 import com.birdbraintechnologies.birdblox.Robots.Hummingbird;
 import com.birdbraintechnologies.birdblox.Robots.Robot;
 import com.birdbraintechnologies.birdblox.Robots.RobotType;
+import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,8 +34,11 @@ import java.util.UUID;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper.deviceList;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
+import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
+import static com.birdbraintechnologies.birdblox.Robots.RobotType.robotTypeFromString;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
@@ -32,8 +46,9 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
  */
 
 public class RobotRequestHandler implements RequestHandler {
-
     private final String TAG = this.getClass().getName();
+
+    private static final String FIRMWARE_UPDATE_URL = "http://www.hummingbirdkit.com/learning/installing-birdblox#BurnFirmware";
 
 
     /* UUIDs for different Hummingbird features */
@@ -63,6 +78,9 @@ public class RobotRequestHandler implements RequestHandler {
     private HashMap<String, Flutter> connectedFlutters;
 
     public static String lastScanType;
+
+    private AlertDialog.Builder builder;
+    private AlertDialog robotInfoDialog;
 
     public RobotRequestHandler(HttpService service) {
         this.service = service;
@@ -98,23 +116,40 @@ public class RobotRequestHandler implements RequestHandler {
         String responseBody = "";
         switch (path[0]) {
             case "startDiscover":
-                break;
-            case "totalStatus":
+                responseBody = startScan(robotTypeFromString(m.get("type").get(0)));
                 break;
             case "stopDiscover":
+                responseBody = stopDiscover();
+                break;
+            case "discover":
+//                listRobots(robotTypeFromString(m.get("type").get(0)));
+                break;
+            case "totalStatus":
+                responseBody = getTotalStatus(robotTypeFromString(m.get("type").get(0)));
                 break;
             case "connect":
+                responseBody = connectToRobot(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
                 break;
             case "disconnect":
+                responseBody = disconnectFromRobot(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
                 break;
             case "out":
+                getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0)).setOutput(path[1], m);
+                responseBody = "Connected to " + m.get("type").get(0) + " successfully.";
                 break;
             case "in":
+                responseBody = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0)).readSensor(m.get("sensor").get(0), m.get("port").get(0));
+                break;
+            case "showInfo":
+                responseBody = showRobotInfo(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                break;
+            case "showUpdateInstructions":
+                showFirmwareUpdateInstructions();
                 break;
         }
 
         return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Bad Request");
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
     }
 
 
@@ -126,16 +161,53 @@ public class RobotRequestHandler implements RequestHandler {
 
 
     private String startScan(final RobotType robotType) {
+        // TODO: Handle error in this case
+        if (robotType == null)
+            return "";
+        if (BluetoothHelper.currentlyScanning && lastScanType.equals(robotType.toString().toLowerCase()))
+            return "";
+        if (BluetoothHelper.currentlyScanning) {
+            stopDiscover();
+        }
+        new Thread() {
+            @Override
+            public void run() {
+                btHelper.scanDevices(generateDeviceFilter(robotType));
+            }
+        }.start();
         lastScanType = robotType.toString().toLowerCase();
+        return "";
+    }
+
+    /**
+     * Lists the Robots (of a given type) that are seen
+     *
+     * @return List of Robots of the given type
+     */
+    private synchronized String listRobots(final RobotType robotType) {
         if (!BluetoothHelper.currentlyScanning) {
-            new Thread() {
+            new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
                 @Override
                 public void run() {
                     btHelper.scanDevices(generateDeviceFilter(robotType));
                 }
-            }.start();
+            });
         }
-        return "";
+        List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
+        JSONArray robots = new JSONArray();
+        for (BluetoothDevice device : BLEDeviceList) {
+            String name = NamingHandler.GenerateName(service.getApplicationContext(), device.getAddress());
+            JSONObject robot = new JSONObject();
+            try {
+                robot.put("id", device.getAddress());
+                robot.put("name", name);
+            } catch (JSONException e) {
+                Log.e("JSON", "JSONException while discovering " + lastScanType);
+            }
+            robots.put(robot);
+        }
+        runJavascript("CallbackManager.robot.discovered('" + lastScanType + "', '" + bbxEncode(robots.toString()) + "');");
+        return robots.toString();
     }
 
     /**
@@ -358,6 +430,78 @@ public class RobotRequestHandler implements RequestHandler {
             btHelper.stopScan();
         runJavascript("CallbackManager.robot.stopDiscover('" + lastScanType + "');");
         return "Bluetooth discovery stopped.";
+    }
+
+    private String showRobotInfo(RobotType robotType, String robotId) {
+        builder = new AlertDialog.Builder(mainWebViewContext);
+
+        // Get details
+        Robot robot = getRobotFromId(robotType, robotId);
+        String name = robot.getName();
+        String macAddress = robot.getMacAddress();
+        String gapName = robot.getGAPName();
+        String hardwareVersion = (robotType == RobotType.Hummingbird) ? ((Hummingbird) robot).getHardwareVersion() : null;
+        String firmwareVersion = (robotType == RobotType.Hummingbird) ? ((Hummingbird) robot).getFirmwareVersion() : null;
+
+        builder.setTitle(robotType.toString() + " Peripheral");
+        String message = "";
+        if (name != null)
+            message += ("Name: " + name + "\n");
+        if (macAddress != null)
+            message += ("MAC Address: " + macAddress + "\n");
+        if (gapName != null)
+            message += ("Bluetooth Name: " + gapName + "\n");
+        if (hardwareVersion != null)
+            message += ("Hardware Version: " + hardwareVersion + "\n");
+        if (firmwareVersion != null)
+            message += ("Firmware Version: " + firmwareVersion + "\n");
+        if (!robot.hasLatestFirmware())
+            message += ("\nFirmware update available.");
+        builder.setMessage(message);
+        builder.setCancelable(true);
+        if (!robot.hasLatestFirmware()) {
+            builder.setPositiveButton(
+                    "Update Firmware",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            dialog.cancel();
+                            showFirmwareUpdateInstructions();
+                        }
+                    });
+            builder.setNegativeButton(
+                    "Dismiss",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            dialog.cancel();
+                        }
+                    });
+        } else {
+            builder.setNeutralButton(
+                    "Dismiss",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            dialog.cancel();
+                        }
+                    });
+        }
+        new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        robotInfoDialog = builder.create();
+                        robotInfoDialog.show();
+                    }
+                });
+            }
+        }.start();
+        return "Successfully showed robot info.";
+    }
+
+    private static void showFirmwareUpdateInstructions() {
+        mainWebViewContext.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(FIRMWARE_UPDATE_URL)));
     }
 
 }
