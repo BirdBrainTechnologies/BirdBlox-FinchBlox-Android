@@ -34,7 +34,6 @@ import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblox.Dialogs.BirdBloxDialog;
 import com.birdbraintechnologies.birdblox.Project.ImportUnzipTask;
 import com.birdbraintechnologies.birdblox.httpservice.HttpService;
-import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RecordingHandler;
 import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.v2.DbxClientV2;
@@ -61,6 +60,7 @@ import java.util.zip.ZipInputStream;
 
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.DB_PREFS_KEY;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxAppOAuth;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxClient;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxConfig;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxWebOAuth;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.findAvailableName;
@@ -162,8 +162,6 @@ public class MainWebView extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         mainWebViewContext = MainWebView.this;
 
-
-
         // Hide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
         // Remember that you should never show the action bar if the
@@ -196,6 +194,7 @@ public class MainWebView extends AppCompatActivity {
         } catch (IOException | SecurityException e) {
             Log.e("LocFile", "Problem: " + e.getMessage());
         }
+
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_web_view);
@@ -235,8 +234,8 @@ public class MainWebView extends AppCompatActivity {
         String accessToken = dropboxPrefs.getString("access-token", null);
         if (accessToken != null) {
             // Create Dropbox client
-            DropboxRequestHandler.dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
-            DropboxRequestHandler.dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
+            dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
+            dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
         }
     }
 

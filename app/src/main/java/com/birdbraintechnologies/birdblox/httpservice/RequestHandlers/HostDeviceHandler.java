@@ -100,7 +100,6 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(DIALOG_RESPONSE);
         bManager.registerReceiver(bReceiver, intentFilter);
-
     }
 
     /**
@@ -146,8 +145,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 responseBody = getShaken();
                 break;
             case "location":
-                responseBody = getDeviceLocation();
-                break;
+                return getDeviceLocation();
             case "ssid":
                 responseBody = getDeviceSSID();
                 break;
@@ -197,11 +195,13 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      *
      * @return Longitude and latitude separated by a space
      */
-    private String getDeviceLocation() {
+    private NanoHTTPD.Response getDeviceLocation() {
         if (ActivityCompat.checkSelfPermission(service,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Intent showDialog = new Intent(MainWebView.LOCATION_PERMISSION);
             LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "Location permission disabled");
         }
         if (ActivityCompat.checkSelfPermission(service,
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -211,29 +211,32 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             criteria.setAccuracy(Criteria.ACCURACY_FINE);
             criteria.setAltitudeRequired(true);
             criteria.setPowerRequirement(Criteria.POWER_HIGH);
-            final String provider = locationManager.getBestProvider(criteria, false);
+            final String provider = locationManager.getBestProvider(criteria, true);
             if (provider == null || provider.equals("passive")) {
                 new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
-                        Toast.makeText(mainWebViewContext, "Please enable location services in order to use this block.\n\n          (A app restart may be required afterwards)", Toast.LENGTH_LONG).show();
+                        Toast.makeText(mainWebViewContext, "Please enable location services in order to use this block.", Toast.LENGTH_LONG).show();
                     }
                 });
-            }
-            new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        locationManager.requestLocationUpdates(provider,
-                                LOCATION_UPDATE_MILLIS, LOCATION_UPDATE_THRESHOLD, HostDeviceHandler.this);
-                    } catch (SecurityException e) {
-                        Log.e("LOCPERMSec", e.getMessage());
+            } else {
+                new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            locationManager.requestLocationUpdates(provider,
+                                    LOCATION_UPDATE_MILLIS, LOCATION_UPDATE_THRESHOLD, HostDeviceHandler.this);
+                        } catch (SecurityException e) {
+                            Log.e("LOCPERMSec", e.getMessage());
+                        }
                     }
-                }
-            });
-            return Double.toString(longitude) + " " + Double.toString(latitude);
+                });
+                return NanoHTTPD.newFixedLengthResponse(
+                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(longitude) + " " + Double.toString(latitude));
+            }
         }
-        return Double.toString(0) + " " + Double.toString(0);
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
     }
 
 
