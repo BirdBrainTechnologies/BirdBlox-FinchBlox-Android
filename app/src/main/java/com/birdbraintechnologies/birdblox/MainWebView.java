@@ -715,6 +715,8 @@ public class MainWebView extends AppCompatActivity {
     }
 
     private boolean requestLocationPermission() {
+        // TODO: Determine checkbox
+        // https://stackoverflow.com/questions/30719047/android-m-check-runtime-permission-how-to-determine-if-the-user-checked-nev
         if (ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -757,6 +759,8 @@ public class MainWebView extends AppCompatActivity {
     }
 
     private boolean requestMicrophonePermission() {
+        // TODO: Determine checkbox
+        // https://stackoverflow.com/questions/30719047/android-m-check-runtime-permission-how-to-determine-if-the-user-checked-nev
         if (ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {

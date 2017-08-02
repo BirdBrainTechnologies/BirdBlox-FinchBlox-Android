@@ -17,6 +17,7 @@ import android.location.LocationManager;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.TextUtils;
@@ -24,6 +25,7 @@ import android.util.Log;
 import android.view.Display;
 import android.view.Surface;
 import android.view.WindowManager;
+import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Dialogs.DialogType;
 import com.birdbraintechnologies.birdblox.MainWebView;
@@ -37,6 +39,7 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 
 import static android.content.Context.SENSOR_SERVICE;
+import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
@@ -48,8 +51,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private static final String TAG = HostDeviceHandler.class.getName();
 
     /* Constants for location */
-    public static final int LOCATION_UPDATE_MILLIS = 100;
-    public static final float LOCATION_UPDATE_THRESHOLD = 0.0f;  // in meters
+    private static final int LOCATION_UPDATE_MILLIS = 100;
+    private static final float LOCATION_UPDATE_THRESHOLD = 0.0f;  // in meters
 
     /* Constants for shake detection */
     private static final int FORCE_THRESHOLD = 350;  // How forceful a shake movement needs to be
@@ -65,9 +68,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private boolean shaken = false;
 
     HttpService service;
-    private double longitude, latitude, altitude, pressure,
-            deviceAccelX, deviceAccelY, deviceAccelZ;
-
+    private double longitude = 0, latitude = 0, altitude = 0, pressure = 0,
+            deviceAccelX = 0, deviceAccelY = 0, deviceAccelZ = 0;
 
     /* For Dialogs */
     public static final String DIALOG_RESPONSE = "com.birdbraintechnologies.birdblox.DIALOG_RESPONSE";
@@ -120,10 +122,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 (LocationManager) service.getSystemService(Context.LOCATION_SERVICE);
         if (ActivityCompat.checkSelfPermission(service,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "Location permissions not granted.");
-            // TODO: Handler error and API 25+ permissions
-            // See: https://developer.android.com/training/permissions/requesting.html
-            // Probably should setup another BroadcastReceiver on the MainWebView
+            Log.e(TAG, "Location permissions not granted. Requesting permission now, if possible.");
             Intent getLocPerm = new Intent(MainWebView.LOCATION_PERMISSION);
             LocalBroadcastManager.getInstance(service).sendBroadcast(getLocPerm);
         } else {
@@ -148,9 +147,6 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 break;
             case "location":
                 responseBody = getDeviceLocation();
-                if (responseBody.equals("403 Forbidden"))
-                    return NanoHTTPD.newFixedLengthResponse(
-                            NanoHTTPD.Response.Status.FORBIDDEN, MIME_PLAINTEXT, responseBody);
                 break;
             case "ssid":
                 responseBody = getDeviceSSID();
@@ -202,32 +198,43 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @return Longitude and latitude separated by a space
      */
     private String getDeviceLocation() {
-        Log.d("LocPerm", "Entered getDeviceLocation() function in HostHandler");
         if (ActivityCompat.checkSelfPermission(service,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Intent showDialog = new Intent(MainWebView.LOCATION_PERMISSION);
             LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
-            Log.d("LocPerm", "Intent Sent to MainWebView");
         }
-
-        if(ActivityCompat.checkSelfPermission(service,
+        if (ActivityCompat.checkSelfPermission(service,
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            LocationManager locationManager =
+            final LocationManager locationManager =
                     (LocationManager) service.getSystemService(Context.LOCATION_SERVICE);
             Criteria criteria = new Criteria();
             criteria.setAccuracy(Criteria.ACCURACY_FINE);
             criteria.setAltitudeRequired(true);
             criteria.setPowerRequirement(Criteria.POWER_HIGH);
-            String provider = locationManager.getBestProvider(criteria, true);
-            locationManager.requestLocationUpdates(provider,
-                    LOCATION_UPDATE_MILLIS, LOCATION_UPDATE_THRESHOLD, this);
-            Log.d("LocPerm", "HostDeviceHandler reads Location Permissions reads location permissions as true");
+            final String provider = locationManager.getBestProvider(criteria, false);
+            if (provider == null || provider.equals("passive")) {
+                new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(mainWebViewContext, "Please enable location services in order to use this block.\n\n          (A app restart may be required afterwards)", Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+            new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        locationManager.requestLocationUpdates(provider,
+                                LOCATION_UPDATE_MILLIS, LOCATION_UPDATE_THRESHOLD, HostDeviceHandler.this);
+                    } catch (SecurityException e) {
+                        Log.e("LOCPERMSec", e.getMessage());
+                    }
+                }
+            });
             return Double.toString(longitude) + " " + Double.toString(latitude);
         }
-        Log.d("LocPerm", "HostDeviceHandler reads Location Permissions reads location permissions as false");
-        return "403 Forbidden";
+        return Double.toString(0) + " " + Double.toString(0);
     }
-
 
 
     /**
@@ -289,12 +296,12 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     /**
      * Shows a text input dialog with a question
      *
-     * @param title        Title of the dialog
-     * @param question     Text to show to the user
-     * @param hint         Placeholder text for the text input
-     * @param defaultText  Default text present in the input text field initially
-     * @param selectAll    If this is 'true' (or any variation of the word 'true'),
-     *                     the default text in the input box should be pre-selected.
+     * @param title       Title of the dialog
+     * @param question    Text to show to the user
+     * @param hint        Placeholder text for the text input
+     * @param defaultText Default text present in the input text field initially
+     * @param selectAll   If this is 'true' (or any variation of the word 'true'),
+     *                    the default text in the input box should be pre-selected.
      */
     private void showDialog(String title, String question, String hint, String defaultText, String selectAll) {
         dialogResponse = null;
@@ -398,8 +405,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
 
     @Override
     public void onLocationChanged(Location location) {
-        longitude = location.getLongitude();
         latitude = location.getLatitude();
+        longitude = location.getLongitude();
         altitude = location.getAltitude();
     }
 
