@@ -651,7 +651,23 @@ public class DropboxRequestHandler implements RequestHandler {
         }.start();
     }
 
-    public static String dropboxSearch(final String name, final String extension) {
+    public static String dropboxSearch(String name, final String extension) {
+        final String originalName = name;
+        if (name.length() > 3 && name.endsWith(")")) {
+            int startIndex = name.length() - 2;
+            while (startIndex >= 0) {
+                if (name.charAt(startIndex) == '(') break;
+                startIndex--;
+            }
+            if (startIndex < name.length() - 2 && name.charAt(startIndex - 1) == ' ') {
+                String number = name.substring(startIndex + 1, name.length() - 1);
+                // if the String 'number' actually contains a number 1 onwards
+                if (number.matches("^[1-9]\\d*$")) {
+                    // remove the " (number)" part from the end of name
+                    name = name.substring(0, name.length() - (number.length() + 3));
+                }
+            }
+        }
         try {
             // TODO: If possible, search via regex ->  name + "( ?\\([1-9][0-9]*\\))?" + extension
             SearchResult searchResult = dropboxClient.files().searchBuilder("", name).withMaxResults(1000L).start();
@@ -659,7 +675,7 @@ public class DropboxRequestHandler implements RequestHandler {
             if (searchResult.getMatches().size() == 0) {
                 return name;
             } else {
-                return findAvailableDropboxName(name, extension, searchResult);
+                return findAvailableDropboxName(originalName, extension, searchResult);
             }
         } catch (DbxException e) {
             Log.e("DropboxRequestHandler", "Search: " + e.getMessage());
@@ -667,14 +683,32 @@ public class DropboxRequestHandler implements RequestHandler {
         return name;
     }
 
-    private static String findAvailableDropboxName(final String name, final String extension, SearchResult result) {
+    private static String findAvailableDropboxName(String name, final String extension, SearchResult result) {
         List<SearchMatch> matchesList = result.getMatches();
         if (!matchSearch(name + extension, matchesList)) {
             return name;
         }
+        int n = 1;
+        final String originalName = name;
+        if (name.length() > 3 && name.endsWith(")")) {
+            int startIndex = name.length() - 2;
+            while (startIndex >= 0) {
+                if (name.charAt(startIndex) == '(') break;
+                startIndex--;
+            }
+            if (startIndex < name.length() - 2 && name.charAt(startIndex - 1) == ' ') {
+                String number = name.substring(startIndex + 1, name.length() - 1);
+                // if the String 'number' actually contains a number 1 onwards
+                if (number.matches("^[1-9]\\d*$")) {
+                    n = Integer.parseInt(number);
+                    // remove the " (number)" part from the end of name
+                    name = name.substring(0, name.length() - (number.length() + 3));
+                }
+            }
+        }
         for (int i = 0; i < matchesList.size(); i++) {
-            if (!matchSearch(name + " (" + (i + 1) + ")" + extension, matchesList)) {
-                return name + " (" + (i + 1) + ")";
+            if (!matchSearch(name + " (" + (i + n) + ")" + extension, matchesList)) {
+                return name + " (" + (i + n) + ")";
             }
         }
         return name;

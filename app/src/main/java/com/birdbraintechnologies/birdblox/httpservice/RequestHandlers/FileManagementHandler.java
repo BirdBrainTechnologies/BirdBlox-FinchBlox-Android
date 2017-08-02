@@ -619,24 +619,25 @@ public class FileManagementHandler implements RequestHandler {
             if (isNameAvailable(dir, name, extension)) return name;
             // else
             File[] files = dir.listFiles();
-            int n = 2;
-            if (name.length() > 2 && name.endsWith(")")) {
+            int n = 1;
+            if (name.length() > 3 && name.endsWith(")")) {
                 int startIndex = name.length() - 2;
                 while (startIndex >= 0) {
                     if (name.charAt(startIndex) == '(') break;
                     startIndex--;
                 }
-                if (startIndex < name.length() - 2) {
+                if (startIndex < name.length() - 2 && name.charAt(startIndex - 1) == ' ') {
                     String number = name.substring(startIndex + 1, name.length() - 1);
-                    // if the String 'number' actually contains a number 2 onwards
-                    if (number.matches("^[1-9]\\d*$") && !number.equals("1"))
+                    // if the String 'number' actually contains a number 1 onwards
+                    if (number.matches("^[1-9]\\d*$")) {
                         n = Integer.parseInt(number);
-                    // remove the "(number)" part from the end of name
-                    name = name.substring(0, name.length() - (number.length() + 2));
+                        // remove the " (number)" part from the end of name
+                        name = name.substring(0, name.length() - (number.length() + 3));
+                    }
                 }
             }
             for (int i = n; i <= files.length + n; i++) {
-                String newName = name + "(" + i + ")";
+                String newName = name + " (" + i + ")";
                 if (isNameAvailable(dir, newName, extension)) return newName;
             }
         } catch (SecurityException | NullPointerException e) {
