@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,10 +41,9 @@ public class DebugRequestHandler implements RequestHandler {
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
-        Map<String, List<String>> m = session.getParameters();
         switch (path[0]) {
             case "log":
-                return appendToLog(m.get("msg").get(0));
+                return appendToLog(session);
             case "shareLog":
                 return shareLog();
         }
@@ -51,13 +51,27 @@ public class DebugRequestHandler implements RequestHandler {
                 NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Error in Debug command.");
     }
 
-
     /**
-     * @param message
-     * @return
+     * Appends the received message to the log file, creating the file
+     * if it doesn't exist.
+     *
+     * @param session HttpRequest to get the POST body of.
+     * @return A 'OK' response if logging was successful,
+     * and an 'ERROR' response otherwise.
      */
-    private NanoHTTPD.Response appendToLog(String message) {
+    private NanoHTTPD.Response appendToLog(NanoHTTPD.IHTTPSession session) {
+        if (session.getMethod() != NanoHTTPD.Method.POST) {
+            Log.d(TAG, "Log: Messages must be sent via POST request");
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Please send a POST request.");
+        }
         try {
+            Map<String, String> postFiles = new HashMap<>();
+            // Parse POST body to get parameters
+            session.parseBody(postFiles);
+            // Obtain the message to be written to file from "postData"
+            String message = postFiles.get("postData");
+            // Get the log file
             File logFile = new File(mainWebViewContext.getFilesDir(), LOG_DIR + "/Log.txt");
             // If the log file doesn't exist yet, create a blank log file
             if (!logFile.exists()) {
@@ -78,7 +92,6 @@ public class DebugRequestHandler implements RequestHandler {
             }
             // Else, split log file in half, discard first half, append new message to second half
             else {
-                // TODO: Implementing splitting in half correctly
                 // Get second 'half' of previous file contents as a String
                 String toWrite = FileUtils.readFileToString(logFile, "utf-8");
                 toWrite = toWrite.substring(toWrite.length() / 2);
@@ -94,7 +107,7 @@ public class DebugRequestHandler implements RequestHandler {
             // Return OK Response
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully modified log file.");
-        } catch (IOException | SecurityException | NullPointerException | IllegalStateException | IllegalArgumentException e) {
+        } catch (IOException | SecurityException | NullPointerException | IllegalStateException | IllegalArgumentException | NanoHTTPD.ResponseException e) {
             Log.e(TAG, "Error while writing to log file: " + e.getMessage());
         }
         // Return Error Response
@@ -103,7 +116,11 @@ public class DebugRequestHandler implements RequestHandler {
     }
 
     /**
-     * @return
+     * Opens a 'share dialog' through which the user can export
+     * the log file.
+     *
+     * @return A 'OK' response if opening the dialog was successful,
+     * and an 'ERROR' response otherwise.
      */
     private NanoHTTPD.Response shareLog() {
         try {

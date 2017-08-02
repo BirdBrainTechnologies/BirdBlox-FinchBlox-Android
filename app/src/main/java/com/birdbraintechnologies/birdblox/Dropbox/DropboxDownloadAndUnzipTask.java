@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Project.UnzipTask;
 import com.birdbraintechnologies.birdblox.R;
@@ -104,7 +105,7 @@ public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Integer, Stri
                     if (e.errorValue.isPath() && e.errorValue.getPathValue().isNotFound()) {
                         Log.e(TAG, "Download: File " + dbxName + " not found.");
                         downloadDialog.cancel();
-                        // TODO: Display this error to the user
+                        Toast.makeText(mainWebViewContext, "Sorry! The file \"" + dbxName + "\" could not be found on Dropbox.", Toast.LENGTH_LONG).show();
                         JSONObject obj = dropboxAppFolderContents();
                         if (obj != null)
                             runJavascript("CallbackManager.cloud.filesChanged('" + bbxEncode(obj.toString()) + "')");

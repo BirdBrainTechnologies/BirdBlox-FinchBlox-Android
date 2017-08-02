@@ -168,7 +168,7 @@ public class RecordingHandler implements RequestHandler {
      * @return Returns true if user has provided these permissions, and false otherwise.
      */
     private boolean checkMicPermission() {
-        return (ActivityCompat.checkSelfPermission(service, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED);
+        return (ActivityCompat.checkSelfPermission(service, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED);
     }
 
     /**

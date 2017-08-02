@@ -40,21 +40,17 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 public class FileManagementHandler implements RequestHandler {
     private static final String TAG = FileManagementHandler.class.getName();
     private static final String BIRDBLOCKS_SAVE_DIR = "Saved";
-    private static final String FILE_NOT_FOUND_RESPONSE = "File Not Found";
-    public static File SecretFileDirectory;
 
     private static final String FILES_PREFS_KEY = "com.birdbraintechnologies.birdblox.FILE_MANAGEMENT";
     static SharedPreferences filesPrefs = mainWebViewContext.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
 
     static final String CURRENT_PREFS_KEY = "com.birdbraintechnologies.birdblox.CURRENT_PROJECT";
-    static final String NAMED_PREFS_KEY = "com.birdbraintechnologies.birdblox.IS_FILE_NAMED";
 
     private HttpService service;
 
     public FileManagementHandler(HttpService service) {
         this.service = service;
         filesPrefs = service.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
-        filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
     }
 
     @Override
@@ -83,7 +79,7 @@ public class FileManagementHandler implements RequestHandler {
             case "autoSave":
                 return autosaveProject(session);
             case "new":
-                return newProject(session);
+                return newProjectWithName(m.get("filename").get(0), session);
             case "getAvailableName":
                 if (m.get("type").get(0).equals("file"))
                     return getProjectName(m.get("filename").get(0));
@@ -92,7 +88,7 @@ public class FileManagementHandler implements RequestHandler {
             case "duplicate":
                 return duplicateProject(m.get("filename").get(0), m.get("newFilename").get(0));
             case "markAsNamed":
-
+                return markNamed();
         }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Bad Request");
@@ -119,11 +115,9 @@ public class FileManagementHandler implements RequestHandler {
         try {
             String encodedXML = bbxEncode(FileUtils.readFileToString(program, "utf-8"));
             String encodedName = bbxEncode(name);
-            boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
             if (encodedXML != null) {
-                runJavascript("CallbackManager.data.open('" + encodedName + "', \"" + encodedXML + "\", " + isNamed + ");");
+                runJavascript("CallbackManager.data.open('" + encodedName + "', \"" + encodedXML + "\");");
                 filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
-                filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, name + " successfully opened.");
             }
@@ -152,9 +146,7 @@ public class FileManagementHandler implements RequestHandler {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.CONFLICT, MIME_PLAINTEXT, "Project called " + newName + " already exists");
         } else if (oldName.equals(filesPrefs.getString(CURRENT_PREFS_KEY, ""))) {
-            boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
-            runJavascript("CallbackManager.data.setName('" + bbxEncode(newName) + "', " + isNamed + ");");
-            filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
+            runJavascript("CallbackManager.data.setName('" + bbxEncode(newName) + "');");
             filesPrefs.edit().putString(CURRENT_PREFS_KEY, newName).apply();
         }
         try {
@@ -237,7 +229,6 @@ public class FileManagementHandler implements RequestHandler {
                     NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " was not found!");
         } else if (filesPrefs.getString(CURRENT_PREFS_KEY, "").equals(name)) {
             filesPrefs.edit().putString(CURRENT_PREFS_KEY, null).apply();
-            filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, false).apply();
             runJavascript("CallbackManager.data.close();");
         }
         try {
@@ -347,7 +338,7 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if autosaving was successful,
      * and an 'ERROR' response otherwise.
      */
-    public static NanoHTTPD.Response autosaveProject(NanoHTTPD.IHTTPSession session) {
+    private static NanoHTTPD.Response autosaveProject(NanoHTTPD.IHTTPSession session) {
         if (session.getMethod() != NanoHTTPD.Method.POST) {
             Log.d(TAG, "Autosave: Save must be done via POST request");
             return NanoHTTPD.newFixedLengthResponse(
@@ -404,10 +395,7 @@ public class FileManagementHandler implements RequestHandler {
                 session.parseBody(postFiles);
                 FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8", false);
                 filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
-                // boolean isNamed = filesPrefs.getBoolean(NAMED_PREFS_KEY, false);
-                filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, false).apply();
-                runJavascript("CallbackManager.data.setName('" + bbxEncode(name) + "', false);");
-                filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
+                runJavascript("CallbackManager.data.setName('" + bbxEncode(name) + "');");
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully created new project: " + name);
             } catch (IOException e) {
@@ -421,6 +409,57 @@ public class FileManagementHandler implements RequestHandler {
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while making new project");
     }
+
+    /**
+     * Creates a new project, with the name provided.
+     *
+     * @param name The name of the new project to be created.
+     * @param session HttpRequest to get the POST body of.
+     * @return A 'OK' response if creating new project was successful,
+     * and an 'ERROR' response otherwise.
+     */
+    private NanoHTTPD.Response newProjectWithName(String name, NanoHTTPD.IHTTPSession session) {
+        if (session.getMethod() != NanoHTTPD.Method.POST) {
+            Log.d(TAG, "New: Save must be done via POST request");
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Please send a POST request.");
+        }
+        Map<String, String> postFiles = new HashMap<>();
+        if (!isNameSanitized(name)) {
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Given name is invalid.");
+        }
+        if (projectExists(name)) {
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.CONFLICT, MIME_PLAINTEXT, "Project " + name + " already exists.");
+        }
+        if (name != null) {
+            // actually create project here
+            File newFile = new File(getBirdbloxDir(), name + "/program.xml");
+            try {
+                if (!newFile.exists()) {
+                    newFile.getParentFile().mkdirs();
+                    newFile.createNewFile();
+                }
+                // Parse POST body to get parameters
+                session.parseBody(postFiles);
+                FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8", false);
+                filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
+                runJavascript("CallbackManager.data.setName('" + bbxEncode(name) + "');");
+                return NanoHTTPD.newFixedLengthResponse(
+                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully created new project: " + name);
+            } catch (IOException e) {
+                if (newFile.exists())
+                    newFile.delete();
+                Log.e(TAG, e.getMessage());
+            } catch (NanoHTTPD.ResponseException e) {
+                Log.e(TAG, e.getMessage());
+            }
+        }
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while making new project " + name);
+    }
+
 
     /**
      * Gets an available project name, for the given 'name'.
@@ -512,7 +551,6 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response
      */
     private NanoHTTPD.Response markNamed() {
-        filesPrefs.edit().putBoolean(NAMED_PREFS_KEY, true).apply();
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully marked named");
     }
@@ -642,7 +680,7 @@ public class FileManagementHandler implements RequestHandler {
     public static File getBirdbloxDir() {
         //File file = new File(Environment.getExternalStoragePublicDirectory(
         //        Environment.DIRECTORY_DOCUMENTS), BIRDBLOCKS_SAVE_DIR);
-        File file = new File(SecretFileDirectory, BIRDBLOCKS_SAVE_DIR);
+        File file = new File(mainWebViewContext.getFilesDir(), BIRDBLOCKS_SAVE_DIR);
         if (!file.exists()) {
             try {
                 file.mkdirs();

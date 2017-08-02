@@ -204,18 +204,14 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private String getDeviceLocation() {
         Log.d("LocPerm", "Entered getDeviceLocation() function in HostHandler");
         if (ActivityCompat.checkSelfPermission(service,
-                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(service,
-                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Intent showDialog = new Intent(MainWebView.LOCATION_PERMISSION);
             LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
             Log.d("LocPerm", "Intent Sent to MainWebView");
         }
 
         if(ActivityCompat.checkSelfPermission(service,
-                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                || ActivityCompat.checkSelfPermission(service,
-                Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             LocationManager locationManager =
                     (LocationManager) service.getSystemService(Context.LOCATION_SERVICE);
             Criteria criteria = new Criteria();

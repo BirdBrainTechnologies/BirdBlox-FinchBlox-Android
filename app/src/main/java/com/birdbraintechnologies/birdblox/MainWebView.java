@@ -14,6 +14,7 @@ import android.content.res.Configuration;
 import android.database.Cursor;
 import android.media.AudioManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.NetworkOnMainThreadException;
@@ -31,12 +32,15 @@ import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblox.Dialogs.BirdBloxDialog;
+import com.birdbraintechnologies.birdblox.Project.ImportUnzipTask;
 import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler;
-import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RecordingHandler;
 import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.v2.DbxClientV2;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -47,7 +51,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.URL;
@@ -60,6 +63,9 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Dro
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxAppOAuth;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxConfig;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxWebOAuth;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.findAvailableName;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.getBirdbloxDir;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.sanitizeName;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.PropertiesHandler.metrics;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.UIRequestHandler.loadContent;
 
@@ -98,7 +104,8 @@ public class MainWebView extends AppCompatActivity {
 
     private static final String BIRDBLOX_UNZIP_DIR = "Unzipped";
     private static final String BIRDBLOX_ZIP_DIR = "Zipped";
-    private static final String BIRDBLOX_DIR = "BirdBlox";
+
+    private static final String IMPORT_ZIP_DIR = "ZippedImport";
 
     /* For double back exit */
     private static final int DOUBLE_BACK_DELAY = 2000;
@@ -107,8 +114,6 @@ public class MainWebView extends AppCompatActivity {
 
     LocalBroadcastManager bManager;
     private static WebView webView;
-    private String importedFileName;
-    private String encodedFileName;
     private long back_pressed;
     private BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
@@ -155,36 +160,9 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         mainWebViewContext = MainWebView.this;
 
-        FileManagementHandler.SecretFileDirectory = getFilesDir();
-        // FileManagementHandler.SecretFileDirectory = new File(Environment.getExternalStoragePublicDirectory(
-        //        Environment.DIRECTORY_DOCUMENTS), BIRDBLOX_DIR);
 
-        // Get intent
-        Intent intent = getIntent();
-
-        String action = intent.getStringExtra("Action");
-        String scheme = intent.getStringExtra("Scheme");
-
-        if (Intent.ACTION_SEND.equals(action) || Intent.ACTION_VIEW.equals(action) || Intent.ACTION_EDIT.equals(action)) {
-            try {
-                if (scheme.equals("file")) {
-                    String str = intent.getStringExtra("Data");
-                    if (str.length() > 4 && ".bbx".equals(last4(str))) {
-                        importedFileName = sanitizeAndCopy(Uri.parse(str));
-                        encodedFileName = URLEncoder.encode(importedFileName, "utf-8");
-                    }
-                } else if (scheme.equals("content")) {
-                    Uri data = Uri.parse(intent.getStringExtra("Data"));
-                    importedFileName = sanitizeAndGetContent(data);
-                    encodedFileName = URLEncoder.encode(importedFileName, "utf-8");
-                }
-            } catch (UnsupportedEncodingException | NullPointerException e) {
-                Log.e("MainWebView", e.getMessage());
-            }
-        }
 
         // Hide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
@@ -253,13 +231,6 @@ public class MainWebView extends AppCompatActivity {
         intentFilter.addAction(WRITE_EXTERNAL_STORAGE_PERMISSION);
         bManager.registerReceiver(bReceiver, intentFilter);
 
-        if (encodedFileName != null) {
-            // Inject the JavaScript command to open the imported file into the webView
-            Log.d("MainWebView", "Final File Name: " + importedFileName);
-            Log.d("MainWebView", "Encoded File Name: " + encodedFileName);
-            runJavascript("SaveManager.import(\"" + encodedFileName + "\")");
-        }
-
         SharedPreferences dropboxPrefs = this.getSharedPreferences(DB_PREFS_KEY, MODE_PRIVATE);
         String accessToken = dropboxPrefs.getString("access-token", null);
         if (accessToken != null) {
@@ -296,48 +267,17 @@ public class MainWebView extends AppCompatActivity {
         webView.onResume();
         webView.resumeTimers();
         dropboxAppOAuth();
-        requestLocationPermission();
+        importFromIntent(getIntent());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestLocationPermission();
+        }
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-
-        String action = intent.getAction();
-        String scheme = intent.getScheme();
-        String data = (intent.getData() != null) ? intent.getData().toString() : null;
-        String dataString = intent.getDataString();
-        String extras = (intent.getExtras() != null) ? intent.getExtras().toString() : null;
-        String categories = (intent.getCategories() != null) ? intent.getCategories().toString() : null;
-        String type = intent.getType();
-        String clipData = (intent.getClipData() != null) ? intent.getClipData().toString() : null;
-
-        if (action != null)
-            Log.d("INTENTTEST", "Action: " + action);
-        if (scheme != null)
-            Log.d("INTENTTEST", "Scheme: " + scheme);
-        if (type != null)
-            Log.d("INTENTTEST", "Type: " + type);
-        if (data != null)
-            Log.d("INTENTTEST", "Data: " + data);
-        if (dataString != null)
-            Log.d("INTENTTEST", "DataString: " + dataString);
-        if (extras != null)
-            Log.d("INTENTTEST", "Extras: " + extras);
-        if (categories != null)
-            Log.d("INTENTTEST", "Categories: " + categories);
-
-
-        Bundle bundle = intent.getExtras();
-        if (bundle != null) {
-            for (String key : bundle.keySet()) {
-                Object value = bundle.get(key);
-                Log.d("INTENTTEST", "EXTRA: " + String.format("%s %s (%s)", key,
-                        value.toString(), value.getClass().getName()));
-            }
-        }
-
         dropboxWebOAuth(intent);
+        importFromIntent(intent);
     }
 
     @Override
@@ -406,6 +346,51 @@ public class MainWebView extends AppCompatActivity {
     public static String last4(String str) {
         return str == null || str.length() < 4 ? str : str.substring(str.length() - 4);
     }
+
+
+    private void importFromIntent(Intent intent) {
+        if (intent == null) return;
+
+        String type = null;
+        Uri data = null;
+
+        // TODO: Rewrite using try-catch
+        if (intent.getAction().equals(Intent.ACTION_SEND)) {
+            String extraStream = null;
+            if (intent.getExtras() != null && intent.getExtras().get(Intent.EXTRA_STREAM) != null) {
+                extraStream = intent.getExtras().get(Intent.EXTRA_STREAM).toString();
+            }
+            if (extraStream != null) {
+                int position = extraStream.indexOf(':');
+                if (position >= 0) {
+                    type = extraStream.substring(0, position);
+                }
+                data = Uri.parse(extraStream);
+            }
+        } else if (intent.getAction().equals(Intent.ACTION_VIEW)) {
+            type = intent.getScheme();
+            data = intent.getData();
+        }
+
+        if (type != null)
+            Log.d("INTENTTYPE", "Type: " + type);
+        if (data != null)
+            Log.d("INTENTTYPE", "Data: " + data);
+
+
+        // TODO: Make this a new AsyncTask
+        if (type != null && data != null) {
+            if (type.equals("content")) {
+                sanitizeAndGetContent(data);
+            } else if (type.equals("file")) {
+                if (FilenameUtils.getExtension(data.toString()).equals("bbx")) {
+                    sanitizeAndCopyFile(data);
+                }
+            }
+        }
+    }
+
+
 
     /**
      * Downloads the file at the given URL to the given location
@@ -519,63 +504,23 @@ public class MainWebView extends AppCompatActivity {
     };
 
     /**
-     * Copies inputFile (located at inputPath) to outputPath, and sanitizes the filename.
-     *
-     * @param inputPath  Location of file to be copied
-     * @param inputFile  Filename of file to be copied
-     * @param outputPath Location where the above file is to be copied to ('pasted')
-     * @return Returns the new (sanitized) filename
-     */
-    private String sanitizeAndCopyFile(String inputPath, String inputFile, String outputPath) {
-        InputStream in = null;
-        OutputStream out = null;
-        try {
-            //create output directory if it doesn't exist
-            File dir = new File(outputPath);
-            if (!dir.exists()) {
-                try {
-                    dir.mkdirs();
-                } catch (SecurityException e) {
-                    Log.e("MainWebView", "Copy Directory: " + e.getMessage());
-                }
-            }
-            in = new FileInputStream(inputPath + "/" + inputFile);
-            String filename = inputFile.substring(0, inputFile.length() - 4);
-            String extension = inputFile.substring(inputFile.length() - 4);
-            String newName = FileManagementHandler.findAvailableName(dir, filename, extension);
-            out = new FileOutputStream(outputPath + "/" + newName + extension);
-            byte[] buffer = new byte[1024];
-            int read;
-            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
-            in.close();
-            in = null;
-            // write the output file (You have now copied the file)
-            out.flush();
-            out.close();
-            out = null;
-            Log.d("MainWebView", "Imported File Successfully!");
-            return newName;
-        } catch (IOException e) {
-            Log.e("MainWebView", "SanitizeAndCopyFile: " + e.getMessage());
-        }
-        return null;
-    }
-
-    /**
      * Creates a copy of the 'file to be imported' in the app's internal (secret) directory,
-     * and then returns the filename of this copy.
+     * starts the unzip operation, and then returns the filename of this copy.
      *
      * @param data Uri containing path of file to be imported.
      * @return Returns the new (sanitized) filename
      */
-    private synchronized String sanitizeAndCopy(Uri data) {
+    private synchronized String sanitizeAndCopyFile(Uri data) {
         try {
-            String outputPath = FileManagementHandler.getBirdbloxDir().getAbsolutePath();
-            String inputFile = data.getLastPathSegment();
-            File file = new File(data.getPath());
-            String inputPath = file.getParentFile().toString();
-            return sanitizeAndCopyFile(inputPath, inputFile, outputPath);
-        } catch (SecurityException e) {
+            File inputFile = new File(data.getPath());
+            String newName = sanitizeName(FilenameUtils.getBaseName(inputFile.getName()));
+            String extension = FilenameUtils.getExtension(inputFile.getName());
+            File zipFile = new File(getFilesDir(), IMPORT_ZIP_DIR + "/" + newName + "." + extension);
+            FileUtils.copyFile(inputFile, zipFile);
+            File outputFile = new File(getBirdbloxDir(), newName);
+            new ImportUnzipTask().execute(zipFile, outputFile);
+            return newName;
+        } catch (IOException | SecurityException e) {
             Log.e("MainWebView", "SanitizeAndCopy: " + e.getMessage());
         }
         return null;
@@ -583,7 +528,7 @@ public class MainWebView extends AppCompatActivity {
 
     /**
      * Gets the 'file to be imported' from the content, creates a copy of it in the app's internal
-     * (secret) directory, and then returns the filename of this copy.
+     * (secret) directory, starts the unzip operation, and then returns the filename of this copy.
      *
      * @param data Uri containing the file content.
      * @return Returns the new (sanitized) filename
@@ -592,8 +537,6 @@ public class MainWebView extends AppCompatActivity {
         try {
             String name = null;
             InputStream is = null;
-            FileOutputStream os = null;
-            String fullPath = null;
             Cursor cursor = getContentResolver().query(data, new String[]{
                     MediaStore.MediaColumns.DISPLAY_NAME
             }, null, null, null);
@@ -605,41 +548,19 @@ public class MainWebView extends AppCompatActivity {
                 }
                 cursor.close();
             }
-            if (name == null) {
+            String fileName = FilenameUtils.getBaseName(name);
+            String fileExt = FilenameUtils.getExtension(name);
+            if (fileName == null || fileName == "" || fileExt == null || !fileExt.equals("bbx"))
                 return null;
-            }
-            int n = name.lastIndexOf(".");
-            String fileName, fileExt;
-
-            if (n == -1) {
-                return null;
-            } else {
-                fileName = name.substring(0, n);
-                fileExt = name.substring(n);
-                if (!fileExt.equals(".bbx")) {
-                    return null;
-                }
-            }
-
-            File dir = FileManagementHandler.getBirdbloxDir();
+            File dir = new File(getFilesDir(), IMPORT_ZIP_DIR);
             if (!dir.exists())
                 dir.mkdirs();
-            String newName = FileManagementHandler.findAvailableName(dir, fileName, fileExt);
-            fullPath = dir.getAbsolutePath() + "/" + newName + fileExt;
-
+            String newName = findAvailableName(getBirdbloxDir(), fileName, "");
+            File zipFile = new File(dir, newName + "." + fileExt);
             is = getContentResolver().openInputStream(data);
-            os = new FileOutputStream(fullPath);
-
-            byte[] buffer = new byte[4096];
-            int count;
-            if (is != null) {
-                while ((count = is.read(buffer)) > 0) {
-                    os.write(buffer, 0, count);
-                }
-            }
-            os.close();
-            if (is != null)
-                is.close();
+            FileUtils.copyInputStreamToFile(is, zipFile);
+            File outputFile = new File(getBirdbloxDir(), newName);
+            new ImportUnzipTask().execute(zipFile, outputFile);
             return newName;
         } catch (NullPointerException | IOException | SecurityException e) {
             Log.e("MainWebView", e.getMessage());
@@ -705,16 +626,12 @@ public class MainWebView extends AppCompatActivity {
      */
     private void showShareLogDialog(Bundle b) {
         try {
-            // create new intent
             Intent sendIntent = new Intent(Intent.ACTION_SEND);
-            // set flag to give temporary permission to external app to use your FileProvider
             sendIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            // generate URI, with authority defined as the application ID in the Manifest, the last param is file I want to open
             Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID, new File((String) b.get("log_file_path")));
             sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
             // We are sharing txt files, so we give it a valid MIME type
             sendIntent.setType("text/*");
-            // Validate that the device can open the File
             if (sendIntent.resolveActivity(MainWebView.this.getPackageManager()) != null) {
                 startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.share_with)));
             }
@@ -777,7 +694,6 @@ public class MainWebView extends AppCompatActivity {
             }
         };
         mainHandler.post(myRunnable);
-
     }
 
     /**
@@ -808,9 +724,15 @@ public class MainWebView extends AppCompatActivity {
                 // Show an explanation to the user *asynchronously* -- don't block
                 // this thread waiting for the user's response! After the user
                 // sees the explanation, try again to request the permission.
+                String message;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    message = "BirdBlox requires location permission in order to perform Bluetooth scans and get user location.";
+                } else {
+                    message = "BirdBlox requires location permission in order to get user location.";
+                }
                 new AlertDialog.Builder(this)
                         .setTitle("Location Permission")
-                        .setMessage("BirdBlox requires location permission in order to perform Bluetooth scans.")
+                        .setMessage(message)
                         .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialogInterface, int i) {

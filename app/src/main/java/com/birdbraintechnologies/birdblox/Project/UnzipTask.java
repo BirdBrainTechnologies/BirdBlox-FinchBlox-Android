@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.R;
 import com.birdbraintechnologies.birdblox.Util.ZipUtility;
@@ -31,12 +32,13 @@ public class UnzipTask extends AsyncTask<File, Long, String> {
     private final String TAG = this.getClass().getName();
 
     private AlertDialog.Builder builder;
-    private AlertDialog unzipDialog;
-    private ProgressBar progressBar;
+    AlertDialog unzipDialog;
+    ProgressBar progressBar;
     private Button cancelButton;
     private TextView showText;
 
-    private File zipFile;
+    File zipFile;
+    File to;
 
     public UnzipTask() {
         super();
@@ -78,7 +80,7 @@ public class UnzipTask extends AsyncTask<File, Long, String> {
             try {
                 if (files[0] != null && files[1] != null) {
                     zipFile = files[0];
-                    File to = files[1];
+                    to = files[1];
                     if (isCancelled()) return null;
                     ZipUtility.unzip(zipFile, to);
                     return FilenameUtils.getBaseName(to.getName());
@@ -86,7 +88,7 @@ public class UnzipTask extends AsyncTask<File, Long, String> {
             } catch (ZipException e) {
                 // TODO: Legacy Support here
                 String contents = FileUtils.readFileToString(zipFile, "utf-8");
-                File to = new File(files[1], "program.xml");
+                to = new File(files[1], "program.xml");
                 if (!to.getParentFile().exists()) {
                     to.getParentFile().mkdirs();
                 }
@@ -115,8 +117,12 @@ public class UnzipTask extends AsyncTask<File, Long, String> {
                 zipFile.delete();
                 zipFile = null;
             }
+            if (!new File(to, "program.xml").exists()) {
+                FileUtils.deleteDirectory(to);
+                Toast.makeText(mainWebViewContext, "Could not download file : Invalid file type", Toast.LENGTH_LONG).show();
+            }
             progressBar.setVisibility(View.INVISIBLE);
-        } catch (SecurityException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+        } catch (IOException | SecurityException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             Log.e(TAG, "DeleteAfterUnzip: " + e.getMessage());
         }
         if (name != null) {

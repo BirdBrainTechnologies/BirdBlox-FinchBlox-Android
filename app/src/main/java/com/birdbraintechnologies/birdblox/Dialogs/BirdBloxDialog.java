@@ -13,6 +13,7 @@ import android.widget.EditText;
 
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.HostDeviceHandler;
 
+import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 
 /**
@@ -53,7 +54,7 @@ public class BirdBloxDialog extends DialogFragment {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             sendResponseBroadcast("'" + input.getText().toString() + "'");
-                            runJavascript("CallbackManager.dialog.promptResponded(false, '" + input.getText().toString() + "')");
+                            runJavascript("CallbackManager.dialog.promptResponded(false, '" + bbxEncode(input.getText().toString()) + "')");
                         }
                     });
         } else if (type == DialogType.CHOICE) {

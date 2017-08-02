@@ -58,9 +58,7 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 public class DropboxRequestHandler implements RequestHandler {
 
-    // TODO: Compare errors with frontend
     // TODO: Separate UNZIP Directory, and invalid file handling
-    // TODO: Separate illegal characters dialog
 
     private final String TAG = this.getClass().getName();
 
@@ -200,7 +198,7 @@ public class DropboxRequestHandler implements RequestHandler {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Not signed in to Dropbox");
         }
-        checkInput(name, DropboxOperation.DELETE);
+        showDeleteDialog(name);
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started deletion of: " + name);
     }
@@ -240,12 +238,12 @@ public class DropboxRequestHandler implements RequestHandler {
         if (accessToken != null) {
             dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
             dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
-            runJavascript("CallbackManager.cloud.signIn()");
             new Thread() {
                 @Override
                 public void run() {
                     super.run();
                     getDropboxSignInInfo();
+                    runJavascript("CallbackManager.cloud.signIn()");
                 }
             }.start();
         }
@@ -457,6 +455,32 @@ public class DropboxRequestHandler implements RequestHandler {
                 }
             });
         }
+        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                final AlertDialog alert = builder.create();
+                alert.show();
+            }
+        });
+    }
+
+    private static void showDeleteDialog(final String name) {
+        final AlertDialog.Builder builder = new AlertDialog.Builder(mainWebViewContext);
+        builder.setTitle("Delete");
+        builder.setMessage("Are you sure you want to delete \"" + name + "\" from Dropbox?");
+        builder.setNegativeButton("Delete", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+                checkInput(name, DropboxOperation.DELETE);
+            }
+        });
+        builder.setNeutralButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
         new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
