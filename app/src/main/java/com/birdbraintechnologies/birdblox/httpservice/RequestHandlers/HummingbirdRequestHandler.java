@@ -55,7 +55,6 @@ public class HummingbirdRequestHandler implements RequestHandler {
     private HashMap<String, Thread> threadMap;
 
     public HummingbirdRequestHandler(HttpService service) {
-
         this.service = service;
         this.btHelper = service.getBluetoothHelper();
         this.connectedDevices = new HashMap<>();

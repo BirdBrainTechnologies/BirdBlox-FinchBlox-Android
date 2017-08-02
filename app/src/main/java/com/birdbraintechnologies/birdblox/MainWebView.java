@@ -702,12 +702,13 @@ public class MainWebView extends AppCompatActivity {
      * @return The custom percent-encoded form of String s
      */
     public static String bbxEncode(String s) {
+        if (s == null) return "";
         try {
             s = URLEncoder.encode(s, "utf-8");
             s = s.replace("+", "%20");
             // s = URLEncoder.encode(s, "utf-8");
             return s;
-        } catch (UnsupportedEncodingException e) {
+        } catch (UnsupportedEncodingException | NullPointerException e) {
             Log.e("bbxEncode", " " + e.getMessage());
         }
         return "";

@@ -1,6 +1,8 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
+import android.os.Handler;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBState;
@@ -18,7 +20,9 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static android.content.ContentValues.TAG;
+import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
+import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 
 /**
  * Represents a Hummingbird device and all of its functionality: Setting outputs, reading sensors
@@ -47,16 +51,17 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 4000;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
-    private static final int MAX_FAILURE_COUNT = 10;
+    private static final int MAX_FAILURE_COUNT = 320;
+    private static final int MAX_G4_FAILURE_COUNT = 320;
 
     // This represents the firmware version 2.2a
-    private static final int minFirmwareVersion1 = 2;
-    private static final int minFirmwareVersion2 = 2;
+    private static final byte minFirmwareVersion1 = 2;
+    private static final byte minFirmwareVersion2 = 2;
     private static final String minFirmwareVersion3 = "a";
 
     // This represents the firmware version 2.2b
-    private static final int latestFirmwareVersion1 = 2;
-    private static final int latestFirmwareVersion2 = 2;
+    private static final byte latestFirmwareVersion1 = 2;
+    private static final byte latestFirmwareVersion2 = 2;
     private static final String latestFirmwareVersion3 = "b";
 
     private long last_sent;
@@ -67,6 +72,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
     private final ReentrantLock lock;
     private final Condition doneSending;
+
+    boolean g4;
+    private byte[] g4response;
 
     private int count;
 
@@ -79,13 +87,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         super();
         this.conn = conn;
 
-//        if (!hasMinFirmware()) {
-//            disconnect();
-//            runJavascript("CallbackManager.robot.disconnectIncompatible('" + getMacAddress() + "', '" + getFirmwareVersion() + "', '" + getMinFirmwareVersion() + "')");
-//        } else if (!hasLatestFirmware()) {
-//            runJavascript("CallbackManager.robot.updateFirmwareStatus('" + getMacAddress() + "', 'old')");
-//        }
-
         oldState = new HBState();
         newState = new HBState();
 
@@ -93,6 +94,8 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
         lock = new ReentrantLock();
         doneSending = lock.newCondition();
+
+        g4 = true;
 
         count = 0;
 
@@ -103,20 +106,34 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     public void run() {
                         try {
                             lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
-                            // TODO: Error if sending fails
                             if (sendToRobot()) {
                                 if (count >= MAX_FAILURE_COUNT) {
-                                    // runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(conn.getBLEDevice().getAddress()) + "', true);");
+                                    // TODO: Auto-reconnection
+//                                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                                 }
                                 count = 0;
-                            } else {
+                            } else if (!g4) {
                                 count++;
                                 if (count >= MAX_FAILURE_COUNT) {
-                                    // runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(conn.getBLEDevice().getAddress()) + "', false);");
+                                    // TODO: Auto-disconnection
+//                                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
+                                }
+                            } else {
+                                count++;
+                                if (count >= MAX_G4_FAILURE_COUNT) {
+                                    // TODO: Implement successive G4 failure properly here
+                                    new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
+                                            Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
                                 }
                             }
                             doneSending.signal();
-                        } catch (InterruptedException | IllegalMonitorStateException e) {
+                        } catch (NullPointerException | InterruptedException | IllegalMonitorStateException e) {
                             Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
                         } finally {
                             if (lock.isHeldByCurrentThread())
@@ -133,6 +150,21 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
      * based on certain conditions.
      */
     public synchronized boolean sendToRobot() {
+        if (g4) {
+            g4response = conn.writeBytesWithResponse("G4".getBytes());
+            if (g4response != null && g4response.length > 0) {
+                g4 = false;
+                count = 0;
+                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                if (!hasMinFirmware()) {
+                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareVersion()) + "', '" + bbxEncode(getMinFirmwareVersion()) + "')");
+                    disconnect();
+                } else if (!hasLatestFirmware()) {
+                    runJavascript("CallbackManager.robot.updateFirmwareStatus('" + bbxEncode(getMacAddress()) + "', 'old')");
+                }
+            }
+            return g4response != null && g4response.length > 0;
+        }
         if (isCurrentlySending()) {
             return true;
         } else if (!statesEqual()) {
@@ -447,7 +479,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
     public String getName() {
         try {
-            return NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), conn.getBLEDevice().getAddress());
+            return NamingHandler.GenerateName(mainWebViewContext, conn.getBLEDevice().getAddress());
         } catch (NullPointerException e) {
             Log.e(TAG, "Error getting hummingbird name: " + e.getMessage());
             return null;
@@ -465,8 +497,8 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
     public String getHardwareVersion() {
         try {
-            return new String(conn.getG4Response(), "utf-8").substring(0, 2);
-        } catch (UnsupportedEncodingException | StringIndexOutOfBoundsException e) {
+            return Byte.toString(g4response[0]) + Byte.toString(g4response[1]);
+        } catch (ArrayIndexOutOfBoundsException e) {
             Log.e(TAG, "Hummingbird hardware version: " + e.getMessage());
             return null;
         }
@@ -474,29 +506,28 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
     public String getFirmwareVersion() {
         try {
-            String str = new String(conn.getG4Response(), "utf-8").substring(2);
-            return str.substring(0, 2) + "." + str.substring(2);
-        } catch (UnsupportedEncodingException | StringIndexOutOfBoundsException e) {
+            return Byte.toString(g4response[2]) + "." + Byte.toString(g4response[3]) + new String(new byte[]{g4response[4]}, "utf-8");
+        } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException e) {
             Log.e(TAG, "Hummingbird firmware version: " + e.getMessage());
             return null;
         }
     }
 
     String getMinFirmwareVersion() {
-        return Integer.toString(minFirmwareVersion1) + "." + Integer.toString(minFirmwareVersion2) + minFirmwareVersion3;
+        return Byte.toString(minFirmwareVersion1) + "." + Byte.toString(minFirmwareVersion2) + minFirmwareVersion3;
     }
 
     public String getLatestFirmwareVersion() {
-        return Integer.toString(latestFirmwareVersion1) + "." + Integer.toString(latestFirmwareVersion2) + latestFirmwareVersion3;
+        return Byte.toString(latestFirmwareVersion1) + "." + Byte.toString(latestFirmwareVersion2) + latestFirmwareVersion3;
     }
 
     public boolean hasMinFirmware() {
         try {
-            int fw1 = (int) conn.getG4Response()[2];
-            int fw2 = (int) conn.getG4Response()[3];
-            String fw3 = new String(conn.getG4Response(), "utf-8").substring(4);
+            int fw1 = (int) g4response[2];
+            int fw2 = (int) g4response[3];
+            String fw3 = new String(new byte[]{g4response[4]}, "utf-8");
             return (fw1 >= minFirmwareVersion1) && (fw2 >= minFirmwareVersion2) && (fw3.compareTo(minFirmwareVersion3) >= 0);
-        } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException | StringIndexOutOfBoundsException | NullPointerException e) {
+        } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException | NullPointerException e) {
             Log.e(TAG, "Hummingbird firmware version: " + e.getMessage());
             return false;
         }
@@ -504,11 +535,11 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
     public boolean hasLatestFirmware() {
         try {
-            int fw1 = (int) conn.getG4Response()[2];
-            int fw2 = (int) conn.getG4Response()[3];
-            String fw3 = new String(conn.getG4Response(), "utf-8").substring(4);
+            int fw1 = (int) g4response[2];
+            int fw2 = (int) g4response[3];
+            String fw3 = new String(new byte[]{g4response[4]}, "utf-8");
             return (fw1 >= latestFirmwareVersion1) && (fw2 >= latestFirmwareVersion2) && (fw3.compareTo(latestFirmwareVersion3) >= 0);
-        } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException | StringIndexOutOfBoundsException | NullPointerException e) {
+        } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException | NullPointerException e) {
             Log.e(TAG, "Hummingbird firmware version: " + e.getMessage());
             return false;
         }

@@ -6,7 +6,11 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.content.Context;
+import android.os.Handler;
 import android.util.Log;
+import android.widget.Toast;
+
+import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
 import java.util.Arrays;
 import java.util.UUID;
@@ -14,6 +18,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
+import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 
 
@@ -59,6 +64,8 @@ public class MelodySmartConnection extends BluetoothGattCallback {
 
         establishConnection(context, device);
         // TODO: Handle failure to establish UART connection
+
+        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(btGatt.getDevice().getAddress()) + "', true);");
     }
 
     /**
@@ -69,7 +76,7 @@ public class MelodySmartConnection extends BluetoothGattCallback {
      * @param device  Bluetooth device being connected to
      * @return True if a connection was successfully established, false otherwise
      */
-    private boolean establishConnection(Context context, BluetoothDevice device) {
+    private boolean establishConnection(Context context, final BluetoothDevice device) {
         // Connect to device
         this.btGatt = device.connectGatt(context, false, this);
 
@@ -78,6 +85,13 @@ public class MelodySmartConnection extends BluetoothGattCallback {
         try {
             if (!doneLatch.await(AWAIT_MAX, TimeUnit.MILLISECONDS)) {
                 Log.e(TAG, "Timed out waiting for initialization.");
+                new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        String FLName = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
+                        Toast.makeText(mainWebViewContext, "Connection to Flutter " + FLName + " timed out.", Toast.LENGTH_LONG).show();
+                    }
+                });
                 return false;
             }
         } catch (InterruptedException e) {
@@ -180,7 +194,6 @@ public class MelodySmartConnection extends BluetoothGattCallback {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (newState == BluetoothGatt.STATE_CONNECTED) {
                 gatt.discoverServices();
-                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', true);");
             } else {
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', false);");
             }
@@ -193,6 +206,8 @@ public class MelodySmartConnection extends BluetoothGattCallback {
             dataBus = gatt.getService(uartUUID).getCharacteristic(dataBusUUID);
             // Notify that the setup process is completed
             doneLatch.countDown();
+        } else {
+            runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', false);");
         }
     }
 

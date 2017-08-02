@@ -6,7 +6,11 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.content.Context;
+import android.os.Handler;
 import android.util.Log;
+import android.widget.Toast;
+
+import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,6 +20,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
+import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 
 /**
@@ -27,6 +32,7 @@ import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 public class UARTConnection extends BluetoothGattCallback {
     private static final String TAG = UARTConnection.class.getName();
     private static final int MAX_RETRIES = 100;
+    private static final int CONNECTION_TIMEOUT_IN_SECS = 15;
 
     /* Latches to handle serialization of async reads/writes */
     private CountDownLatch startLatch = new CountDownLatch(1);
@@ -44,7 +50,6 @@ public class UARTConnection extends BluetoothGattCallback {
     private BluetoothGattCharacteristic rx;
 
     private BluetoothDevice bluetoothDevice;
-    private byte[] G4Response;
 
     /**
      * Initializes a UARTConnection. This needs to know the context the Bluetooth connection is
@@ -153,21 +158,26 @@ public class UARTConnection extends BluetoothGattCallback {
      * @param device  Bluetooth device being connected to
      * @return True if a connection was successfully established, false otherwise
      */
-    private boolean establishUARTConnection(Context context, BluetoothDevice device) {
+    private boolean establishUARTConnection(Context context, final BluetoothDevice device) {
         // Connect to device
         this.btGatt = device.connectGatt(context, false, this);
-
         // Initialize serialization
         startLatch.countDown();
         try {
-            if (!doneLatch.await(30000, TimeUnit.MILLISECONDS)) {
+            if (!doneLatch.await(CONNECTION_TIMEOUT_IN_SECS, TimeUnit.SECONDS)) {
+                new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        String HBName = NamingHandler.GenerateName(mainWebViewContext, device.getAddress());
+                        Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
+                    }
+                });
                 return false;
             }
         } catch (InterruptedException e) {
             // TODO: Handle error
             return false;
         }
-
         // Enable RX notification
         if (!btGatt.setCharacteristicNotification(rx, true)) {
             Log.e(TAG, "Unable to set characteristic notification");
@@ -189,8 +199,6 @@ public class UARTConnection extends BluetoothGattCallback {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (newState == BluetoothGatt.STATE_CONNECTED) {
                 gatt.discoverServices();
-//                G4Response = this.writeBytesWithResponse("G4".getBytes());
-                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', true);");
             } else {
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', false);");
             }
@@ -204,6 +212,8 @@ public class UARTConnection extends BluetoothGattCallback {
             rx = gatt.getService(uartUUID).getCharacteristic(rxUUID);
             // Notify that the setup process is completed
             doneLatch.countDown();
+        } else {
+            runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', false);");
         }
     }
 
@@ -222,7 +232,7 @@ public class UARTConnection extends BluetoothGattCallback {
             Log.e(TAG, "Error writing " + Arrays.toString(characteristic.getValue()) + " to TX");
         }
 
-        // TODO: Inidcate write success/failure to main thread
+        // TODO: Indicate write success/failure to main thread
 
         // For serializing write operations
         doneLatch.countDown();
@@ -242,7 +252,7 @@ public class UARTConnection extends BluetoothGattCallback {
             l.onRXData(newValue);
         }
 
-        // TODO: Inidcate write success/failure to main thread
+        // TODO: Indicate write success/failure to main thread
 
         // For serializing read operations
         resultLatch.countDown();
@@ -280,13 +290,6 @@ public class UARTConnection extends BluetoothGattCallback {
      */
     public BluetoothDevice getBLEDevice() {
         return this.bluetoothDevice;
-    }
-
-    /**
-     * @return
-     */
-    public byte[] getG4Response() {
-        return this.G4Response;
     }
 
     public void addRxDataListener(RXDataListener l) {

@@ -39,6 +39,7 @@ public class UIRequestHandler implements RequestHandler {
         switch (path[0]) {
             case "contentLoaded":
 //                return loadContent();
+                break;
         }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Error in UI command.");

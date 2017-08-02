@@ -15,7 +15,9 @@
     <uses-feature android:name="android.hardware.location" />
     <uses-feature android:name="android.hardware.sensor.accelerometer"/>
     <uses-feature android:name="android.hardware.sensor.barometer"/>
-    <uses-feature android:name="android.hardware.bluetooth_le"/>
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="false"/>
 
     <!--TODO: Look at warning here-->
     <application
