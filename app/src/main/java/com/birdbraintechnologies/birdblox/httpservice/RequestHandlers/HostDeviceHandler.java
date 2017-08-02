@@ -464,25 +464,25 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private NanoHTTPD.Response getAvailableSensors() {
         SensorManager sensorManager = (SensorManager) service.getSystemService(SENSOR_SERVICE);
         List<String> sensorList = new ArrayList<>();
-        boolean accelerometer = sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
+        PackageManager packageManager = service.getPackageManager();
+        boolean accelerometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_ACCELEROMETER);
         if (accelerometer) {
             sensorList.add("accelerometer");
         }
-        boolean pressure = sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE), SensorManager.SENSOR_DELAY_NORMAL);
-        if (pressure) {
+        boolean barometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_BAROMETER);
+        if (barometer) {
             sensorList.add("barometer");
         }
-        LocationManager locationManager = (LocationManager) service.getSystemService(Context.LOCATION_SERVICE);
-        boolean location = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-        if (location) {
+        boolean gps = packageManager.hasSystemFeature(PackageManager.FEATURE_LOCATION);
+        if (gps) {
             sensorList.add("gps");
         }
-        PackageManager packageManager = service.getPackageManager();
         boolean microphone = packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE);
         if (microphone) {
             sensorList.add("microphone");
         }
         String response = TextUtils.join("\n", sensorList);
+        Log.d("SENSORRESPONSE", response);
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, response);
     }
