@@ -150,17 +150,14 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 responseBody = getDeviceSSID();
                 break;
             case "pressure":
-                responseBody = getPressure();
-                break;
+                return getPressure();
             case "altitude":
-                responseBody = getDeviceAltitude();
-                break;
+                return getDeviceAltitude();
             case "orientation":
                 responseBody = getDeviceOrientation();
                 break;
             case "acceleration":
-                responseBody = getDeviceAcceleration();
-                break;
+                return getDeviceAcceleration();
             case "dialog":
                 // showDialog(path[1], path[2], path[3]);
                 String title = (m.get("title") == null ? "" : m.get("title").get(0));
@@ -216,7 +213,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
-                        Toast.makeText(mainWebViewContext, "Please enable location services in order to use this block.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(mainWebViewContext, "Please enable location services in order to use this block.", Toast.LENGTH_SHORT).show();
                     }
                 });
             } else {
@@ -245,8 +242,16 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      *
      * @return Altitute of device from gps
      */
-    private String getDeviceAltitude() {
-        return Double.toString(altitude);
+    private NanoHTTPD.Response getDeviceAltitude() {
+        PackageManager packageManager = service.getPackageManager();
+        boolean gps = packageManager.hasSystemFeature(PackageManager.FEATURE_LOCATION);
+        if (gps) {
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(altitude));
+        } else {
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
+        }
     }
 
     /**
@@ -269,8 +274,16 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      *
      * @return Atmospheric pressure (mPa or mbar, depending on device)
      */
-    private String getPressure() {
-        return Double.toString(pressure);
+    private NanoHTTPD.Response getPressure() {
+        PackageManager packageManager = service.getPackageManager();
+        boolean barometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_BAROMETER);
+        if (barometer) {
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(pressure));
+        } else {
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Barometer not detected");
+        }
     }
 
     /**
@@ -278,8 +291,16 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      *
      * @return Each axis' acceleration separated by spaces
      */
-    private String getDeviceAcceleration() {
-        return (-deviceAccelX) + " " + (-deviceAccelY) + " " + (-deviceAccelZ);
+    private NanoHTTPD.Response getDeviceAcceleration() {
+        PackageManager packageManager = service.getPackageManager();
+        boolean accelerometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_ACCELEROMETER);
+        if (accelerometer) {
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, (-deviceAccelX) + " " + (-deviceAccelY) + " " + (-deviceAccelZ));
+        } else {
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Accelerometer not detected");
+        }
     }
 
     /**

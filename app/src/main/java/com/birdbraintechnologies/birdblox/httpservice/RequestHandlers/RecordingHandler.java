@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
+import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
@@ -34,9 +35,11 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
+import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.CURRENT_PREFS_KEY;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.filesPrefs;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.getBirdbloxDir;
+import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
  * Handler for handling recording and playback of (recorded) sounds,
@@ -46,6 +49,8 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Fil
  */
 
 public class RecordingHandler implements RequestHandler {
+    private static final long RECORD_EXTRA_IN_MILLIS = 500;
+
     private static MediaRecorder mediaRecorder;
     private static MediaPlayer mediaPlayer;
 
@@ -59,10 +64,10 @@ public class RecordingHandler implements RequestHandler {
     private static File recordDir;
     // Name of the file currently being recorded
     // null if no file is currently being recorded
-    private static String currFilename = null;
+    private static String currFilename;
     // Name of the latest chunk that was recorded.
     // null if no file is currently being recorded.
-    private static String tempFilename = null;
+    private static String tempFilename;
     // ArrayList containing the paths to each 'chunk' as Strings.
     private static ArrayList<String> sourceFiles;
     // Current state of the Media Player/Recorder
@@ -87,7 +92,6 @@ public class RecordingHandler implements RequestHandler {
             }
         }
 
-        // create directory for final recordings
         // create directory for final recordings
         currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
         if (currProj != null) {
@@ -140,8 +144,7 @@ public class RecordingHandler implements RequestHandler {
         String responseBody = "";
         switch (path[0]) {
             case "start":
-                responseBody = startRecording();
-                break;
+                return startRecording();
             case "stop":
                 responseBody = stopRecording();
                 break;
@@ -158,7 +161,7 @@ public class RecordingHandler implements RequestHandler {
                 break;
         }
         NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
         return r;
     }
 
@@ -177,38 +180,50 @@ public class RecordingHandler implements RequestHandler {
      * @return Filename of the recording if success.
      * Returns null in case of error.
      */
-    private String startRecording() {
-        if (checkMicPermission()) {
+    private NanoHTTPD.Response startRecording() {
+        PackageManager packageManager = service.getPackageManager();
+        boolean microphone = packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE);
+        if (!microphone) {
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Microphone not detected");
+        } else if (checkMicPermission()) {
             currState = "Recording";
             try {
                 Calendar c = Calendar.getInstance();
                 SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 String filename = df.format(c.getTime());
-
-                if (sourceFiles == null)
+                if (sourceFiles == null) {
                     sourceFiles = new ArrayList<>();
-
+                }
                 tempFilename = FileManagementHandler.findAvailableName(tempRecordDir, filename, ".m4a");
                 sourceFiles.add(tempRecordedFilesDir + "/" + tempFilename + ".m4a");
                 if (sourceFiles.size() == 1)
                     currFilename = tempFilename;
-
+                if (mediaRecorder == null) {
+                    mediaRecorder = new MediaRecorder();
+                }
+                mediaRecorder.reset();
                 mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
                 mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
                 mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
                 mediaRecorder.setOutputFile(tempRecordedFilesDir + "/" + tempFilename + ".m4a");
                 mediaRecorder.prepare();
                 mediaRecorder.start();
-                return "Started";
+                Log.d("RecordingHandler", "Started Recording");
+                return NanoHTTPD.newFixedLengthResponse(
+                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Started");
             } catch (SecurityException | IllegalStateException | IOException | NullPointerException e) {
                 // Stop recording and save here.
                 Log.e("RecordingHandler", "Start Recording: " + e.getMessage());
+                return NanoHTTPD.newFixedLengthResponse(
+                        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Could not start recording.");
             }
         } else {
             Intent getMicPerm = new Intent(MainWebView.MICROPHONE_PERMISSION);
             LocalBroadcastManager.getInstance(service).sendBroadcast(getMicPerm);
+            return NanoHTTPD.newFixedLengthResponse(
+                    NanoHTTPD.Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "Microphone permission disabled");
         }
-        return null;
     }
 
     /**
@@ -220,8 +235,19 @@ public class RecordingHandler implements RequestHandler {
     String pauseRecording() {
         try {
             if (currState.equals("Recording") && mediaRecorder != null) {
-                mediaRecorder.stop();
+                final MediaRecorder mediaRecorder2 = mediaRecorder;
+                mediaRecorder = new MediaRecorder();
                 mediaRecorder.reset();
+                new Handler(mainWebViewContext.getMainLooper()).postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        /** Run after {@link RECORD_EXTRA_IN_MILLIS} ms */
+                        if (mediaRecorder2 != null) {
+                            mediaRecorder2.stop();
+                            mediaRecorder2.reset();
+                        }
+                    }
+                }, RECORD_EXTRA_IN_MILLIS);
             }
             if (currState.equals("Recording"))
                 currState = "Paused";
@@ -252,19 +278,38 @@ public class RecordingHandler implements RequestHandler {
      */
     public String stopRecording() {
         try {
-            if (currState.equals("Recording") && mediaRecorder != null) {
-                mediaRecorder.stop();
-                mediaRecorder.reset();
-            }
-            if (sourceFiles != null) {
-                mergeMediaFiles();
-            }
-            for (File f : tempRecordDir.listFiles()) {
-                f.delete();
-            }
+            final String currState2 = currState;
+            final MediaRecorder mediaRecorder2 = mediaRecorder;
+            mediaRecorder = new MediaRecorder();
+            mediaRecorder.reset();
+            final ArrayList<String> sourceFiles2 = sourceFiles;
+            final String currFilename2 = currFilename;
+            final File tempRecordDir2 = tempRecordDir;
+            new Handler(mainWebViewContext.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    /** Run after {@link RECORD_EXTRA_IN_MILLIS} ms */
+                    if (currState2.equals("Recording") && mediaRecorder2 != null) {
+                        mediaRecorder2.stop();
+                        mediaRecorder2.reset();
+                    }
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            super.run();
+                            if (sourceFiles2 != null) {
+                                mergeMediaFiles(sourceFiles2, currFilename2);
+                            }
+                            for (File f : tempRecordDir2.listFiles()) {
+                                f.delete();
+                            }
+                        }
+                    }.start();
+                }
+            }, RECORD_EXTRA_IN_MILLIS);
+            sourceFiles = null;
             tempFilename = null;
             currFilename = null;
-            sourceFiles = null;
             if (currState.equals("Recording") || currState.equals("Paused"))
                 currState = "Stopped";
             return "Stopped";
@@ -373,8 +418,11 @@ public class RecordingHandler implements RequestHandler {
      */
     String listRecordings() {
         try {
-            File[] files = recordDir.listFiles();
             String response = "";
+            if (recordDir == null) {
+                return response;
+            }
+            File[] files = recordDir.listFiles();
             if (files == null) {
                 return response;
             }
@@ -418,13 +466,13 @@ public class RecordingHandler implements RequestHandler {
      *
      * @return true if success, false otherwise.
      */
-    private boolean mergeMediaFiles() {
+    private boolean mergeMediaFiles(ArrayList<String> sourceFiles2, String currFilename2) {
         try {
-            if (sourceFiles != null && sourceFiles.size() > 0 && recordDir.exists()) {
-                String targetFile = recordedFilesDir + "/" + currFilename + ".m4a";
+            if (sourceFiles2 != null && sourceFiles2.size() > 0 && recordDir.exists()) {
+                String targetFile = recordedFilesDir + "/" + currFilename2 + ".m4a";
                 String mediaKey = "soun";
                 List<Movie> listMovies = new ArrayList<>();
-                for (String filename : sourceFiles) {
+                for (String filename : sourceFiles2) {
                     listMovies.add(MovieCreator.build(filename));
                 }
                 List<Track> listTracks = new LinkedList<>();
@@ -443,6 +491,7 @@ public class RecordingHandler implements RequestHandler {
                 FileChannel fileChannel = new RandomAccessFile(String.format(targetFile), "rw").getChannel();
                 container.writeContainer(fileChannel);
                 fileChannel.close();
+                runJavascript("CallbackManager.sounds.recordingsChanged();");
             }
             return true;
         } catch (IOException e) {

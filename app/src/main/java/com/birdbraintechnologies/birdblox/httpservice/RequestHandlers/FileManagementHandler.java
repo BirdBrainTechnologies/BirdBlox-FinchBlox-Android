@@ -42,9 +42,9 @@ public class FileManagementHandler implements RequestHandler {
     private static final String BIRDBLOCKS_SAVE_DIR = "Saved";
 
     private static final String FILES_PREFS_KEY = "com.birdbraintechnologies.birdblox.FILE_MANAGEMENT";
-    static SharedPreferences filesPrefs = mainWebViewContext.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
+    public static SharedPreferences filesPrefs = mainWebViewContext.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
 
-    static final String CURRENT_PREFS_KEY = "com.birdbraintechnologies.birdblox.CURRENT_PROJECT";
+    public static final String CURRENT_PREFS_KEY = "com.birdbraintechnologies.birdblox.CURRENT_PROJECT";
 
     private HttpService service;
 

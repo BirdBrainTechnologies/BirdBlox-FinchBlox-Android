@@ -119,7 +119,7 @@ public class UnzipTask extends AsyncTask<File, Long, String> {
             }
             if (!new File(to, "program.xml").exists()) {
                 FileUtils.deleteDirectory(to);
-                Toast.makeText(mainWebViewContext, "Could not download file : Invalid file type", Toast.LENGTH_LONG).show();
+                Toast.makeText(mainWebViewContext, "Could not download file : Invalid file type", Toast.LENGTH_SHORT).show();
             }
             progressBar.setVisibility(View.INVISIBLE);
         } catch (IOException | SecurityException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {

@@ -1,6 +1,7 @@
 package com.birdbraintechnologies.birdblox;
 
 import android.Manifest;
+import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -67,7 +68,6 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Fil
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.getBirdbloxDir;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.sanitizeName;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.PropertiesHandler.metrics;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.UIRequestHandler.loadContent;
 
 
 /**
@@ -83,7 +83,7 @@ public class MainWebView extends AppCompatActivity {
     private String TAG = this.getClass().getName();
 
     /*OLDER LOCATIONS FOR LOADING THE LAYOUT ARE IN THE TWO LINES BELOW*/
-    // private static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
+    private static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
     // private static final String PAGE_URL = "http://rawgit.com/TomWildenhain/HummingbirdDragAndDrop-/dev/HummingbirdDragAndDrop.html";
 
     /* Permission request codes */
@@ -174,26 +174,25 @@ public class MainWebView extends AppCompatActivity {
 
 
         // Spawn the thread (for download, unzip of layout)
-        unzipAndDownloadThread.start();
+//        unzipAndDownloadThread.start();
 
         // Check device screen size, and adjust rotation settings accordingly
         adjustRotationSettings();
 
         // Wait for above thread to finish
-        try {
-            unzipAndDownloadThread.join();
-        } catch (InterruptedException | NetworkOnMainThreadException e) {
-            Log.e("Join Thread", "Exception while joining download thread: " + e.getMessage());
-        }
+//        try {
+//            unzipAndDownloadThread.join();
+//        } catch (InterruptedException | NetworkOnMainThreadException e) {
+//            Log.e("Join Thread", "Exception while joining download thread: " + e.getMessage());
+//        }
 
         // Get location of downloaded layout as a 'File'
-        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOX_UNZIP_DIR + "/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
-//        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOX_UNZIP_DIR + "/HummingbirdDragAndDrop--b5e38c77c0991ebc83d8869fc5275f74cc7d6ed6/HummingbirdDragAndDrop.html");
-        if (!lFile.exists()) try {
-            lFile.createNewFile();
-        } catch (IOException | SecurityException e) {
-            Log.e("LocFile", "Problem: " + e.getMessage());
-        }
+//        File lFile = new File(getFilesDir().toString() + "/" + BIRDBLOX_UNZIP_DIR + "/HummingbirdDragAndDrop--dev/HummingbirdDragAndDrop.html");
+//        if (!lFile.exists()) try {
+//            lFile.createNewFile();
+//        } catch (IOException | SecurityException e) {
+//            Log.e("LocFile", "Problem: " + e.getMessage());
+//        }
 
 
         super.onCreate(savedInstanceState);
@@ -204,8 +203,8 @@ public class MainWebView extends AppCompatActivity {
 
         // Create webview
         webView = (WebView) findViewById(R.id.main_webview);
-        webView.loadUrl("file:///" + lFile.getAbsolutePath());
-//        webView.loadUrl(PAGE_URL);
+//        webView.loadUrl("file:///" + lFile.getAbsolutePath());
+        webView.loadUrl(PAGE_URL);
         webView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
@@ -256,13 +255,13 @@ public class MainWebView extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        loadContent();
+//        mainWebViewContext = MainWebView.this;
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        mainWebViewContext = MainWebView.this;
+//        mainWebViewContext = MainWebView.this;
         webView.onResume();
         webView.resumeTimers();
         dropboxAppOAuth();
@@ -275,6 +274,7 @@ public class MainWebView extends AppCompatActivity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+//        mainWebViewContext = MainWebView.this;
         dropboxWebOAuth(intent);
         importFromIntent(intent);
     }
@@ -327,8 +327,6 @@ public class MainWebView extends AppCompatActivity {
         if (diagonalInches >= 6.5) {
             // 6.5 inch device screen or bigger - In this case rotation is allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
-            // Inject the JavaScript command to resize into webView
-//            runJavascript("GuiElements.updateDimsPreview(" + metrics.widthPixels + ", " + metrics.heightPixels + ")");
         } else {
             // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -486,7 +484,6 @@ public class MainWebView extends AppCompatActivity {
             // Download the layout from github
             try {
                 downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
-//                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/b5e38c77c0991ebc83d8869fc5275f74cc7d6ed6.zip", f);
 //                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
 //                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/stable.zip", f);
             } catch (NetworkOnMainThreadException | SecurityException e) {
@@ -558,6 +555,8 @@ public class MainWebView extends AppCompatActivity {
             File zipFile = new File(dir, newName + "." + fileExt);
             is = getContentResolver().openInputStream(data);
             FileUtils.copyInputStreamToFile(is, zipFile);
+            is.close();
+            is = null;
             File outputFile = new File(getBirdbloxDir(), newName);
             new ImportUnzipTask().execute(zipFile, outputFile);
             return newName;
@@ -584,8 +583,9 @@ public class MainWebView extends AppCompatActivity {
             // 6.5 inch device screen or bigger - In this case rotation is allowed
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
         } else {
-            // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
-            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            // device screen smaller than 6.5 inch - In this case rotation is allowed only
+            // within landscape mode
+            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE);
         }
     }
 
@@ -605,8 +605,10 @@ public class MainWebView extends AppCompatActivity {
             Intent sendIntent = new Intent(Intent.ACTION_SEND);
             // set flag to give temporary permission to external app to use your FileProvider
             sendIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            // generate URI, with authority defined as the application ID in the Manifest, the last param is file I want to open
-            Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID, new File((String) b.get("file_path")));
+            // generate URI, with authority defined as the application ID
+            // in the Manifest, the last param is file I want to open
+            Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID,
+                    new File((String) b.get("file_path")));
             sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
             // We are sharing zip files, so we give it a valid MIME type
             // TODO: Change to bbx
@@ -627,7 +629,8 @@ public class MainWebView extends AppCompatActivity {
         try {
             Intent sendIntent = new Intent(Intent.ACTION_SEND);
             sendIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID, new File((String) b.get("log_file_path")));
+            Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID,
+                    new File((String) b.get("log_file_path")));
             sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
             // We are sharing txt files, so we give it a valid MIME type
             sendIntent.setType("text/*");
@@ -715,8 +718,6 @@ public class MainWebView extends AppCompatActivity {
     }
 
     private boolean requestLocationPermission() {
-        // TODO: Determine checkbox
-        // https://stackoverflow.com/questions/30719047/android-m-check-runtime-permission-how-to-determine-if-the-user-checked-nev
         if (ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -728,7 +729,8 @@ public class MainWebView extends AppCompatActivity {
                 // sees the explanation, try again to request the permission.
                 String message;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    message = "BirdBlox requires location permission in order to perform Bluetooth scans and get user location.";
+                    message = "BirdBlox requires location permission in order to perform " +
+                            "Bluetooth scans and get user location.";
                 } else {
                     message = "BirdBlox requires location permission in order to get user location.";
                 }
@@ -759,8 +761,6 @@ public class MainWebView extends AppCompatActivity {
     }
 
     private boolean requestMicrophonePermission() {
-        // TODO: Determine checkbox
-        // https://stackoverflow.com/questions/30719047/android-m-check-runtime-permission-how-to-determine-if-the-user-checked-nev
         if (ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -799,7 +799,8 @@ public class MainWebView extends AppCompatActivity {
                     Manifest.permission.READ_EXTERNAL_STORAGE)) {
                 new AlertDialog.Builder(this)
                         .setTitle("Read External Storage Permission")
-                        .setMessage("BirdBlox requires permission to read external storage, in order to import certain files from external storage.")
+                        .setMessage("BirdBlox requires permission to read external storage, in order to " +
+                                "import certain files from external storage.")
                         .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialogInterface, int i) {
@@ -857,6 +858,7 @@ public class MainWebView extends AppCompatActivity {
      * @param grantResults
      */
     @Override
+    @TargetApi(23)
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults) {
         switch (requestCode) {
@@ -874,6 +876,12 @@ public class MainWebView extends AppCompatActivity {
                 } else {
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
+                    if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) &&
+                            !shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                        // user also CHECKED "never ask again"
+                        Toast.makeText(MainWebView.this, "Location permissions are required in order to use this feature.",
+                                Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
             break;
@@ -886,6 +894,13 @@ public class MainWebView extends AppCompatActivity {
                             == PackageManager.PERMISSION_GRANTED) {
                     }
                 } else {
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+                    if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) &&
+                            !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) {
+                        Toast.makeText(MainWebView.this, "Microphone permissions are required in order to use this feature.",
+                                Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
             break;

@@ -241,7 +241,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
      * @param sensorType Type of sensor connected to the port (dictates format of the returned
      *                   value)
      * @param portString Port that the sensor is connected to
-     * @return A string reprsenting the value of the sensor
+     * @return A string representing the value of the sensor
      */
     public String readSensor(String sensorType, String portString) {
         byte rawSensorValue;

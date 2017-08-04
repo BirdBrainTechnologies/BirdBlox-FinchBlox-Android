@@ -105,7 +105,7 @@ public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Integer, Stri
                     if (e.errorValue.isPath() && e.errorValue.getPathValue().isNotFound()) {
                         Log.e(TAG, "Download: File " + dbxName + " not found.");
                         downloadDialog.cancel();
-                        Toast.makeText(mainWebViewContext, "Sorry! The file \"" + dbxName + "\" could not be found on Dropbox.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(mainWebViewContext, "Sorry! The file \"" + dbxName + "\" could not be found on Dropbox.", Toast.LENGTH_SHORT).show();
                         JSONObject obj = dropboxAppFolderContents();
                         if (obj != null)
                             runJavascript("CallbackManager.cloud.filesChanged('" + bbxEncode(obj.toString()) + "')");

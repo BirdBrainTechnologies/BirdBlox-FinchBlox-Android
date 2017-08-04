@@ -89,7 +89,7 @@ public class MelodySmartConnection extends BluetoothGattCallback {
                     @Override
                     public void run() {
                         String FLName = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
-                        Toast.makeText(mainWebViewContext, "Connection to Flutter " + FLName + " timed out.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(mainWebViewContext, "Connection to Flutter " + FLName + " timed out.", Toast.LENGTH_SHORT).show();
                     }
                 });
                 return false;

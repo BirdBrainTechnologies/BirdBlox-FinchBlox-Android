@@ -192,7 +192,6 @@ public class DropboxRequestHandler implements RequestHandler {
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully renamed project: " + name);
     }
 
-
     private NanoHTTPD.Response startDropboxDelete(final String name) {
         if (!dropboxSignedIn()) {
             return NanoHTTPD.newFixedLengthResponse(

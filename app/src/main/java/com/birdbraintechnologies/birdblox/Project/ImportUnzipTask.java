@@ -12,6 +12,8 @@ import java.io.IOException;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.CURRENT_PREFS_KEY;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.filesPrefs;
 
 /**
  * @author Shreyan Bakshi (AppyFizz)
@@ -29,7 +31,7 @@ public class ImportUnzipTask extends UnzipTask {
             }
             if (!new File(to, "program.xml").exists()) {
                 FileUtils.deleteDirectory(to);
-                Toast.makeText(mainWebViewContext, "Could not import file : Invalid file type", Toast.LENGTH_LONG).show();
+                Toast.makeText(mainWebViewContext, "Could not import file : Invalid file type", Toast.LENGTH_SHORT).show();
             }
             progressBar.setVisibility(View.INVISIBLE);
         } catch (IOException | SecurityException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
@@ -39,6 +41,7 @@ public class ImportUnzipTask extends UnzipTask {
             try {
                 String contents = FileUtils.readFileToString(new File(to, "program.xml"), "utf-8");
                 runJavascript("CallbackManager.data.open('" + bbxEncode(name) + "', '" + bbxEncode(contents) + "');");
+                filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
             } catch (IOException e) {
                 Log.e(TAG, "OpenAfterImport: " + e.getMessage());
             }
