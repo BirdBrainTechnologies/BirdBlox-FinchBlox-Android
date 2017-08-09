@@ -1,8 +1,6 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
-import android.os.Handler;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBState;
@@ -51,7 +49,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 4000;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
-    private static final int MAX_FAILURE_COUNT = 320;
+    private static final int MAX_FAILURE_COUNT = 160;
     private static final int MAX_G4_FAILURE_COUNT = 320;
 
     // This represents the firmware version 2.2a
@@ -107,29 +105,33 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                         try {
                             lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
                             if (sendToRobot()) {
-                                if (count >= MAX_FAILURE_COUNT) {
-                                    // TODO: Auto-reconnection
+//                                if (count >= MAX_FAILURE_COUNT) {
+//                                    // TODO: Auto-reconnection
 //                                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                                }
+//                                }
                                 count = 0;
                             } else if (!g4) {
                                 count++;
                                 if (count >= MAX_FAILURE_COUNT) {
                                     // TODO: Auto-disconnection
-//                                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
+                                    count = 0;
+                                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
+//                                    disconnect();
                                 }
                             } else {
                                 count++;
                                 if (count >= MAX_G4_FAILURE_COUNT) {
                                     // TODO: Implement successive G4 failure properly here
-                                    new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
-                                            Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
-                                        }
-                                    });
+//                                    new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+//                                        @Override
+//                                        public void run() {
+//                                            String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
+//                                            Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
+//                                        }
+//                                    });
+                                    count = 0;
                                     runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
+                                    disconnect();
                                 }
                             }
                             doneSending.signal();
@@ -157,11 +159,14 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 count = 0;
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 if (!hasMinFirmware()) {
+                    count = 0;
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareVersion()) + "', '" + bbxEncode(getMinFirmwareVersion()) + "')");
                     disconnect();
                 } else if (!hasLatestFirmware()) {
                     runJavascript("CallbackManager.robot.updateFirmwareStatus('" + bbxEncode(getMacAddress()) + "', 'old')");
                 }
+            } else {
+                count += 2;
             }
             return g4response != null && g4response.length > 0;
         }
@@ -175,6 +180,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             boolean sent = conn.writeBytes(newState.setAll());
             if (sent) {
                 oldState.copy(newState);
+                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+            } else {
+                count += 3;
             }
             setSendingFalse();
             last_sent = currentTime;
@@ -188,8 +196,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 boolean sent = conn.writeBytes(newState.setAll());
                 if (sent) {
                     oldState.copy(newState);
+                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 } else {
-                    count += 3;
+                    count += 4;
                 }
                 setSendingFalse();
                 last_sent = currentTime;
@@ -246,12 +255,17 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     public String readSensor(String sensorType, String portString) {
         byte rawSensorValue;
         synchronized (rawSensorValuesLock) {
-            if (rawSensorValues == null) {
-                rawSensorValues = startPollingSensors();
-                conn.addRxDataListener(this);
+            try {
+                if (rawSensorValues == null) {
+                    rawSensorValues = startPollingSensors();
+                    conn.addRxDataListener(this);
+                }
+                int port = Integer.parseInt(portString) - 1;
+                rawSensorValue = rawSensorValues[port];
+            } catch (RuntimeException e) {
+                Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
+                return null;
             }
-            int port = Integer.parseInt(portString) - 1;
-            rawSensorValue = rawSensorValues[port];
         }
 
         switch (sensorType) {

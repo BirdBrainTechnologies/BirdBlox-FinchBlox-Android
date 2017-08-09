@@ -27,7 +27,7 @@ public class Flutter extends Robot<FLState> {
     private static final byte READ_CMD = 'r';
     private static final String SERVO_OUTPUT = "s";
     private static final String BUZZER_OUTPUT = "z";
-    private final static char CR = (char) 0x0D;
+    private static final char CR = (char) 0x0D;
     private static final String SET_SERVO_CMD = SET_CMD + SERVO_OUTPUT + "%d,%x";
     private static final String SET_BUZZER_CMD = SET_CMD + BUZZER_OUTPUT + ",%x,%x" + CR;
     private static final String SET_TRI_CMD = SET_CMD + "l" + "%d,%x,%x,%x" + CR;
@@ -128,6 +128,9 @@ public class Flutter extends Robot<FLState> {
      */
     public String readSensor(String sensorType, String portString) {
         byte[] responseBytes = conn.writeBytesWithResponse(new byte[]{READ_CMD});
+        if (responseBytes == null || responseBytes.length == 0) {
+            return null;
+        }
         if (responseBytes[0] != READ_CMD) {
             Log.e(TAG, "Received invalid response to read command: " + Arrays.toString(responseBytes));
         }

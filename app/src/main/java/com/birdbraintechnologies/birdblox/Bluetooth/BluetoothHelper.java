@@ -51,6 +51,15 @@ public class BluetoothHelper {
             synchronized (deviceList) {
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
+//                if (lastScanType.equals("hummingbird") && connectedHummingbirds != null) {
+//                    if (connectedHummingbirds.containsKey(result.getDevice().getAddress())) {
+//                        connectToHummingbird(result.getDevice().getAddress());
+//                    }
+//                } else if (lastScanType.equals("flutter") && connectedFlutters != null) {
+//                    if (connectedFlutters.containsKey(result.getDevice().getAddress())) {
+//                        connectToFlutter(result.getDevice().getAddress());
+//                    }
+//                }
                 JSONArray robots = new JSONArray();
                 for (BluetoothDevice device : BLEDeviceList) {
                     String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());

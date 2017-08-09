@@ -31,6 +31,8 @@ import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -49,6 +51,7 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
  */
 
 public class RecordingHandler implements RequestHandler {
+    private static final long RECORD_MAX_IN_MILLIS = 300000;
     private static final long RECORD_EXTRA_IN_MILLIS = 500;
 
     private static MediaRecorder mediaRecorder;
@@ -75,11 +78,18 @@ public class RecordingHandler implements RequestHandler {
     private static String currState = "Stopped";
     HttpService service;
 
+    private static Timer timer;
+
+    private static long startTime;
+    private static long lastPauseTime;
+    private static long extraTime;
+
     private String currProj;
 
     public RecordingHandler(HttpService service) {
         this.service = service;
         mediaRecorder = new MediaRecorder();
+        timer = new Timer();
 
         // create directory for temp recording chunks
         tempRecordedFilesDir = mainWebViewContext.getFilesDir().getAbsolutePath() + "/RecordingChunks";
@@ -110,6 +120,8 @@ public class RecordingHandler implements RequestHandler {
     public RecordingHandler() {
         if (mediaRecorder == null)
             mediaRecorder = new MediaRecorder();
+        if (timer == null)
+            timer = new Timer();
 
         // create directory for temp recording chunks
         tempRecordedFilesDir = mainWebViewContext.getFilesDir().getAbsolutePath() + "/RecordingChunks";
@@ -194,6 +206,10 @@ public class RecordingHandler implements RequestHandler {
                 String filename = df.format(c.getTime());
                 if (sourceFiles == null) {
                     sourceFiles = new ArrayList<>();
+                    clearTimerTasks();
+                    startTime = System.currentTimeMillis();
+                    extraTime = 0;
+                    initializeRecordTimer(RECORD_MAX_IN_MILLIS);
                 }
                 tempFilename = FileManagementHandler.findAvailableName(tempRecordDir, filename, ".m4a");
                 sourceFiles.add(tempRecordedFilesDir + "/" + tempFilename + ".m4a");
@@ -235,6 +251,8 @@ public class RecordingHandler implements RequestHandler {
     String pauseRecording() {
         try {
             if (currState.equals("Recording") && mediaRecorder != null) {
+                lastPauseTime = System.currentTimeMillis();
+                clearTimerTasks();
                 final MediaRecorder mediaRecorder2 = mediaRecorder;
                 mediaRecorder = new MediaRecorder();
                 mediaRecorder.reset();
@@ -267,6 +285,10 @@ public class RecordingHandler implements RequestHandler {
     String resumeRecording() {
         if (currState.equals("Paused"))
             currState = "Recording";
+        extraTime += (System.currentTimeMillis() - lastPauseTime);
+        long elapsedTime = System.currentTimeMillis() - startTime - extraTime;
+        long remainingTime = RECORD_MAX_IN_MILLIS - elapsedTime;
+        initializeRecordTimer(remainingTime);
         return startRecording() == null ? null : "Resumed";
     }
 
@@ -278,6 +300,8 @@ public class RecordingHandler implements RequestHandler {
      */
     public String stopRecording() {
         try {
+            clearTimerTasks();
+            extraTime = 0;
             final String currState2 = currState;
             final MediaRecorder mediaRecorder2 = mediaRecorder;
             mediaRecorder = new MediaRecorder();
@@ -327,6 +351,8 @@ public class RecordingHandler implements RequestHandler {
      */
     private String discardRecording() {
         try {
+            clearTimerTasks();
+            extraTime = 0;
             if (mediaRecorder != null) {
                 mediaRecorder.stop();
                 mediaRecorder.reset();
@@ -362,7 +388,7 @@ public class RecordingHandler implements RequestHandler {
                 mediaPlayer.start();
             }
             return "Playing";
-        } catch (IOException e) {
+        } catch (IOException | IllegalStateException e) {
             Log.e("RecordingHandler", "Playing Audio: " + e.getMessage());
             return "Error";
         }
@@ -377,6 +403,7 @@ public class RecordingHandler implements RequestHandler {
         try {
             if (mediaPlayer != null) {
                 mediaPlayer.stop();
+                mediaPlayer.reset();
                 mediaPlayer.release();
             }
             return "StoppedPlayback";
@@ -401,10 +428,11 @@ public class RecordingHandler implements RequestHandler {
                 mediaPlayer.setDataSource(recordedFilesDir + "/" + filename + ".m4a");
                 mediaPlayer.prepare();
                 String response = Integer.toString(mediaPlayer.getDuration());
+                mediaPlayer.reset();
                 mediaPlayer.release();
                 return response;
             }
-        } catch (IOException e) {
+        } catch (IOException | IllegalStateException e) {
             Log.e("RecordingHandler", "Playing Audio: " + e.getMessage());
         }
         return "0";
@@ -435,6 +463,24 @@ public class RecordingHandler implements RequestHandler {
             Log.e("RecordingHandler", e.getMessage());
         }
         return "";
+    }
+
+    private void initializeRecordTimer(final long duration) {
+        timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                runJavascript("CallbackManager.sounds.recordingEnded();");
+                stopRecording();
+            }
+        }, duration);
+    }
+
+    private void clearTimerTasks() {
+        if (timer != null) {
+            timer.cancel();
+            timer.purge();
+        }
     }
 
     /**

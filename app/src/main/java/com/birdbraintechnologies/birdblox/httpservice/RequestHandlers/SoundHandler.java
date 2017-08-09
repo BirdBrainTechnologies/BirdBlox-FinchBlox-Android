@@ -8,6 +8,7 @@ import android.media.AudioTrack;
 import android.media.MediaPlayer;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblox.Sound.CancelableMediaPlayer;
 import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
 
@@ -17,13 +18,15 @@ import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static com.birdbraintechnologies.birdblox.MainWebView.mediaPlayers;
+
 /**
  * Handler for playing sounds and tones on the device
  *
  * @author Terence Sun (tsun1215)
  */
-public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListener,
-        MediaPlayer.OnCompletionListener {
+public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPreparedListener,
+        CancelableMediaPlayer.OnCompletionListener {
     private static final String TAG = SoundHandler.class.getName();
     private static final String SOUNDS_DIR = "frontend/SoundClips";
     private static final String BLOCK_SOUNDS_DIR = "frontend/SoundsForUI";
@@ -34,8 +37,10 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
     private static double MILLIS_PER_SEC = 1000.0;
 
     private HttpService service;
-    private MediaPlayer mediaPlayer;
+    private CancelableMediaPlayer mediaPlayer;
     private AudioTrack tone;
+
+    private boolean stopped = false;
 
     public SoundHandler(HttpService service) {
         this.service = service;
@@ -133,11 +138,12 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
         try {
             AssetManager assets = service.getAssets();
             AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
-            mediaPlayer = new MediaPlayer();
+            mediaPlayer = new CancelableMediaPlayer();
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
             mediaPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
             mediaPlayer.prepare();
             String response = Integer.toString(mediaPlayer.getDuration());
+            mediaPlayer.reset();
             mediaPlayer.release();
             return response;
         } catch (IOException e) {
@@ -165,12 +171,12 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
                     try {
                         AssetManager assets = service.getAssets();
                         AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
-                        mediaPlayer = new MediaPlayer();
+                        mediaPlayer = new CancelableMediaPlayer();
                         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
                         mediaPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
                         mediaPlayer.prepare();
                         mediaPlayer.start();
-                    } catch (IOException e) {
+                    } catch (IOException | IllegalStateException e) {
                         Log.e(TAG, "Unable to play sound " + e.toString());
                     }
                 }
@@ -180,13 +186,14 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
             try {
                 AssetManager assets = service.getAssets();
                 AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
-                mediaPlayer = new MediaPlayer();
+                mediaPlayer = new CancelableMediaPlayer();
+                mediaPlayers.add(mediaPlayer);
                 mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
                 mediaPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
                 mediaPlayer.setOnCompletionListener(this);
                 mediaPlayer.setOnPreparedListener(this);
                 mediaPlayer.prepare();
-            } catch (IOException e) {
+            } catch (IOException | IllegalStateException e) {
                 Log.e(TAG, "Unable to play sound " + e.toString());
             }
         }
@@ -201,8 +208,14 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
     private void playNote(final int noteNumber, final int durationMs) {
         new Thread(new Runnable() {
             public void run() {
-                tone = generateTone(midiNoteToHz(noteNumber), durationMs);
-                tone.play();
+                try {
+//                    tone = generateTone(midiNoteToHz(noteNumber), durationMs);
+//                    tone.play();
+//                    tones.add(generateTone(midiNoteToHz(noteNumber), durationMs));
+                    generateTone(midiNoteToHz(noteNumber), durationMs);
+                } catch (IllegalStateException | NullPointerException e) {
+                    Log.e("SoundHandler", "Play tone: " + e.getMessage());
+                }
             }
         }).start();
     }
@@ -211,11 +224,25 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
      * Stops sounds
      */
     private void stopSound() {
+        if (tone != null) {
+            try {
+                tone.flush();
+                if (tone.getPlayState() == AudioTrack.PLAYSTATE_PLAYING || tone.getPlayState() == AudioTrack.PLAYSTATE_PAUSED)
+                    tone.stop();
+                tone.release();
+            } catch (IllegalStateException e) {
+                Log.e("SoundHandler", "Stop Tone: " + e.getMessage());
+            }
+            tone = null;
+        }
         try {
             (new RecordingHandler()).stopPlayback();
             if (mediaPlayer != null && mediaPlayer.isPlaying()) {
                 mediaPlayer.stop();
+                mediaPlayer.reset();
                 mediaPlayer.release();
+            } else if (mediaPlayer != null) {
+                mediaPlayer.cancel();
             }
             Log.d("StopSound", "Stop Request Sent");
         } catch (IllegalStateException e) {
@@ -227,11 +254,56 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
      * Stops all sounds (including the tone)
      */
     private void stopAll() {
-        if (tone != null) {
-            tone.stop();
-            tone = null;
+        if (mediaPlayers != null) {
+            for (int i = 0; i < mediaPlayers.size(); i++) {
+                if (mediaPlayers.get(i) != null) {
+                    try {
+                        if (mediaPlayers.get(i).isPlaying())
+                            mediaPlayers.get(i).stop();
+                        mediaPlayers.get(i).cancel();
+                        mediaPlayers.get(i).reset();
+                        mediaPlayers.get(i).release();
+                    } catch (IllegalStateException | ArrayIndexOutOfBoundsException | NullPointerException e) {
+                        Log.e("SoundHandler", "Stop Sounds: " + e.getMessage());
+                    }
+                }
+                mediaPlayers.clear();
+            }
         }
-        stopSound();
+//        mediaPlayers = new ArrayList<>();
+//        if (tones != null) {
+//            for (int i = 0; i < tones.size(); i++) {
+//                if (tones.get(i) != null) {
+//                    try {
+//                        tones.get(i).flush();
+//                        try {
+//                            tones.get(i).stop();
+//                        } catch (IllegalStateException e) {
+//                        }
+//                        tones.get(i).release();
+//                    } catch (IllegalStateException | ArrayIndexOutOfBoundsException | NullPointerException e) {
+//                        Log.e("SoundHandler", "Stop Tones: " + e.getMessage());
+//                    }
+//                }
+//                tones.clear();
+//            }
+//        }
+//        tones = new ArrayList<>();
+//        if (tones != null) {
+//            for (int i = 0; i < tones.size(); i++) {
+//                try {
+//                        tones.get(i).flush();
+//                        try {
+//                            tones.get(i).stop();
+//                        } catch (IllegalStateException e) {
+//                        }
+//                        tones.get(i).release();
+//                    } catch (IllegalStateException | ArrayIndexOutOfBoundsException | NullPointerException e) {
+//                        Log.e("SoundHandler", "Stop Tones: " + e.getMessage());
+//                    }
+//            }
+//            tones.clear();
+//        }
         Log.d("StopSoundAll", "Stop Request Sent");
     }
 
@@ -242,7 +314,16 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
 
     @Override
     public void onPrepared(MediaPlayer mp) {
-        mp.start();
+        if (mp instanceof CancelableMediaPlayer) {
+            if (!((CancelableMediaPlayer) mp).isCanceled()) {
+                mp.start();
+            } else {
+                mp.reset();
+                mp.release();
+            }
+        } else {
+            mp.start();
+        }
     }
 
     /**
@@ -278,7 +359,64 @@ public class SoundHandler implements RequestHandler, MediaPlayer.OnPreparedListe
         AudioTrack track = new AudioTrack(AudioManager.STREAM_MUSIC, (int) AUDIO_SAMPLING_RATE,
                 AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT,
                 count * (Short.SIZE / 8), AudioTrack.MODE_STATIC);
+        track.setPlaybackPositionUpdateListener(new AudioTrack.OnPlaybackPositionUpdateListener() {
+            @Override
+            public void onMarkerReached(AudioTrack track) {
+                try {
+//                    synchronized (tones) {
+//                        if (tones != null) {
+////                            tones.remove(track);
+//                            tones = new HashSet<>();
+//                        }
+//                    }
+                    track.flush();
+                    track.stop();
+                    track.release();
+                } catch (IllegalStateException | ArrayIndexOutOfBoundsException | NullPointerException e) {
+                    Log.e("SoundHandler", "Stop Tone: " + e.getMessage());
+                }
+            }
+
+            @Override
+            public void onPeriodicNotification(AudioTrack track) {
+                // nothing to do
+            }
+        });
         track.write(samples, 0, count);
+        if (track.getPlayState() == AudioTrack.STATE_INITIALIZED) {
+            try {
+                track.play();
+//                synchronized (tones) {
+//                    tones.add(track);
+//                }
+            } catch (IllegalStateException e) {
+//                synchronized (tones) {
+//                    if (tones != null) {
+////                        tones.remove(track);
+//                        tones = new HashSet<>();
+//                    }
+//                }
+                track.flush();
+                try {
+                    track.stop();
+                } catch (IllegalStateException ex) {
+                }
+                track.release();
+            }
+        } else {
+//            synchronized (tones) {
+////                if (tones != null) {
+////                    // tones.remove(track);
+////                    tones = new HashSet<>();
+////                }
+//            }
+            track.flush();
+            try {
+                track.stop();
+            } catch (IllegalStateException e) {
+            }
+            track.release();
+        }
         return track;
     }
 }

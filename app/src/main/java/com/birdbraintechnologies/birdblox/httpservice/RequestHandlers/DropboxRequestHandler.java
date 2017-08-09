@@ -389,7 +389,13 @@ public class DropboxRequestHandler implements RequestHandler {
         builder.setMessage(getNameError(name, DropboxOperation.RENAME));
         final EditText input = new EditText(mainWebViewContext);
         input.setInputType(InputType.TYPE_CLASS_TEXT);
-        input.setText(findAvailableName(getBirdbloxDir(), name, ""));
+        if (dbxOperation == DropboxOperation.RENAME) {
+            // TODO: RENAME AVAILABLE NAME HERE
+            // PROBABLY CREATE A NEW ASYNCTASK
+            input.setText("");
+        } else {
+            input.setText(findAvailableName(getBirdbloxDir(), name, ""));
+        }
         input.setSelectAllOnFocus(true);
         builder.setView(input);
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -437,11 +443,11 @@ public class DropboxRequestHandler implements RequestHandler {
             public void onClick(DialogInterface dialog, int which) {
                 dialog.cancel();
                 if (dbxOperation == DropboxOperation.UPLOAD) {
-                    checkInput(oldName, newName, dbxOperation, WriteMode.ADD);
-                } else if (dbxOperation != DropboxOperation.DELETE) {
-                    checkInput(oldName, newName, dbxOperation);
+                    checkInput(oldName, input.getText().toString(), dbxOperation, WriteMode.ADD);
+                } else if (dbxOperation == DropboxOperation.DELETE) {
+                    checkInput(input.getText().toString(), dbxOperation);
                 } else {
-                    checkInput(newName, dbxOperation);
+                    checkInput(oldName, input.getText().toString(), dbxOperation);
                 }
             }
         });
@@ -537,7 +543,9 @@ public class DropboxRequestHandler implements RequestHandler {
                 if (!isNameSanitized(newName)) return false;
                 return true;
             case RENAME:
-                // TODO: RENAME CASE HERE
+                // TODO: CHECK PROPERLY HERE
+                // PROBABLY CREATE A NEW ASYNCTASK
+                if (oldName.equals(newName)) return false;
                 return true;
         }
         return false;

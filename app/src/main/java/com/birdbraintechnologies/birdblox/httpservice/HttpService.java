@@ -22,9 +22,11 @@ public class HttpService extends Service {
     private Server server;
     private BluetoothHelper btService;
 
-    // To allow external requests (for debugging purposes),
-    // just make the String below null.
-    private static final String HTTPAccessFlag = null;
+    /**
+     * To allow external requests (for debugging purposes)
+     * just make the String below equal to null.
+     */
+    private static final String HTTPAccessFlag = "localhost";
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -68,7 +70,7 @@ public class HttpService extends Service {
         public static final String TAG = "NanoHTTPServer";
         private RequestRouter router;
 
-        public Server(int port, HttpService service) throws IOException {
+        Server(int port, HttpService service) throws IOException {
             super(HTTPAccessFlag, port);
             start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
             router = new RequestRouter(service);

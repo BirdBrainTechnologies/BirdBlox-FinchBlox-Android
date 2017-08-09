@@ -134,11 +134,37 @@ public class RobotRequestHandler implements RequestHandler {
                 responseBody = disconnectFromRobot(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
                 break;
             case "out":
-                getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0)).setOutput(path[1], m);
-                responseBody = "Connected to " + m.get("type").get(0) + " successfully.";
+                Robot robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                if (robot == null) {
+                    runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Robot " + m.get("id").get(0) + " was not found.");
+                } else if (!robot.setOutput(path[1], m)) {
+                    runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.EXPECTATION_FAILED, MIME_PLAINTEXT, "Failed to send to robot " + m.get("id").get(0) + ".");
+                } else {
+                    runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', true);");
+                    responseBody = "Sent to robot " + m.get("type").get(0) + " successfully.";
+                }
                 break;
             case "in":
-                responseBody = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0)).readSensor(m.get("sensor").get(0), m.get("port").get(0));
+                robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                if (robot == null) {
+                    runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Robot " + m.get("id").get(0) + " was not found.");
+                } else {
+                    String sensorValue = robot.readSensor(m.get("sensor").get(0), m.get("port").get(0));
+                    if (sensorValue == null) {
+                        runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
+                        return NanoHTTPD.newFixedLengthResponse(
+                                NanoHTTPD.Response.Status.NO_CONTENT, MIME_PLAINTEXT, "Failed to read sensors from robot " + m.get("id").get(0) + ".");
+                    } else {
+                        runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', true);");
+                        responseBody = sensorValue;
+                    }
+                }
                 break;
             case "showInfo":
                 responseBody = showRobotInfo(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));

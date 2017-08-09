@@ -2,6 +2,7 @@ package com.birdbraintechnologies.birdblox;
 
 import android.Manifest;
 import android.annotation.TargetApi;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -34,6 +35,7 @@ import android.widget.Toast;
 import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblox.Dialogs.BirdBloxDialog;
 import com.birdbraintechnologies.birdblox.Project.ImportUnzipTask;
+import com.birdbraintechnologies.birdblox.Sound.CancelableMediaPlayer;
 import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RecordingHandler;
 import com.dropbox.core.DbxRequestConfig;
@@ -56,6 +58,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -79,12 +82,11 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Pro
 
 
 public class MainWebView extends AppCompatActivity {
-
     private String TAG = this.getClass().getName();
 
-    /*OLDER LOCATIONS FOR LOADING THE LAYOUT ARE IN THE TWO LINES BELOW*/
+    /* OLDER LOCATIONS FOR LOADING THE LAYOUT ARE IN THE TWO LINES BELOW */
     private static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
-    // private static final String PAGE_URL = "http://rawgit.com/TomWildenhain/HummingbirdDragAndDrop-/dev/HummingbirdDragAndDrop.html";
+//    private static final String PAGE_URL = "http://rawgit.com/TomWildenhain/HummingbirdDragAndDrop-/dev/HummingbirdDragAndDrop.html";
 
     /* Permission request codes */
     public static final int MY_PERMISSIONS_REQUEST_LOCATION = 1;
@@ -111,6 +113,9 @@ public class MainWebView extends AppCompatActivity {
     private static final int DOUBLE_BACK_DELAY = 2000;
 
     public static Context mainWebViewContext;
+
+    public static final ArrayList<CancelableMediaPlayer> mediaPlayers = new ArrayList<>();
+//    public static HashSet<AudioTrack> tones = new HashSet<>();
 
     LocalBroadcastManager bManager;
     private static WebView webView;
@@ -162,16 +167,33 @@ public class MainWebView extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         mainWebViewContext = MainWebView.this;
 
+        /* If the bluetooth service is already running, stop it. */
+        if (isMyServiceRunning(BluetoothHelper.class)) {
+            try {
+                stopService(new Intent(this, BluetoothHelper.class));
+            } catch (SecurityException | IllegalStateException e) {
+                Log.e(TAG, "Error while stopping pre-existing bluetooth service: " + e.getMessage());
+            }
+        }
+
+        /* If the HTTP service is already running, stop it. */
+        if (isMyServiceRunning(HttpService.class)) {
+            try {
+                stopService(new Intent(this, HttpService.class));
+            } catch (SecurityException | IllegalStateException e) {
+                Log.e(TAG, "Error while stopping pre-existing HTTP service: " + e.getMessage());
+            }
+        }
+
         // Hide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
-        // Remember that you should never show the action bar if the
-        // status bar is hidden, so hide that too if necessary.
+        // We should never show the action bar if the status bar
+        // is hidden, so we hide that too if necessary.
         if (getActionBar() != null)
             getActionBar().hide();
 
         // Set hardware volume buttons to control media volume
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
-
 
         // Spawn the thread (for download, unzip of layout)
 //        unzipAndDownloadThread.start();
@@ -193,7 +215,6 @@ public class MainWebView extends AppCompatActivity {
 //        } catch (IOException | SecurityException e) {
 //            Log.e("LocFile", "Problem: " + e.getMessage());
 //        }
-
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_web_view);
@@ -238,7 +259,6 @@ public class MainWebView extends AppCompatActivity {
         }
     }
 
-
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
@@ -273,7 +293,7 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
+//        super.onNewIntent(intent);
 //        mainWebViewContext = MainWebView.this;
         dropboxWebOAuth(intent);
         importFromIntent(intent);
@@ -313,7 +333,6 @@ public class MainWebView extends AppCompatActivity {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-
         // Get the physical dimensions (width, height) of screen, and update  the static
         // variable metrics in the PropertiesHandler class with this information.
         metrics = new DisplayMetrics();
@@ -323,34 +342,17 @@ public class MainWebView extends AppCompatActivity {
         float xInches = metrics.widthPixels / metrics.xdpi;
         // Calculate diagonal length of screen in inches
         double diagonalInches = Math.sqrt(xInches * xInches + yInches * yInches);
-
-        if (diagonalInches >= 6.5) {
-            // 6.5 inch device screen or bigger - In this case rotation is allowed
-            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
-        } else {
-            // device screen smaller than 6.5 inch - In this case rotation is NOT allowed
+        if (diagonalInches < 6.5) {
+            // Device screen smaller than 6.5 inch
+            // In this case rotation is allowed only in landscape food
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         }
     }
 
-    /**
-     * Gives substring consisting of last 4 characters of a given string.
-     *
-     * @param str Input String
-     * @return Returns substring consisting of last 4 characters of input string, if possible.
-     * Otherwise returns input string
-     */
-    public static String last4(String str) {
-        return str == null || str.length() < 4 ? str : str.substring(str.length() - 4);
-    }
-
-
     private void importFromIntent(Intent intent) {
         if (intent == null) return;
-
         String type = null;
         Uri data = null;
-
         // TODO: Rewrite using try-catch
         if (intent.getAction().equals(Intent.ACTION_SEND)) {
             String extraStream = null;
@@ -368,13 +370,10 @@ public class MainWebView extends AppCompatActivity {
             type = intent.getScheme();
             data = intent.getData();
         }
-
         if (type != null)
             Log.d("INTENTTYPE", "Type: " + type);
         if (data != null)
             Log.d("INTENTTYPE", "Data: " + data);
-
-
         // TODO: Make this a new AsyncTask
         if (type != null && data != null) {
             if (type.equals("content")) {
@@ -386,8 +385,6 @@ public class MainWebView extends AppCompatActivity {
             }
         }
     }
-
-
 
     /**
      * Downloads the file at the given URL to the given location
@@ -414,6 +411,47 @@ public class MainWebView extends AppCompatActivity {
             Log.e("Download", e.getMessage());
         }
     }
+
+    // Create a new thread to perform download and unzip operations for layout
+    Thread unzipAndDownloadThread = new Thread() {
+        @Override
+        public void run() {
+            // 'Parent' Location where downloaded, unzipped files are to be stored
+            // Currently set to our app's 'secret' internal storage location
+            final String parent_dir = getFilesDir().toString();
+            //Check if the locations to download and unzip already exist in the internal storage
+            // If they don't, create them
+            File f = new File(parent_dir + "/" + BIRDBLOX_ZIP_DIR + "/UI.zip");
+            if (!f.exists()) try {
+                if (!f.getParentFile().exists())
+                    f.getParentFile().mkdirs();
+                f.createNewFile();
+            } catch (IOException | SecurityException e) {
+                Log.e("Download", e.getMessage());
+            }
+            File f2 = new File(parent_dir + "/" + BIRDBLOX_UNZIP_DIR);
+            if (!f2.exists()) try {
+                f2.mkdirs();
+            } catch (SecurityException e) {
+                Log.e("Download", e.getMessage());
+            }
+            // Download the layout from github
+            try {
+                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
+//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/stable.zip", f);
+            } catch (NetworkOnMainThreadException | SecurityException e) {
+                Log.e("Download", "Error occurred while downloading file: " + e.getMessage());
+                return;
+            }
+            // Unzip the downloaded file
+            try {
+                unzip(f, f2);
+            } catch (IOException e) {
+                Log.e("Unzip", "Java I/O Error while unzipping file: " + e.getMessage());
+            }
+        }
+    };
 
     /**
      * Unzips the file at the given location, and stores the unzipped file at
@@ -456,49 +494,6 @@ public class MainWebView extends AppCompatActivity {
         Log.d("Unzip", "File Unzipped Successfully!");
     }
 
-    // Create a new thread to perform download and unzip operations for layout
-    Thread unzipAndDownloadThread = new Thread() {
-        @Override
-        public void run() {
-            // 'Parent' Location where downloaded, unzipped files are to be stored
-            // Currently set to our app's 'secret' internal storage location
-            final String parent_dir = getFilesDir().toString();
-
-            //Check if the locations to download and unzip already exist in the internal storage
-            // If they don't, create them
-            File f = new File(parent_dir + "/" + BIRDBLOX_ZIP_DIR + "/UI.zip");
-            if (!f.exists()) try {
-                if (!f.getParentFile().exists())
-                    f.getParentFile().mkdirs();
-                f.createNewFile();
-            } catch (IOException | SecurityException e) {
-                Log.e("Download", e.getMessage());
-            }
-            File f2 = new File(parent_dir + "/" + BIRDBLOX_UNZIP_DIR);
-            if (!f2.exists()) try {
-                f2.mkdirs();
-            } catch (SecurityException e) {
-                Log.e("Download", e.getMessage());
-            }
-
-            // Download the layout from github
-            try {
-                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
-//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
-//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/stable.zip", f);
-            } catch (NetworkOnMainThreadException | SecurityException e) {
-                Log.e("Download", "Error occurred while downloading file: " + e.getMessage());
-                return;
-            }
-            // Unzip the downloaded file
-            try {
-                unzip(f, f2);
-            } catch (IOException e) {
-                Log.e("Unzip", "Java I/O Error while unzipping file: " + e.getMessage());
-            }
-        }
-    };
-
     /**
      * Creates a copy of the 'file to be imported' in the app's internal (secret) directory,
      * starts the unzip operation, and then returns the filename of this copy.
@@ -509,14 +504,14 @@ public class MainWebView extends AppCompatActivity {
     private synchronized String sanitizeAndCopyFile(Uri data) {
         try {
             File inputFile = new File(data.getPath());
-            String newName = sanitizeName(FilenameUtils.getBaseName(inputFile.getName()));
+            String newName = findAvailableName(getBirdbloxDir(), sanitizeName(FilenameUtils.getBaseName(inputFile.getName())), "");
             String extension = FilenameUtils.getExtension(inputFile.getName());
             File zipFile = new File(getFilesDir(), IMPORT_ZIP_DIR + "/" + newName + "." + extension);
             FileUtils.copyFile(inputFile, zipFile);
             File outputFile = new File(getBirdbloxDir(), newName);
             new ImportUnzipTask().execute(zipFile, outputFile);
             return newName;
-        } catch (IOException | SecurityException e) {
+        } catch (IOException | SecurityException | NullPointerException e) {
             Log.e("MainWebView", "SanitizeAndCopy: " + e.getMessage());
         }
         return null;
@@ -532,7 +527,7 @@ public class MainWebView extends AppCompatActivity {
     private synchronized String sanitizeAndGetContent(Uri data) {
         try {
             String name = null;
-            InputStream is = null;
+            InputStream is;
             Cursor cursor = getContentResolver().query(data, new String[]{
                     MediaStore.MediaColumns.DISPLAY_NAME
             }, null, null, null);
@@ -556,12 +551,11 @@ public class MainWebView extends AppCompatActivity {
             is = getContentResolver().openInputStream(data);
             FileUtils.copyInputStreamToFile(is, zipFile);
             is.close();
-            is = null;
             File outputFile = new File(getBirdbloxDir(), newName);
             new ImportUnzipTask().execute(zipFile, outputFile);
             return newName;
         } catch (NullPointerException | IOException | SecurityException e) {
-            Log.e("MainWebView", e.getMessage());
+            Log.e(TAG, e.getMessage());
         }
         return null;
     }
@@ -579,12 +573,9 @@ public class MainWebView extends AppCompatActivity {
         float xInches = metrics.widthPixels / metrics.xdpi;
         // Calculate diagonal length of screen in inches
         double diagonalInches = Math.sqrt(xInches * xInches + yInches * yInches);
-        if (diagonalInches >= 6.5) {
-            // 6.5 inch device screen or bigger - In this case rotation is allowed
-            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
-        } else {
-            // device screen smaller than 6.5 inch - In this case rotation is allowed only
-            // within landscape mode
+        if (diagonalInches < 6.5) {
+            // Device screen smaller than 6.5 inch - In this case
+            // rotation is allowed only within landscape mode
             this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE);
         }
     }
@@ -685,6 +676,7 @@ public class MainWebView extends AppCompatActivity {
      * @param script The required js, with all user inputs PERCENT-ENCODED using bbxEncode.
      */
     public static void runJavascript(final String script) {
+        // TODO: Send JavaScript commands as broadcasts instead of making webview static
         Handler mainHandler = new Handler(mainWebViewContext.getMainLooper());
         Runnable myRunnable = new Runnable() {
             @Override
@@ -933,6 +925,24 @@ public class MainWebView extends AppCompatActivity {
                 Log.e(TAG, "Unrecognized permission request code.");
                 break;
         }
+    }
+
+    /**
+     * Checks if a given service is already running
+     * <p>
+     * SOURCE: https://stackoverflow.com/questions/600207/how-to-check-if-a-service-is-running-on-android
+     *
+     * @param serviceClass The class pertaining to the required service
+     * @return true if the given service is running, false otherwise
+     */
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

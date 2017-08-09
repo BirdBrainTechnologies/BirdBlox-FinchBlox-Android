@@ -198,10 +198,13 @@ public class UARTConnection extends BluetoothGattCallback {
         connectionState = newState;
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (newState == BluetoothGatt.STATE_CONNECTED) {
+//                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', true);");
                 gatt.discoverServices();
             } else {
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', false);");
             }
+        } else {
+            runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', false);");
         }
     }
 

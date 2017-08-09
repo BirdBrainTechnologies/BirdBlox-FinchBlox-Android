@@ -5,9 +5,7 @@ import android.util.Log;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DebugRequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler;
-import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FlutterRequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.HostDeviceHandler;
-import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.HummingbirdRequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.PropertiesHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RecordingHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
@@ -47,8 +45,7 @@ class RequestRouter {
      */
     private void initRoutes() {
         // TODO: Make this have a match ordering
-        addRoute("^/hummingbird/(.*)$", new HummingbirdRequestHandler(service));
-        addRoute("^/flutter/(.*)$", new FlutterRequestHandler(service));
+        addRoute("^/robot/(.*)$", new RobotRequestHandler(service));
         addRoute("^/tablet/(.*)$", new HostDeviceHandler(service));
         addRoute("^/settings/(.*)$", new SettingsHandler(service));
         addRoute("^/data/(.*)$", new FileManagementHandler(service));
@@ -57,8 +54,15 @@ class RequestRouter {
         addRoute("^/properties/(.*)$", new PropertiesHandler(service));
         addRoute("^/cloud/(.*)$", new DropboxRequestHandler(service));
         addRoute("^/ui/(.*)$", new UIRequestHandler(service));
-        addRoute("^/robot/(.*)$", new RobotRequestHandler(service));
         addRoute("^/debug/(.*)$", new DebugRequestHandler(service));
+        /**
+         * These were older command patterns (NOT to be used anymore):
+         * addRoute("^/hummingbird/(.*)$", new HummingbirdRequestHandler(service));
+         * addRoute("^/flutter/(.*)$", new FlutterRequestHandler(service));
+         *
+         * They have now been replaced with:
+         * addRoute("^/robot/(.*)$", new RobotRequestHandler(service));
+         */
     }
 
     /**

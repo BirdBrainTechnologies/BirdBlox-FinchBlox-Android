@@ -30,7 +30,6 @@
         <activity
             android:name="com.birdbraintechnologies.birdblox.MainWebView"
             android:configChanges="orientation|screenSize"
-            android:screenOrientation="landscape"
             android:launchMode="singleInstance">
 
             <intent-filter>
