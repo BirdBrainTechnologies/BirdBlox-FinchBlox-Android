@@ -121,9 +121,6 @@ public class RobotRequestHandler implements RequestHandler {
             case "stopDiscover":
                 responseBody = stopDiscover();
                 break;
-            case "discover":
-//                listRobots(robotTypeFromString(m.get("type").get(0)));
-                break;
             case "totalStatus":
                 responseBody = getTotalStatus(robotTypeFromString(m.get("type").get(0)));
                 break;
@@ -171,6 +168,9 @@ public class RobotRequestHandler implements RequestHandler {
                 break;
             case "showUpdateInstructions":
                 showFirmwareUpdateInstructions();
+                break;
+            case "stopAll":
+                stopAll();
                 break;
         }
 
@@ -528,6 +528,17 @@ public class RobotRequestHandler implements RequestHandler {
 
     private static void showFirmwareUpdateInstructions() {
         mainWebViewContext.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(FIRMWARE_UPDATE_URL)));
+    }
+
+    /**
+     * Resets the values of the peripherals of all connected hummingbirds
+     * and flutters to their default values.
+     */
+    private void stopAll() {
+        for (Hummingbird hummingbird : connectedHummingbirds.values())
+            hummingbird.stopAll();
+        for (Flutter flutter : connectedFlutters.values())
+            flutter.stopAll();
     }
 
 }

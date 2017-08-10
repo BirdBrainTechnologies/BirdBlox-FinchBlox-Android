@@ -71,7 +71,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private final ReentrantLock lock;
     private final Condition doneSending;
 
-    boolean g4;
+    private boolean g4;
     private byte[] g4response;
 
     private int count;
@@ -111,6 +111,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 //                                }
                                 count = 0;
                             } else if (!g4) {
+                                Log.d("COUNT", "Send failed");
                                 count++;
                                 if (count >= MAX_FAILURE_COUNT) {
                                     // TODO: Auto-disconnection
@@ -119,6 +120,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 //                                    disconnect();
                                 }
                             } else {
+                                Log.d("COUNT", "Send failed g4");
                                 count++;
                                 if (count >= MAX_G4_FAILURE_COUNT) {
                                     // TODO: Implement successive G4 failure properly here
@@ -155,9 +157,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         if (g4) {
             g4response = conn.writeBytesWithResponse("G4".getBytes());
             if (g4response != null && g4response.length > 0) {
-                g4 = false;
                 count = 0;
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                g4 = false;
                 if (!hasMinFirmware()) {
                     count = 0;
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareVersion()) + "', '" + bbxEncode(getMinFirmwareVersion()) + "')");
@@ -167,6 +169,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 }
             } else {
                 count += 2;
+                Log.d("COUNTG4", count + "");
             }
             return g4response != null && g4response.length > 0;
         }
@@ -179,10 +182,12 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             setSendingTrue();
             boolean sent = conn.writeBytes(newState.setAll());
             if (sent) {
+                Log.d("COUNTSMALL", "Success");
                 oldState.copy(newState);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
             } else {
                 count += 3;
+                Log.d("COUNTSMALL", count + "");
             }
             setSendingFalse();
             last_sent = currentTime;
@@ -195,10 +200,12 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 setSendingTrue();
                 boolean sent = conn.writeBytes(newState.setAll());
                 if (sent) {
+                    Log.d("COUNTBIG", "Success");
                     oldState.copy(newState);
                     runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 } else {
-                    count += 4;
+                    count += 80;
+                    Log.d("COUNTBIG", count + "");
                 }
                 setSendingFalse();
                 last_sent = currentTime;
@@ -311,6 +318,36 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         return false;
     }
 
+    /**
+     * Resets all hummingbird peripherals to their default values.
+     * <p>
+     * Sending a {@value #STOP_PERIPH_CMD} should achieve the same
+     * thing on legacy firmware.
+     *
+     * @return True if succeeded in changing state, false otherwise
+     */
+    public boolean stopAll() {
+        try {
+            lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
+            while (!statesEqual()) {
+                doneSending.await(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
+            }
+            if (statesEqual()) {
+                newState.resetAll();
+                if (lock.isHeldByCurrentThread()) {
+                    doneSending.signal();
+                    lock.unlock();
+                }
+                return true;
+            }
+        } catch (InterruptedException | IllegalMonitorStateException | IllegalStateException | IllegalThreadStateException e) {
+        } finally {
+            if (lock.isHeldByCurrentThread())
+                lock.unlock();
+        }
+        return false;
+    }
+
 
     /**
      * Sets the angle of the servo connected to the given port
@@ -391,15 +428,15 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         // newState.setTriLED(port, r, g, b);
     }
 
-    /**
-     * Turns off all LEDs and motors
-     *
-     * @return True if the command succeeded, false otherwise
-     */
-    public boolean stopAll() {
-        return conn.writeBytes(new byte[]{STOP_PERIPH_CMD});
-        // newState.resetAll();
-    }
+//    /**
+//     * Turns off all LEDs and motors
+//     *
+//     * @return True if the command succeeded, false otherwise
+//     */
+//    public boolean stopAll() {
+//        return conn.writeBytes(new byte[]{STOP_PERIPH_CMD});
+//        // newState.resetAll();
+//    }
 
     /**
      * Computes the ascii byte of the port number

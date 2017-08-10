@@ -6,6 +6,7 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.media.MediaPlayer;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Sound.CancelableMediaPlayer;
@@ -114,9 +115,9 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
             String[] sounds = assets.list(SOUNDS_DIR);
             StringBuilder responseBuilder = new StringBuilder();
             for (String sound : sounds) {
-                responseBuilder.append(sound.substring(0, sound.indexOf(".wav")) + "\n");
+                responseBuilder.append(sound.substring(0, sound.indexOf(".wav")));
             }
-            return responseBuilder.toString();
+            return TextUtils.join("\n", sounds);
         } catch (IOException e) {
             Log.e(TAG, "Unable to list sounds " + e.toString());
             return "";

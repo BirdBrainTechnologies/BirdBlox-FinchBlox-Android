@@ -31,6 +31,7 @@ public class Flutter extends Robot<FLState> {
     private static final String SET_SERVO_CMD = SET_CMD + SERVO_OUTPUT + "%d,%x";
     private static final String SET_BUZZER_CMD = SET_CMD + BUZZER_OUTPUT + ",%x,%x" + CR;
     private static final String SET_TRI_CMD = SET_CMD + "l" + "%d,%x,%x,%x" + CR;
+    private static final byte STOP_PERIPH_CMD = 'X';
 
     private MelodySmartConnection conn;
 
@@ -68,7 +69,8 @@ public class Flutter extends Robot<FLState> {
 
     /**
      * Actually sends the commands to the physical Flutter,
-     * based on certain conditions.
+     * based on certain conditions. (Used only for setAll,
+     * which doesn't exist on Flutters yet)
      */
     @Override
     public boolean sendToRobot() {
@@ -93,6 +95,18 @@ public class Flutter extends Robot<FLState> {
     }
 
     /**
+     * Sets the RGB values of a tri-color LED connected to the given port
+     * to their default values (of R: 0, G: 0, B: 0).
+     *
+     * @param port     Port number that the LED is connected to
+     * @return True if the command succeeded, false otherwise
+     */
+    private boolean resetTriLED(int port) {
+        boolean check = conn.writeBytes(String.format(SET_TRI_CMD, port, 0, 0, 0).getBytes());
+        return check;
+    }
+
+    /**
      * Sets the angle of the servo connected to the given port
      *
      * @param port  Port number that the servo is connected to
@@ -105,7 +119,18 @@ public class Flutter extends Robot<FLState> {
     }
 
     /**
-     * BUZZER
+     * Resets the angle of the servo connected to the given port
+     * to its default value (of angle: 255)
+     *
+     * @param port  Port number that the servo is connected to
+     * @return True if the command succeeded, false otherwise
+     */
+    private boolean resetServo(int port) {
+        return conn.writeBytes(String.format(SET_SERVO_CMD, port, 255).getBytes());
+    }
+
+    /**
+     * Sets the volume and frequency of the buzzer connected to the given port
      *
      * @param volume    Percentage [0,100] to set the volume to
      * @param frequency Percentage [0,20000] to set the frequency to
@@ -115,6 +140,34 @@ public class Flutter extends Robot<FLState> {
         byte volumeByte = clampToBounds(Math.round(volume), 0, 100);
         short frequency2Bytes = clampShortToBounds(Math.round(frequency), 0, 20000);
         return conn.writeBytes(String.format(SET_BUZZER_CMD, volumeByte, frequency2Bytes).getBytes());
+    }
+
+    /**
+     * Resets the volume and frequency of the buzzer to their
+     * default values (of volume: 0, frequency: 0)
+     *
+     * @return True if the command succeeded, false otherwise
+     */
+    private boolean resetBuzzer() {
+        return conn.writeBytes(String.format(SET_BUZZER_CMD, 0, 0).getBytes());
+    }
+
+    /**
+     * The order of outputs to turn off are: 1) Buzzer 2) Servos 3) TriLEDs
+     * Sending the {@value #STOP_PERIPH_CMD} also achieves the same thing.
+     *
+     * @return True if the command succeeded, false otherwise
+     */
+    public boolean stopAll() {
+//        boolean success = resetBuzzer();
+//        for (int i = 1; i <= 3; i++) {
+//            success &= resetServo(i);
+//        }
+//        for (int i = 1; i <= 3; i++) {
+//            success &= resetTriLED(i);
+//        }
+//        return success;
+        return conn.writeBytes(new byte[]{STOP_PERIPH_CMD});
     }
 
     /**

@@ -187,7 +187,14 @@ public class DropboxRequestHandler implements RequestHandler {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Not signed in to Dropbox");
         }
-        showRenameDialog(name, DropboxOperation.RENAME);
+        new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                String newName = dropboxSearch(name, ".bbx");
+                showRenameDialog(name, newName, DropboxOperation.RENAME);
+            }
+        }.start();
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully renamed project: " + name);
     }
@@ -389,13 +396,7 @@ public class DropboxRequestHandler implements RequestHandler {
         builder.setMessage(getNameError(name, DropboxOperation.RENAME));
         final EditText input = new EditText(mainWebViewContext);
         input.setInputType(InputType.TYPE_CLASS_TEXT);
-        if (dbxOperation == DropboxOperation.RENAME) {
-            // TODO: RENAME AVAILABLE NAME HERE
-            // PROBABLY CREATE A NEW ASYNCTASK
-            input.setText("");
-        } else {
-            input.setText(findAvailableName(getBirdbloxDir(), name, ""));
-        }
+        input.setText(findAvailableName(getBirdbloxDir(), name, ""));
         input.setSelectAllOnFocus(true);
         builder.setView(input);
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -404,10 +405,10 @@ public class DropboxRequestHandler implements RequestHandler {
                 dialog.cancel();
                 if (dbxOperation == DropboxOperation.UPLOAD) {
                     checkInput(name, input.getText().toString(), dbxOperation, WriteMode.ADD);
-                } else if (dbxOperation != DropboxOperation.DELETE) {
-                    checkInput(name, input.getText().toString(), dbxOperation);
-                } else {
+                } else if (dbxOperation == DropboxOperation.DELETE) {
                     checkInput(input.getText().toString(), dbxOperation);
+                } else {
+                    checkInput(name, input.getText().toString(), dbxOperation);
                 }
             }
         });
@@ -504,12 +505,26 @@ public class DropboxRequestHandler implements RequestHandler {
         }
     }
 
-    private static void checkInput(String oldName, String newName, DropboxOperation dbxOperation) {
-        boolean validName = checkValidName(oldName, newName, dbxOperation);
-        if (validName) {
-            startDropboxOperation(oldName, newName, dbxOperation);
+    private static void checkInput(final String oldName, final String newName, final DropboxOperation dbxOperation) {
+        if (dbxOperation == DropboxOperation.RENAME) {
+            new Thread() {
+                @Override
+                public void run() {
+                    super.run();
+                    if (dropboxSearch(newName, ".bbx").equals(newName)) {
+                        startDropboxOperation(oldName, newName, dbxOperation);
+                    } else {
+                        showRenameDialog(oldName, dbxOperation);
+                    }
+                }
+            }.start();
         } else {
-            showRenameDialog(oldName, dbxOperation);
+            boolean validName = checkValidName(oldName, newName, dbxOperation);
+            if (validName) {
+                startDropboxOperation(oldName, newName, dbxOperation);
+            } else {
+                showRenameDialog(oldName, dbxOperation);
+            }
         }
     }
 
@@ -543,9 +558,6 @@ public class DropboxRequestHandler implements RequestHandler {
                 if (!isNameSanitized(newName)) return false;
                 return true;
             case RENAME:
-                // TODO: CHECK PROPERLY HERE
-                // PROBABLY CREATE A NEW ASYNCTASK
-                if (oldName.equals(newName)) return false;
                 return true;
         }
         return false;
