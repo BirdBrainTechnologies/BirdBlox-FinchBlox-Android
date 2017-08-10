@@ -101,7 +101,6 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                 break;
         }
 
-
         NanoHTTPD.Response r = newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
         return r;
@@ -120,9 +119,8 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
         AssetManager assets = service.getAssets();
         try {
             String[] sounds = assets.list(SOUNDS_DIR);
-            StringBuilder responseBuilder = new StringBuilder();
-            for (String sound : sounds) {
-                responseBuilder.append(sound.substring(0, sound.indexOf(".wav")));
+            for (int i = 0; i < sounds.length; i++) {
+                sounds[i] = sounds[i].substring(0, sounds[i].indexOf(".wav"));
             }
             return TextUtils.join("\n", sounds);
         } catch (IOException e) {
@@ -146,7 +144,7 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
         try {
             AssetManager assets = service.getAssets();
             AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
-            mediaPlayer = new CancelableMediaPlayer();
+            CancelableMediaPlayer mediaPlayer = new CancelableMediaPlayer();
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
             mediaPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
             mediaPlayer.prepare();
@@ -167,19 +165,20 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
      * @param type    "recording" if the requested sound is a recording,
      *                "ui" if block sound, and an effect sound otherwise
      */
-    private synchronized void playSound(String soundId, String type) {
-        String path;
+    private synchronized void playSound(final String soundId, final String type) {
+        final String path;
         if (type.equals("recording")) {
             (new RecordingHandler()).playAudio(soundId);
             return;
         } else if (type.equals("ui")) {
             path = BLOCK_SOUNDS_DIR + "/%s.wav";
             new Thread() {
-                private void run(String soundId, String path) {
+                @Override
+                public void run() {
                     try {
                         AssetManager assets = service.getAssets();
                         AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
-                        mediaPlayer = new CancelableMediaPlayer();
+                        CancelableMediaPlayer mediaPlayer = new CancelableMediaPlayer();
                         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
                         mediaPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
                         mediaPlayer.prepare();
@@ -188,14 +187,17 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                         Log.e(TAG, "Unable to play sound " + e.toString());
                     }
                 }
-            }.run(soundId, path);
+            }.start();
         } else {
             path = SOUNDS_DIR + "/%s.wav";
             try {
                 AssetManager assets = service.getAssets();
                 AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
                 mediaPlayer = new CancelableMediaPlayer();
-                mediaPlayers.add(mediaPlayer);
+                synchronized (mediaPlayers) {
+                    if (mediaPlayers != null)
+                        mediaPlayers.add(mediaPlayer);
+                }
                 mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
                 mediaPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
                 mediaPlayer.setOnCompletionListener(this);
@@ -228,7 +230,8 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
         try {
             (new RecordingHandler()).stopPlayback();
             if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                mediaPlayer.stop();
+                if (mediaPlayer.isPlaying())
+                    mediaPlayer.stop();
                 mediaPlayer.reset();
                 mediaPlayer.release();
             } else if (mediaPlayer != null) {
@@ -243,27 +246,31 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
      * Stops all sounds (including the tone)
      */
     private void stopAll() {
-        if (mediaPlayers != null) {
-            for (int i = 0; i < mediaPlayers.size(); i++) {
-                if (mediaPlayers.get(i) != null) {
-                    try {
-                        if (mediaPlayers.get(i).isPlaying())
-                            mediaPlayers.get(i).stop();
-                        mediaPlayers.get(i).cancel();
-                        mediaPlayers.get(i).reset();
-                        mediaPlayers.get(i).release();
-                    } catch (IllegalStateException | ArrayIndexOutOfBoundsException | NullPointerException e) {
-                        Log.e(TAG, "Stop All Sounds: " + e.getMessage());
+        synchronized (mediaPlayers) {
+            if (mediaPlayers != null) {
+                for (int i = 0; i < mediaPlayers.size(); i++) {
+                    if (mediaPlayers.get(i) != null) {
+                        try {
+                            mediaPlayers.get(i).cancel();
+                            if (mediaPlayers.get(i).isPlaying())
+                                mediaPlayers.get(i).stop();
+                            mediaPlayers.get(i).reset();
+                            mediaPlayers.get(i).release();
+                            mediaPlayers.remove(i);
+                        } catch (IllegalStateException | ArrayIndexOutOfBoundsException | NullPointerException e) {
+                            Log.e(TAG, "Stop All Sounds: " + e.getMessage());
+                        }
                     }
                 }
-                mediaPlayers.clear();
             }
         }
-        if (tones != null) {
-            for (int i = 0; i < tones.size(); i++) {
-                releaseTrack(tones.get(i));
+        synchronized (tones) {
+            if (tones != null) {
+                for (int i = 0; i < tones.size(); i++) {
+                    releaseTrack(tones.get(i));
+                    tones.remove(i);
+                }
             }
-            tones.clear();
         }
     }
 
@@ -339,7 +346,10 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
             if (track.getState() == AudioTrack.STATE_INITIALIZED) {
                 try {
                     track.play();
-                    tones.add(track);
+                    synchronized (tones) {
+                        if (tones != null)
+                            tones.add(track);
+                    }
                 } catch (IllegalStateException e) {
                     releaseTrack(track);
                 }
