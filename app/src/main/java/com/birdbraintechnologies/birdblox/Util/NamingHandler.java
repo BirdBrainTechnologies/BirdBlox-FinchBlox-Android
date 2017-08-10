@@ -16,6 +16,7 @@ import com.birdbraintechnologies.birdblox.R;
 public class NamingHandler {
 
     public static String GenerateName(Context context, String mac) {
+        if (mac == null) return "";
         String result = "unknown";
         long mid;
         int i, j, k, offset;

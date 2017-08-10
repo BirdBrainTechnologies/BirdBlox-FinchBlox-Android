@@ -1,6 +1,6 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
-import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -13,11 +13,14 @@ import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
 
 import static android.content.ContentValues.TAG;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
@@ -51,8 +54,10 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 4000;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
-    private static final int MAX_FAILURE_COUNT = 10;
-    private static final int MAX_G4_FAILURE_COUNT = 16;
+    private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
+    private static final int MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 10000;
+    private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
+
 
     // This represents the firmware version 2.2a
     private static final byte minFirmwareVersion1 = 2;
@@ -64,7 +69,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private static final byte latestFirmwareVersion2 = 2;
     private static final String latestFirmwareVersion3 = "b";
 
-    private long last_sent;
+    private AtomicBoolean g4;
+    private AtomicLong last_sent;
+    private AtomicLong last_successfully_sent;
 
     private UARTConnection conn;
     private byte[] rawSensorValues;
@@ -73,10 +80,18 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private final ReentrantLock lock;
     private final Condition doneSending;
 
-    private boolean g4;
-    private byte[] g4response;
+//    private final Timer sendTimer;
+//    private final Timer monitorTimer;
 
-    private int count;
+    //    private final Handler sendHandler;
+    private final Runnable sendRunnable;
+    //    private final Handler monitorHandler;
+    private final Runnable monitorRunnable;
+
+    private Disposable sendDisposable;
+    private Disposable monitorDisposable;
+
+    private byte[] g4response;
 
     /**
      * Initializes a Hummingbird device
@@ -90,139 +105,201 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         oldState = new HBState();
         newState = new HBState();
 
-        last_sent = System.currentTimeMillis();
+        g4 = new AtomicBoolean(true);
+        last_sent = new AtomicLong(System.currentTimeMillis());
+        last_successfully_sent = new AtomicLong(System.currentTimeMillis());
 
         lock = new ReentrantLock();
         doneSending = lock.newCondition();
 
-        g4 = true;
+//        sendTimer = new Timer();
+//        monitorTimer = new Timer();
 
-        count = 0;
-
-        new Thread() {
+        final HandlerThread sendThread = new HandlerThread("SendThread");
+        if (!sendThread.isAlive())
+            sendThread.start();
+        AndroidSchedulers.from(sendThread.getLooper());
+//        sendHandler = new Handler(sendThread.getLooper());
+        sendRunnable = new Runnable() {
+            @Override
             public void run() {
-                new Timer().scheduleAtFixedRate(new TimerTask() {
-                    @Override
-                    public void run() {
-                        try {
-                            lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
-                            int result = sendToRobot();
-                            if (result == 1) {
-                                if (count >= MAX_FAILURE_COUNT) {
-                                    // TODO: Auto-reconnection
-                                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                                    Log.d("COUNT", "Auto-reconnect");
-                                }
-                                count = 0;
-                            } else if (result == 0) {
-
-                            } else if (!g4) {
-                                if (count >= MAX_FAILURE_COUNT) {
-                                    // TODO: Auto-disconnection
-                                    count = 0;
-                                    Log.d("COUNT", "Disconnecting");
-                                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
-                                    disconnect();
-                                }
-                            } else {
-                                if (count >= MAX_G4_FAILURE_COUNT) {
-                                    // TODO: Implement successive G4 failure properly here
-                                    new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
-                                            Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
-                                        }
-                                    });
-                                    count = 0;
-                                    Log.d("COUNT", "Disconnecting g4");
-                                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
-                                    disconnect();
-                                }
-                            }
-                            doneSending.signal();
-                        } catch (NullPointerException | InterruptedException | IllegalMonitorStateException e) {
-                            Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
-                        } finally {
-                            if (lock.isHeldByCurrentThread())
-                                lock.unlock();
-                        }
-                    }
-                }, START_SENDING_INTERVAL_IN_MILLIS, SETALL_INTERVAL_IN_MILLIS);
+                try {
+                    lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
+                    sendToRobot();
+                    doneSending.signal();
+                } catch (NullPointerException | InterruptedException | IllegalMonitorStateException e) {
+                    Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
+                } finally {
+                    if (lock.isHeldByCurrentThread())
+                        lock.unlock();
+                }
+//                sendHandler.postDelayed(sendRunnable, SETALL_INTERVAL_IN_MILLIS);
             }
-        }.start();
+        };
+        AndroidSchedulers.from(sendThread.getLooper()).schedulePeriodicallyDirect(sendRunnable,
+                START_SENDING_INTERVAL_IN_MILLIS, SETALL_INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
+//        sendHandler.postDelayed(sendRunnable, START_SENDING_INTERVAL_IN_MILLIS);
+
+        final HandlerThread monitorThread = new HandlerThread("SendThread");
+        if (!monitorThread.isAlive())
+            monitorThread.start();
+//        monitorHandler = new Handler(monitorThread.getLooper());
+        monitorRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (last_successfully_sent == null) {
+                    last_successfully_sent = new AtomicLong(System.currentTimeMillis());
+                }
+                long timeOut = g4.get() ? MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
+                if (System.currentTimeMillis() - last_successfully_sent.get() >= timeOut) {
+                    try {
+//                        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
+//                                Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
+//                            }
+//                        });
+                        AndroidSchedulers.mainThread().scheduleDirect(new Runnable() {
+                            @Override
+                            public void run() {
+                                String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
+                                Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
+
+                            }
+                        });
+                        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
+                        g4.set(true);
+                        AndroidSchedulers.from(sendThread.getLooper()).shutdown();
+                        sendThread.getLooper().quit();
+                        sendThread.quit();
+                        AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
+                        monitorThread.getLooper().quit();
+                        monitorThread.quit();
+                        connectionBroke();
+                    } catch (Exception e) {
+                        Log.e(TAG, "Exception while auto-disconnecting: " + e.getMessage());
+                    }
+                }
+//                monitorHandler.postDelayed(monitorRunnable, MONITOR_CONNECTION_INTERVAL_IN_MILLIS);
+            }
+        };
+        AndroidSchedulers.from(monitorThread.getLooper()).schedulePeriodicallyDirect(monitorRunnable,
+                START_SENDING_INTERVAL_IN_MILLIS, MONITOR_CONNECTION_INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
+//        monitorHandler.postDelayed(monitorRunnable, START_SENDING_INTERVAL_IN_MILLIS);
+
+//        sendTimer.scheduleAtFixedRate(new TimerTask() {
+//            @Override
+//            public void run() {
+//                try {
+//                    lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
+//                    sendToRobot();
+//                    doneSending.signal();
+//                } catch (NullPointerException | InterruptedException | IllegalMonitorStateException e) {
+//                    Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
+//                } finally {
+//                    if (lock.isHeldByCurrentThread())
+//                        lock.unlock();
+//                }
+//            }
+//        }, START_SENDING_INTERVAL_IN_MILLIS, SETALL_INTERVAL_IN_MILLIS);
+//
+//        monitorTimer.scheduleAtFixedRate(new TimerTask() {
+//            @Override
+//            public void run() {
+//                if (last_successfully_sent == null) {
+//                    last_successfully_sent = new AtomicLong(System.currentTimeMillis());
+//                }
+//                if (System.currentTimeMillis() - last_successfully_sent.get() >= MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS) {
+//                    try {
+//                        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
+//                                Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
+//                            }
+//                        });
+//                        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
+//                        connectionBroke();
+//                    } catch (Exception e) {
+//                        Log.e(TAG, "Exception while auto-disconnecting: " + e.getMessage());
+//                    }
+//                }
+//            }
+//        }, START_SENDING_INTERVAL_IN_MILLIS, MONITOR_CONNECTION_INTERVAL_IN_MILLIS);
     }
 
     /**
      * Actually sends the commands to the physical Hummingbird,
      * based on certain conditions.
      */
-    public synchronized int sendToRobot() {
-        if (g4) {
+    public synchronized void sendToRobot() {
+        if (isCurrentlySending()) {
+            // do nothing in this case
+            return;
+        }
+        // Not currently sending
+        long currentTime = System.currentTimeMillis();
+        if (g4.get()) {
+            // Send here
+            setSendingTrue();
             g4response = conn.writeBytesWithResponse("G4".getBytes());
             if (g4response != null && g4response.length > 0) {
-                Log.d("COUNTG4", "G4 Success");
-                count = 0;
+                // Successfully sent G4 command
+                if (last_successfully_sent != null)
+                    last_successfully_sent.set(currentTime);
+                g4.set(false);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                g4 = false;
                 if (!hasMinFirmware()) {
-                    count = 0;
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareVersion()) + "', '" + bbxEncode(getMinFirmwareVersion()) + "')");
                     disconnect();
                 } else if (!hasLatestFirmware()) {
                     runJavascript("CallbackManager.robot.updateFirmwareStatus('" + bbxEncode(getMacAddress()) + "', 'old')");
                 }
             } else {
-                Log.d("COUNTG4", "G4 Failure");
-                count++;
-                Log.d("COUNTG4", count + "");
+                // Sending Non-G4 command failed
             }
-            return (g4response != null && g4response.length > 0) ? 1 : -1;
-        }
-        if (isCurrentlySending()) {
-            Log.d("COUNT", "Currently sending.");
-            return 0;
+            setSendingFalse();
+            last_sent.set(currentTime);
         } else if (!statesEqual()) {
             // Not currently sending, but oldState and newState are different
-            long currentTime = System.currentTimeMillis();
             // Send here
             setSendingTrue();
-            boolean sent = conn.writeBytes(newState.setAll());
-            if (sent) {
-                Log.d("COUNTSMALL", "Success");
+            if (conn.writeBytes(newState.setAll())) {
+                // Successfully sent Non-G4 command
+                if (last_successfully_sent != null)
+                    last_successfully_sent.set(currentTime);
                 oldState.copy(newState);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
             } else {
-                count++;
-                Log.d("COUNTSMALL", "Failure");
-                Log.d("COUNTSMALL", count + "");
+                // Sending Non-G4 command failed
             }
             setSendingFalse();
-            last_sent = currentTime;
-            return sent ? 1 : -1;
+            last_sent.set(currentTime);
         } else {
             // Not currently sending, and oldState and newState are the same
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - last_sent >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
+            if (currentTime - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
                 // Send here
                 setSendingTrue();
-                boolean sent = conn.writeBytes(newState.setAll());
-                if (sent) {
-                    Log.d("COUNTBIG", "Success");
+                if (conn.writeBytes(newState.setAll())) {
+                    // Successfully sent Non-G4 command
+                    if (last_successfully_sent != null)
+                        last_successfully_sent.set(currentTime);
                     oldState.copy(newState);
                     runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 } else {
-                    count += 4;
-                    Log.d("COUNTBIG", "Failure");
-                    Log.d("COUNTBIG", count + "");
+                    // Sending Non-G4 command failed
                 }
                 setSendingFalse();
-                last_sent = currentTime;
-                return sent ? 1 : -1;
+                last_sent.set(currentTime);
             }
-            Log.d("COUNTBIG", "Not time yet");
-            return 0;
         }
+    }
+
+    public synchronized long getLastSuccessful() {
+        if (last_successfully_sent != null)
+            return last_successfully_sent.get();
+        return 0;
     }
 
     /**
@@ -370,7 +447,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         // Compute servo angle [0,225] from angle [0,180]
         byte angleByte = clampToBounds(Math.round(angle * 1.25), 0, 225);
         return conn.writeBytes(new byte[]{SERVO_CMD, computePort(port), angleByte});
-        // newState.setServo(port, angleByte);
     }
 
     /**
@@ -384,7 +460,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         // Compute vibration intensity [0,255] from intensityPercentage
         byte intensity = clampToBounds(Math.round(intensityPercent * 2.55), 0, 255);
         return conn.writeBytes(new byte[]{VIB_MOTOR_CMD, computePort(port), intensity});
-        // newState.setVibrator(port, intensity);
     }
 
     /**
@@ -403,7 +478,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         // Compute absolute speed [0,255] from speedPercent [-100,100]
         byte speed = clampToBounds(Math.round(Math.abs(speedPercent) * 2.55), 0, 255);
         return conn.writeBytes(new byte[]{MOTOR_CMD, computePort(port), direction, speed});
-        // newState.setMotor(port, (speedPercent >= 0 ? speed : (byte) -speed));
     }
 
     /**
@@ -417,7 +491,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         // Compute intensity [0,255] from percentage
         byte intensity = clampToBounds(Math.round(intensityPercent * 2.55), 0, 255);
         return conn.writeBytes(new byte[]{LED_CMD, computePort(port), intensity});
-        // newState.setLED(port, intensity);
     }
 
     /**
@@ -435,18 +508,19 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         byte g = clampToBounds(Math.round(gPercent * 2.55), 0, 255);
         byte b = clampToBounds(Math.round(bPercent * 2.55), 0, 255);
         return conn.writeBytes(new byte[]{TRI_LED_CMD, computePort(port), r, g, b});
-        // newState.setTriLED(port, r, g, b);
     }
 
-//    /**
-//     * Turns off all LEDs and motors
-//     *
-//     * @return True if the command succeeded, false otherwise
-//     */
-//    public boolean stopAll() {
-//        return conn.writeBytes(new byte[]{STOP_PERIPH_CMD});
-//        // newState.resetAll();
-//    }
+    /**
+     * Turns off all LEDs and motors
+     * <p>
+     * This is the version of the stopAll command suited for
+     * legacy firmware
+     *
+     * @return True if the command succeeded, false otherwise
+     */
+    public boolean stopAllLegacy() {
+        return conn.writeBytes(new byte[]{STOP_PERIPH_CMD});
+    }
 
     /**
      * Computes the ascii byte of the port number
@@ -514,12 +588,50 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
      * Disconnects the device
      */
     public void disconnect() {
+//        sendTimer.cancel();
+//        sendTimer.purge();
+//        monitorTimer.cancel();
+//        monitorTimer.purge();
+//        new Thread() {
+//            @Override
+//            public void run() {
+//                super.run();
+//                monitorHandler.removeCallbacks(monitorRunnable);
+//                sendHandler.removeCallbacks(sendRunnable);
+//            }
+//        }.start();
+        connectionBroke();
         if (conn != null) {
             conn.removeRxDataListener(this);
             stopPollingSensors();
             conn.writeBytes(new byte[]{TERMINATE_CMD});
             conn.disconnect();
         }
+    }
+
+    public void connectionBroke() {
+//        sendTimer.cancel();
+//        sendTimer.purge();
+//        monitorTimer.cancel();
+//        monitorTimer.purge();
+//        new Thread() {
+//            @Override
+//            public void run() {
+//                super.run();
+//                monitorHandler.removeCallbacks(monitorRunnable);
+//                sendHandler.removeCallbacks(sendRunnable);
+//            }
+//        }.start();
+        new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                if (sendDisposable != null && !sendDisposable.isDisposed())
+                    sendDisposable.dispose();
+                if (monitorDisposable != null && !monitorDisposable.isDisposed())
+                    monitorDisposable.dispose();
+            }
+        }.start();
     }
 
     @Override

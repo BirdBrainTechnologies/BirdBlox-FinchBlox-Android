@@ -385,6 +385,8 @@ public class RobotRequestHandler implements RequestHandler {
                 Log.d(TAG, "Disconnecting from hummingbird: " + hummingbirdId);
                 if (hummingbird.isConnected())
                     hummingbird.disconnect();
+//                else
+//                    hummingbird.connectionBroke();
                 Log.d("TotStat", "Removing hummingbird: " + hummingbirdId);
                 connectedHummingbirds.remove(hummingbirdId);
             }

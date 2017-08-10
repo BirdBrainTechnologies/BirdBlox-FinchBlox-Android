@@ -73,8 +73,7 @@ public class Flutter extends Robot<FLState> {
      * which doesn't exist on Flutters yet)
      */
     @Override
-    public int sendToRobot() {
-        return -1;
+    public void sendToRobot() {
     }
 
     /**

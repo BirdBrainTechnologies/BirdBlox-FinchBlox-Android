@@ -338,20 +338,7 @@ public class MainWebView extends AppCompatActivity {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        // Get the physical dimensions (width, height) of screen, and update  the static
-        // variable metrics in the PropertiesHandler class with this information.
-        metrics = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
-        // Store the width and height in inches for use here too
-        float yInches = metrics.heightPixels / metrics.ydpi;
-        float xInches = metrics.widthPixels / metrics.xdpi;
-        // Calculate diagonal length of screen in inches
-        double diagonalInches = Math.sqrt(xInches * xInches + yInches * yInches);
-        if (diagonalInches < 6.5) {
-            // Device screen smaller than 6.5 inch
-            // In this case rotation is allowed only in landscape food
-            this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        }
+        adjustRotationSettings();
     }
 
     private void importFromIntent(Intent intent) {
@@ -596,7 +583,6 @@ public class MainWebView extends AppCompatActivity {
         BirdBloxDialog dialog = new BirdBloxDialog();
         dialog.setArguments(b);
         dialog.show(getFragmentManager(), "prompt_question");
-        // dialog.setCancelable(true);
     }
 
     /**

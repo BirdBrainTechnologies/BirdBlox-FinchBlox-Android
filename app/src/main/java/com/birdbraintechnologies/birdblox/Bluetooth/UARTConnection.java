@@ -6,11 +6,7 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.content.Context;
-import android.os.Handler;
 import android.util.Log;
-import android.widget.Toast;
-
-import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,10 +14,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
-import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
-import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
-import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 
 /**
  * Represents a UART connection established via Bluetooth Low Energy. Communicates using the RX and
@@ -165,13 +157,6 @@ public class UARTConnection extends BluetoothGattCallback {
         startLatch.countDown();
         try {
             if (!doneLatch.await(CONNECTION_TIMEOUT_IN_SECS, TimeUnit.SECONDS)) {
-                new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-                        String HBName = NamingHandler.GenerateName(mainWebViewContext, device.getAddress());
-                        Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
-                    }
-                });
                 return false;
             }
         } catch (InterruptedException e) {
@@ -198,13 +183,8 @@ public class UARTConnection extends BluetoothGattCallback {
         connectionState = newState;
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (newState == BluetoothGatt.STATE_CONNECTED) {
-//                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', true);");
                 gatt.discoverServices();
-            } else {
-                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', false);");
             }
-        } else {
-            runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', false);");
         }
     }
 
@@ -215,8 +195,6 @@ public class UARTConnection extends BluetoothGattCallback {
             rx = gatt.getService(uartUUID).getCharacteristic(rxUUID);
             // Notify that the setup process is completed
             doneLatch.countDown();
-        } else {
-            runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(gatt.getDevice().getAddress()) + "', false);");
         }
     }
 
@@ -268,15 +246,6 @@ public class UARTConnection extends BluetoothGattCallback {
      */
     public boolean isConnected() {
         return this.connectionState == BluetoothGatt.STATE_CONNECTED;
-    }
-
-    /**
-     * Returns whether or not this connection is being established currently
-     *
-     * @return True if connecting, false otherwise
-     */
-    public boolean isConnecting() {
-        return this.connectionState == BluetoothGatt.STATE_CONNECTING;
     }
 
     /**

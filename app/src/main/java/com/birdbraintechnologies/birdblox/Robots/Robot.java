@@ -42,7 +42,7 @@ public abstract class Robot<T extends RobotState<T>> {
      * Actually sends the commands to the physical Robot,
      * based on certain conditions.
      */
-    public abstract int sendToRobot();
+    public abstract void sendToRobot();
 
     /**
      * @param outputType
