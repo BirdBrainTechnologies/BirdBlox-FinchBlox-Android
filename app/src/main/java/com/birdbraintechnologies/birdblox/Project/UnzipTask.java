@@ -88,11 +88,12 @@ public class UnzipTask extends AsyncTask<File, Long, String> {
             } catch (ZipException e) {
                 // TODO: Legacy Support here
                 String contents = FileUtils.readFileToString(zipFile, "utf-8");
-                to = new File(files[1], "program.xml");
-                if (!to.getParentFile().exists()) {
-                    to.getParentFile().mkdirs();
+                to = files[1];
+                if (!to.exists()) {
+                    to.mkdirs();
                 }
-                FileUtils.writeStringToFile(to, contents, "utf-8", false);
+                FileUtils.writeStringToFile(new File(to, "program.xml"), contents, "utf-8", false);
+                return FilenameUtils.getBaseName(to.getName());
             }
         } catch (IOException | SecurityException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             Log.e(TAG, "Unzip: " + e.getMessage());

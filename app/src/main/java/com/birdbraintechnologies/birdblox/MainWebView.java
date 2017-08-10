@@ -15,6 +15,7 @@ import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.media.AudioManager;
+import android.media.AudioTrack;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -59,6 +60,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -109,13 +111,16 @@ public class MainWebView extends AppCompatActivity {
 
     private static final String IMPORT_ZIP_DIR = "ZippedImport";
 
+    private static HashSet<Intent> alreadyReceivedIntents = new HashSet<>();
+    private static Uri lastFileUriData;
+
     /* For double back exit */
     private static final int DOUBLE_BACK_DELAY = 2000;
 
     public static Context mainWebViewContext;
 
     public static final ArrayList<CancelableMediaPlayer> mediaPlayers = new ArrayList<>();
-//    public static HashSet<AudioTrack> tones = new HashSet<>();
+    public static ArrayList<AudioTrack> tones = new ArrayList<>();
 
     LocalBroadcastManager bManager;
     private static WebView webView;
@@ -275,13 +280,13 @@ public class MainWebView extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-//        mainWebViewContext = MainWebView.this;
+        mainWebViewContext = MainWebView.this;
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-//        mainWebViewContext = MainWebView.this;
+        mainWebViewContext = MainWebView.this;
         webView.onResume();
         webView.resumeTimers();
         dropboxAppOAuth();
@@ -293,8 +298,8 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onNewIntent(Intent intent) {
-//        super.onNewIntent(intent);
-//        mainWebViewContext = MainWebView.this;
+        super.onNewIntent(intent);
+        mainWebViewContext = MainWebView.this;
         dropboxWebOAuth(intent);
         importFromIntent(intent);
     }
@@ -351,9 +356,12 @@ public class MainWebView extends AppCompatActivity {
 
     private void importFromIntent(Intent intent) {
         if (intent == null) return;
+
+        if (alreadyReceivedIntents.contains(intent)) return;
+        else alreadyReceivedIntents.add(intent);
+
         String type = null;
         Uri data = null;
-        // TODO: Rewrite using try-catch
         if (intent.getAction().equals(Intent.ACTION_SEND)) {
             String extraStream = null;
             if (intent.getExtras() != null && intent.getExtras().get(Intent.EXTRA_STREAM) != null) {
@@ -374,11 +382,14 @@ public class MainWebView extends AppCompatActivity {
             Log.d("INTENTTYPE", "Type: " + type);
         if (data != null)
             Log.d("INTENTTYPE", "Data: " + data);
-        // TODO: Make this a new AsyncTask
         if (type != null && data != null) {
             if (type.equals("content")) {
                 sanitizeAndGetContent(data);
             } else if (type.equals("file")) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    lastFileUriData = data;
+                    requestReadExternalStoragePermission();
+                }
                 if (FilenameUtils.getExtension(data.toString()).equals("bbx")) {
                     sanitizeAndCopyFile(data);
                 }
@@ -503,6 +514,7 @@ public class MainWebView extends AppCompatActivity {
      */
     private synchronized String sanitizeAndCopyFile(Uri data) {
         try {
+            lastFileUriData = null;
             File inputFile = new File(data.getPath());
             String newName = findAvailableName(getBirdbloxDir(), sanitizeName(FilenameUtils.getBaseName(inputFile.getName())), "");
             String extension = FilenameUtils.getExtension(inputFile.getName());
@@ -602,7 +614,6 @@ public class MainWebView extends AppCompatActivity {
                     new File((String) b.get("file_path")));
             sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
             // We are sharing zip files, so we give it a valid MIME type
-            // TODO: Change to bbx
             sendIntent.setType("application/zip");
             // Validate that the device can open the File
             if (sendIntent.resolveActivity(MainWebView.this.getPackageManager()) != null) {
@@ -903,6 +914,9 @@ public class MainWebView extends AppCompatActivity {
                     if (ActivityCompat.checkSelfPermission(this,
                             Manifest.permission.READ_EXTERNAL_STORAGE)
                             == PackageManager.PERMISSION_GRANTED) {
+                        if (lastFileUriData != null) {
+                            sanitizeAndCopyFile(lastFileUriData);
+                        }
                     }
                 } else {
                 }

@@ -20,6 +20,8 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.mediaPlayers;
+import static com.birdbraintechnologies.birdblox.MainWebView.tones;
+import static fi.iki.elonen.NanoHTTPD.newFixedLengthResponse;
 
 /**
  * Handler for playing sounds and tones on the device
@@ -32,16 +34,18 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
     private static final String SOUNDS_DIR = "frontend/SoundClips";
     private static final String BLOCK_SOUNDS_DIR = "frontend/SoundsForUI";
 
-    /* Constants for playing tones */
+    /**
+     * Constants for playing tones
+     */
+    /* The sampling rate in Hz */
     private static double AUDIO_SAMPLING_RATE = 44100.0;
+    /* The number of channels - only allowed values are 1 (mono) and 2 (stereo) */
     private static int AUDIO_NUM_CHANNELS = 2;
+    /* Number of milliseconds per second*/
     private static double MILLIS_PER_SEC = 1000.0;
 
     private HttpService service;
     private CancelableMediaPlayer mediaPlayer;
-    private AudioTrack tone;
-
-    private boolean stopped = false;
 
     public SoundHandler(HttpService service) {
         this.service = service;
@@ -60,7 +64,8 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                 else if (m.get("type").get(0).equals("recording"))
                     responseBody = listSounds(true);
                 else {
-                    //bad request
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "Unknown sound type");
                 }
                 break;
             case "duration":
@@ -69,7 +74,8 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                 else if (m.get("type").get(0).equals("recording"))
                     responseBody = getDuration(m.get("filename").get(0), true);
                 else {
-                    //bad request
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "Unknown sound type");
                 }
                 break;
             case "play":
@@ -80,7 +86,8 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                 else if (m.get("type").get(0).equals("ui"))
                     playSound(m.get("filename").get(0), "ui");
                 else {
-                    //bad request
+                    return NanoHTTPD.newFixedLengthResponse(
+                            NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "Unknown sound type");
                 }
                 break;
             case "note":
@@ -95,7 +102,7 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
         }
 
 
-        NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
+        NanoHTTPD.Response r = newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
         return r;
     }
@@ -209,33 +216,15 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
     private void playNote(final int noteNumber, final int durationMs) {
         new Thread(new Runnable() {
             public void run() {
-                try {
-//                    tone = generateTone(midiNoteToHz(noteNumber), durationMs);
-//                    tone.play();
-//                    tones.add(generateTone(midiNoteToHz(noteNumber), durationMs));
-                    generateTone(midiNoteToHz(noteNumber), durationMs);
-                } catch (IllegalStateException | NullPointerException e) {
-                    Log.e("SoundHandler", "Play tone: " + e.getMessage());
-                }
+                generateTone(midiNoteToHz(noteNumber), durationMs);
             }
         }).start();
     }
 
     /**
-     * Stops sounds
+     * Stops sounds (except tones)
      */
     private void stopSound() {
-        if (tone != null) {
-            try {
-                tone.flush();
-                if (tone.getPlayState() == AudioTrack.PLAYSTATE_PLAYING || tone.getPlayState() == AudioTrack.PLAYSTATE_PAUSED)
-                    tone.stop();
-                tone.release();
-            } catch (IllegalStateException e) {
-                Log.e("SoundHandler", "Stop Tone: " + e.getMessage());
-            }
-            tone = null;
-        }
         try {
             (new RecordingHandler()).stopPlayback();
             if (mediaPlayer != null && mediaPlayer.isPlaying()) {
@@ -245,9 +234,8 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
             } else if (mediaPlayer != null) {
                 mediaPlayer.cancel();
             }
-            Log.d("StopSound", "Stop Request Sent");
         } catch (IllegalStateException e) {
-            Log.e("SoundHandler", "Stop Sounds: " + e.getMessage());
+            Log.e(TAG, "Stop Sounds: " + e.getMessage());
         }
     }
 
@@ -265,47 +253,18 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                         mediaPlayers.get(i).reset();
                         mediaPlayers.get(i).release();
                     } catch (IllegalStateException | ArrayIndexOutOfBoundsException | NullPointerException e) {
-                        Log.e("SoundHandler", "Stop Sounds: " + e.getMessage());
+                        Log.e(TAG, "Stop All Sounds: " + e.getMessage());
                     }
                 }
                 mediaPlayers.clear();
             }
         }
-//        mediaPlayers = new ArrayList<>();
-//        if (tones != null) {
-//            for (int i = 0; i < tones.size(); i++) {
-//                if (tones.get(i) != null) {
-//                    try {
-//                        tones.get(i).flush();
-//                        try {
-//                            tones.get(i).stop();
-//                        } catch (IllegalStateException e) {
-//                        }
-//                        tones.get(i).release();
-//                    } catch (IllegalStateException | ArrayIndexOutOfBoundsException | NullPointerException e) {
-//                        Log.e("SoundHandler", "Stop Tones: " + e.getMessage());
-//                    }
-//                }
-//                tones.clear();
-//            }
-//        }
-//        tones = new ArrayList<>();
-//        if (tones != null) {
-//            for (int i = 0; i < tones.size(); i++) {
-//                try {
-//                        tones.get(i).flush();
-//                        try {
-//                            tones.get(i).stop();
-//                        } catch (IllegalStateException e) {
-//                        }
-//                        tones.get(i).release();
-//                    } catch (IllegalStateException | ArrayIndexOutOfBoundsException | NullPointerException e) {
-//                        Log.e("SoundHandler", "Stop Tones: " + e.getMessage());
-//                    }
-//            }
-//            tones.clear();
-//        }
-        Log.d("StopSoundAll", "Stop Request Sent");
+        if (tones != null) {
+            for (int i = 0; i < tones.size(); i++) {
+                releaseTrack(tones.get(i));
+            }
+            tones.clear();
+        }
     }
 
     @Override
@@ -347,7 +306,7 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
      * @param durationMs Duration of tone
      * @return Generated tone
      */
-    private AudioTrack generateTone(double freqHz, int durationMs) {
+    private void generateTone(double freqHz, int durationMs) {
         int count = (int) (AUDIO_SAMPLING_RATE * AUDIO_NUM_CHANNELS
                 * (durationMs / MILLIS_PER_SEC)) & ~1;  //  Clear zeroth bit to make even
         short[] samples = new short[count];
@@ -357,67 +316,69 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
             samples[i + 0] = sample;
             samples[i + 1] = sample;
         }
+        int bufferSize = count * (Short.SIZE / 8);
         AudioTrack track = new AudioTrack(AudioManager.STREAM_MUSIC, (int) AUDIO_SAMPLING_RATE,
                 AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT,
-                count * (Short.SIZE / 8), AudioTrack.MODE_STATIC);
-        track.setPlaybackPositionUpdateListener(new AudioTrack.OnPlaybackPositionUpdateListener() {
-            @Override
-            public void onMarkerReached(AudioTrack track) {
-                try {
-//                    synchronized (tones) {
-//                        if (tones != null) {
-////                            tones.remove(track);
-//                            tones = new HashSet<>();
-//                        }
-//                    }
-                    track.flush();
-                    track.stop();
-                    track.release();
-                } catch (IllegalStateException | ArrayIndexOutOfBoundsException | NullPointerException e) {
-                    Log.e("SoundHandler", "Stop Tone: " + e.getMessage());
-                }
-            }
-
-            @Override
-            public void onPeriodicNotification(AudioTrack track) {
-                // nothing to do
-            }
-        });
-        track.write(samples, 0, count);
-        if (track.getPlayState() == AudioTrack.STATE_INITIALIZED) {
-            try {
-                track.play();
-//                synchronized (tones) {
-//                    tones.add(track);
-//                }
-            } catch (IllegalStateException e) {
-//                synchronized (tones) {
-//                    if (tones != null) {
-////                        tones.remove(track);
-//                        tones = new HashSet<>();
-//                    }
-//                }
-                track.flush();
-                try {
-                    track.stop();
-                } catch (IllegalStateException ex) {
-                }
-                track.release();
-            }
+                bufferSize, AudioTrack.MODE_STATIC);
+        if (track.getState() == AudioTrack.STATE_UNINITIALIZED) {
+            releaseTrack(track);
         } else {
-//            synchronized (tones) {
-////                if (tones != null) {
-////                    // tones.remove(track);
-////                    tones = new HashSet<>();
-////                }
-//            }
-            track.flush();
+            track.setNotificationMarkerPosition(track.getPlaybackHeadPosition() + msToSamples(durationMs));
+            track.setPlaybackPositionUpdateListener(new AudioTrack.OnPlaybackPositionUpdateListener() {
+                @Override
+                public void onMarkerReached(AudioTrack track) {
+                    releaseTrack(track);
+                }
+
+                @Override
+                public void onPeriodicNotification(AudioTrack track) {
+                    // nothing to do here
+                }
+            });
+            track.write(samples, 0, count);
+            if (track.getState() == AudioTrack.STATE_INITIALIZED) {
+                try {
+                    track.play();
+                    tones.add(track);
+                } catch (IllegalStateException e) {
+                    releaseTrack(track);
+                }
+            } else {
+                releaseTrack(track);
+            }
+        }
+    }
+
+    /**
+     * Releases a given AudioTrack
+     * (Stops it first, then releases if it is playing)
+     *
+     * @param track The AudioTrack to be released
+     */
+    private void releaseTrack(AudioTrack track) {
+        if (track.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
             try {
+                track.pause();
+                track.flush();
                 track.stop();
             } catch (IllegalStateException e) {
+                Log.e(TAG, "Error while stopping tone: " + e.getMessage());
             }
-            track.release();
         }
-        return track;
+        try {
+            track.release();
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "Error while releasing tone: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Converts milliseconds to samples of buffer.
+     *
+     * @param ms The time in milliseconds
+     * @return The size of the buffer in samples
+     */
+    private int msToSamples(final int ms) {
+        return (int) (AUDIO_SAMPLING_RATE * (ms / MILLIS_PER_SEC));
     }
 }

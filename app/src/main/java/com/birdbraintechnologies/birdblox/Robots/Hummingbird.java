@@ -1,6 +1,8 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
+import android.os.Handler;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBState;
@@ -49,8 +51,8 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 4000;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
-    private static final int MAX_FAILURE_COUNT = 160;
-    private static final int MAX_G4_FAILURE_COUNT = 320;
+    private static final int MAX_FAILURE_COUNT = 10;
+    private static final int MAX_G4_FAILURE_COUNT = 16;
 
     // This represents the firmware version 2.2a
     private static final byte minFirmwareVersion1 = 2;
@@ -104,34 +106,36 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     public void run() {
                         try {
                             lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
-                            if (sendToRobot()) {
-//                                if (count >= MAX_FAILURE_COUNT) {
-//                                    // TODO: Auto-reconnection
-//                                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-//                                }
+                            int result = sendToRobot();
+                            if (result == 1) {
+                                if (count >= MAX_FAILURE_COUNT) {
+                                    // TODO: Auto-reconnection
+                                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                                    Log.d("COUNT", "Auto-reconnect");
+                                }
                                 count = 0;
+                            } else if (result == 0) {
+
                             } else if (!g4) {
-                                Log.d("COUNT", "Send failed");
-                                count++;
                                 if (count >= MAX_FAILURE_COUNT) {
                                     // TODO: Auto-disconnection
                                     count = 0;
+                                    Log.d("COUNT", "Disconnecting");
                                     runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
-//                                    disconnect();
+                                    disconnect();
                                 }
                             } else {
-                                Log.d("COUNT", "Send failed g4");
-                                count++;
                                 if (count >= MAX_G4_FAILURE_COUNT) {
                                     // TODO: Implement successive G4 failure properly here
-//                                    new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-//                                        @Override
-//                                        public void run() {
-//                                            String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
-//                                            Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
-//                                        }
-//                                    });
+                                    new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
+                                            Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
                                     count = 0;
+                                    Log.d("COUNT", "Disconnecting g4");
                                     runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
                                     disconnect();
                                 }
@@ -153,10 +157,11 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
      * Actually sends the commands to the physical Hummingbird,
      * based on certain conditions.
      */
-    public synchronized boolean sendToRobot() {
+    public synchronized int sendToRobot() {
         if (g4) {
             g4response = conn.writeBytesWithResponse("G4".getBytes());
             if (g4response != null && g4response.length > 0) {
+                Log.d("COUNTG4", "G4 Success");
                 count = 0;
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 g4 = false;
@@ -168,13 +173,15 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     runJavascript("CallbackManager.robot.updateFirmwareStatus('" + bbxEncode(getMacAddress()) + "', 'old')");
                 }
             } else {
-                count += 2;
+                Log.d("COUNTG4", "G4 Failure");
+                count++;
                 Log.d("COUNTG4", count + "");
             }
-            return g4response != null && g4response.length > 0;
+            return (g4response != null && g4response.length > 0) ? 1 : -1;
         }
         if (isCurrentlySending()) {
-            return true;
+            Log.d("COUNT", "Currently sending.");
+            return 0;
         } else if (!statesEqual()) {
             // Not currently sending, but oldState and newState are different
             long currentTime = System.currentTimeMillis();
@@ -186,12 +193,13 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 oldState.copy(newState);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
             } else {
-                count += 3;
+                count++;
+                Log.d("COUNTSMALL", "Failure");
                 Log.d("COUNTSMALL", count + "");
             }
             setSendingFalse();
             last_sent = currentTime;
-            return sent;
+            return sent ? 1 : -1;
         } else {
             // Not currently sending, and oldState and newState are the same
             long currentTime = System.currentTimeMillis();
@@ -204,15 +212,17 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     oldState.copy(newState);
                     runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 } else {
-                    count += 80;
+                    count += 4;
+                    Log.d("COUNTBIG", "Failure");
                     Log.d("COUNTBIG", count + "");
                 }
                 setSendingFalse();
                 last_sent = currentTime;
-                return sent;
+                return sent ? 1 : -1;
             }
+            Log.d("COUNTBIG", "Not time yet");
+            return 0;
         }
-        return false;
     }
 
     /**
