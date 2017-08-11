@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.os.Handler;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblox.Robots.RobotType;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
 import org.json.JSONArray;
@@ -26,6 +27,9 @@ import java.util.List;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.connectToRobot;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.fluttersToConnect;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbirdsToConnect;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.lastScanType;
 
 /**
@@ -51,15 +55,15 @@ public class BluetoothHelper {
             synchronized (deviceList) {
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
-//                if (lastScanType.equals("hummingbird") && connectedHummingbirds != null) {
-//                    if (connectedHummingbirds.containsKey(result.getDevice().getAddress())) {
-//                        connectToHummingbird(result.getDevice().getAddress());
-//                    }
-//                } else if (lastScanType.equals("flutter") && connectedFlutters != null) {
-//                    if (connectedFlutters.containsKey(result.getDevice().getAddress())) {
-//                        connectToFlutter(result.getDevice().getAddress());
-//                    }
-//                }
+                if (lastScanType.equals("hummingbird") && hummingbirdsToConnect != null) {
+                    if (hummingbirdsToConnect.contains(result.getDevice().getAddress())) {
+                        connectToRobot(RobotType.Hummingbird, result.getDevice().getAddress());
+                    }
+                } else if (lastScanType.equals("flutter") && fluttersToConnect != null) {
+                    if (fluttersToConnect.contains(result.getDevice().getAddress())) {
+                        connectToRobot(RobotType.Flutter, result.getDevice().getAddress());
+                    }
+                }
                 JSONArray robots = new JSONArray();
                 for (BluetoothDevice device : BLEDeviceList) {
                     String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());

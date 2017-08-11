@@ -28,6 +28,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -66,16 +67,18 @@ public class RobotRequestHandler implements RequestHandler {
     // TODO: Remove this, it is the same across devices
     private static final UUID RX_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
+    public static HashSet<String> hummingbirdsToConnect = new HashSet<>();
+    public static HashSet<String> fluttersToConnect = new HashSet<>();
 
     HttpService service;
-    private BluetoothHelper btHelper;
-    private HashMap<String, Thread> threadMap;
+    private static BluetoothHelper btHelper;
+    private static HashMap<String, Thread> threadMap;
 
-    private UARTSettings HBUARTSettings;
-    private HashMap<String, Hummingbird> connectedHummingbirds;
+    private static UARTSettings HBUARTSettings;
+    private static HashMap<String, Hummingbird> connectedHummingbirds;
 
-    private UARTSettings FLUARTSettings;
-    private HashMap<String, Flutter> connectedFlutters;
+    private static UARTSettings FLUARTSettings;
+    private static HashMap<String, Flutter> connectedFlutters;
 
     public static String lastScanType;
 
@@ -84,14 +87,14 @@ public class RobotRequestHandler implements RequestHandler {
 
     public RobotRequestHandler(HttpService service) {
         this.service = service;
-        this.btHelper = service.getBluetoothHelper();
-        this.threadMap = new HashMap<>();
+        btHelper = service.getBluetoothHelper();
+        threadMap = new HashMap<>();
 
-        this.connectedHummingbirds = new HashMap<>();
-        this.connectedFlutters = new HashMap<>();
+        connectedHummingbirds = new HashMap<>();
+        connectedFlutters = new HashMap<>();
 
         // Build Hummingbird UART settings
-        this.HBUARTSettings = (new UARTSettings.Builder())
+        HBUARTSettings = (new UARTSettings.Builder())
                 .setUARTServiceUUID(HB_UART_UUID)
                 .setRxCharacteristicUUID(HB_RX_UUID)
                 .setTxCharacteristicUUID(HB_TX_UUID)
@@ -99,7 +102,7 @@ public class RobotRequestHandler implements RequestHandler {
                 .build();
 
         // Build Flutter UART settings
-        this.FLUARTSettings = (new UARTSettings.Builder())
+        FLUARTSettings = (new UARTSettings.Builder())
                 .setUARTServiceUUID(FL_UART_UUID)
                 .setRxCharacteristicUUID(FL_RX_UUID)
                 .setTxCharacteristicUUID(FL_TX_UUID)
@@ -273,8 +276,7 @@ public class RobotRequestHandler implements RequestHandler {
      * @param robotId
      * @return
      */
-    private String connectToRobot(RobotType robotType, String robotId) {
-        // stopDiscover();
+    public static String connectToRobot(RobotType robotType, String robotId) {
         if (robotType == RobotType.Hummingbird) {
             connectToHummingbird(robotId);
         } else {
@@ -289,8 +291,8 @@ public class RobotRequestHandler implements RequestHandler {
      * @param hummingbirdId
      * @return
      */
-    private void connectToHummingbird(final String hummingbirdId) {
-        final UARTSettings HBUART = this.HBUARTSettings;
+    private static void connectToHummingbird(final String hummingbirdId) {
+        final UARTSettings HBUART = HBUARTSettings;
         try {
             Thread hbConnectionThread = new Thread() {
                 @Override
@@ -321,8 +323,8 @@ public class RobotRequestHandler implements RequestHandler {
     /**
      * @param FlutterId
      */
-    private void connectToFlutter(final String FlutterId) {
-        final UARTSettings FLUART = this.FLUARTSettings;
+    private static void connectToFlutter(final String FlutterId) {
+        final UARTSettings FLUART = FLUARTSettings;
         try {
             Thread flConnectionThread = new Thread() {
                 @Override
@@ -385,10 +387,9 @@ public class RobotRequestHandler implements RequestHandler {
                 Log.d(TAG, "Disconnecting from hummingbird: " + hummingbirdId);
                 if (hummingbird.isConnected())
                     hummingbird.disconnect();
-//                else
-//                    hummingbird.connectionBroke();
                 Log.d("TotStat", "Removing hummingbird: " + hummingbirdId);
                 connectedHummingbirds.remove(hummingbirdId);
+                hummingbirdsToConnect.remove(hummingbirdId);
             }
         } catch (Exception e) {
             Log.e("ConnectHB", " Error while disconnecting from HB " + e.getMessage());
@@ -407,6 +408,7 @@ public class RobotRequestHandler implements RequestHandler {
                     flutter.disconnect();
                 Log.d("TotStat", "Removing flutter: " + flutterId);
                 connectedFlutters.remove(flutterId);
+                fluttersToConnect.remove(flutterId);
             }
         } catch (Exception e) {
             Log.e("ConnectFL", " Error while disconnecting from FL " + e.getMessage());

@@ -170,25 +170,12 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        mainWebViewContext = MainWebView.this;
-
         /* If the bluetooth service is already running, stop it. */
-        if (isMyServiceRunning(BluetoothHelper.class)) {
-            try {
-                stopService(new Intent(this, BluetoothHelper.class));
-            } catch (SecurityException | IllegalStateException e) {
-                Log.e(TAG, "Error while stopping pre-existing bluetooth service: " + e.getMessage());
-            }
-        }
-
+        stopService(new Intent(this, BluetoothHelper.class));
         /* If the HTTP service is already running, stop it. */
-        if (isMyServiceRunning(HttpService.class)) {
-            try {
-                stopService(new Intent(this, HttpService.class));
-            } catch (SecurityException | IllegalStateException e) {
-                Log.e(TAG, "Error while stopping pre-existing HTTP service: " + e.getMessage());
-            }
-        }
+        stopService(new Intent(this, HttpService.class));
+
+        mainWebViewContext = MainWebView.this;
 
         // Hide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
