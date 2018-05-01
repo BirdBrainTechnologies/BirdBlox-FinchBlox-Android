@@ -616,7 +616,13 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             int fw1 = (int) g4response[2];
             int fw2 = (int) g4response[3];
             String fw3 = new String(new byte[]{g4response[4]}, "utf-8");
-            return (fw1 >= minFirmwareVersion1) && (fw2 >= minFirmwareVersion2) && (fw3.compareTo(minFirmwareVersion3) >= 0);
+            if (fw1 >= minFirmwareVersion1) {
+                if (fw1 > minFirmwareVersion1) return true;
+                if (fw2 >= minFirmwareVersion2) {
+                    return ((fw2 > minFirmwareVersion2) || (fw3.compareTo(minFirmwareVersion3) >= 0));
+                }
+            }
+            return false;
         } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException | NullPointerException e) {
             Log.e(TAG, "Hummingbird firmware version: " + e.getMessage());
             return false;
@@ -628,7 +634,13 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             int fw1 = (int) g4response[2];
             int fw2 = (int) g4response[3];
             String fw3 = new String(new byte[]{g4response[4]}, "utf-8");
-            return (fw1 >= latestFirmwareVersion1) && (fw2 >= latestFirmwareVersion2) && (fw3.compareTo(latestFirmwareVersion3) >= 0);
+            if (fw1 >= latestFirmwareVersion1) {
+                if (fw1 > latestFirmwareVersion1) return true;
+                if (fw2 >= latestFirmwareVersion2) {
+                    return ((fw2 > latestFirmwareVersion2) || (fw3.compareTo(latestFirmwareVersion3) >= 0));
+                }
+            }
+            return false;
         } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException | NullPointerException e) {
             Log.e(TAG, "Hummingbird firmware version: " + e.getMessage());
             return false;
