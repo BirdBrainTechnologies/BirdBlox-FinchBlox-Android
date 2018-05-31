@@ -66,6 +66,7 @@ public class BluetoothHelper {
                     JSONObject robot = new JSONObject();
                     try {
                         robot.put("id", device.getAddress());
+                        robot.put("device", prefix);
                         robot.put("name", name);
                         robot.put("RSSI", deviceRSSI.get(device.getAddress()));
                     } catch (JSONException e) {
