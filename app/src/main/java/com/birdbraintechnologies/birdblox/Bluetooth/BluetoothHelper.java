@@ -66,10 +66,10 @@ public class BluetoothHelper {
                     System.out.println("name:"+device.getName().substring(0,2));
                     switch (device.getName().substring(0,2)) {
                         case "HM":
-                            prefix = "DUO";
+                            prefix = "Duo";
                             break;
                         case "HB":
-                            prefix = "DUO";
+                            prefix = "Duo";
                             break;
                         case "FN":
                             prefix = "Finch";
