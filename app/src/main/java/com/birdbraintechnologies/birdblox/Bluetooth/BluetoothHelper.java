@@ -62,7 +62,25 @@ public class BluetoothHelper {
                 JSONArray robots = new JSONArray();
                 for (BluetoothDevice device : BLEDeviceList) {
                     String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
-                    String prefix = device.getName();
+                    String prefix = "";
+                    System.out.println("name:"+device.getName().substring(0,2));
+                    switch (device.getName().substring(0,2)) {
+                        case "HM":
+                            prefix = "DUO";
+                            break;
+                        case "HB":
+                            prefix = "DUO";
+                            break;
+                        case "FN":
+                            prefix = "Finch";
+                            break;
+                        case "BB":
+                            prefix = "Bit";
+                            break;
+                        case "MB":
+                            prefix = "micro:bit";
+                            break;
+                    }
                     JSONObject robot = new JSONObject();
                     try {
                         robot.put("id", device.getAddress());
@@ -74,6 +92,7 @@ public class BluetoothHelper {
                     }
                     robots.put(robot);
                 }
+                System.out.println("robot"+robots.toString());
                 runJavascript("CallbackManager.robot.discovered('" + lastScanType + "', '" + bbxEncode(robots.toString()) + "');");
             }
         }
