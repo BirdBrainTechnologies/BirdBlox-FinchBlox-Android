@@ -56,7 +56,7 @@ public abstract class Robot<T extends RobotState<T>> {
      * @param portString
      * @return
      */
-    public abstract String readSensor(String sensorType, String portString);
+    public abstract String readSensor(String sensorType, String portString,  String axisString);
 
     public abstract String getMacAddress();
 

@@ -1,7 +1,6 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
 import android.app.AlertDialog;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.ScanFilter;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -11,22 +10,18 @@ import android.os.ParcelUuid;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
-import com.birdbraintechnologies.birdblox.Bluetooth.MelodySmartConnection;
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTSettings;
-import com.birdbraintechnologies.birdblox.Robots.Flutter;
 import com.birdbraintechnologies.birdblox.Robots.Hummingbird;
+import com.birdbraintechnologies.birdblox.Robots.Hummingbit;
+import com.birdbraintechnologies.birdblox.Robots.Microbit;
 import com.birdbraintechnologies.birdblox.Robots.Robot;
 import com.birdbraintechnologies.birdblox.Robots.RobotType;
-import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -35,7 +30,6 @@ import java.util.UUID;
 
 import fi.iki.elonen.NanoHTTPD;
 
-import static com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper.deviceList;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
@@ -58,17 +52,12 @@ public class RobotRequestHandler implements RequestHandler {
     private static final UUID HB_TX_UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
     private static final UUID HB_RX_UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
 
-    /* UUIDs for different Flutter features */
-    private static final String FL_ROBOT_UUID = "BC2F4CC6-AAEF-4351-9034-D66268E328F0";
-    private static final UUID FL_UART_UUID = UUID.fromString("BC2F4CC6-AAEF-4351-9034-D66268E328F0");
-    private static final UUID FL_TX_UUID = UUID.fromString("06D1E5E7-79AD-4A71-8FAA-373789F7D93C");
-    private static final UUID FL_RX_UUID = UUID.fromString("818AE306-9C5B-448D-B51A-7ADD6A5D314D");
-
     // TODO: Remove this, it is the same across devices
     private static final UUID RX_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
     public static HashSet<String> hummingbirdsToConnect = new HashSet<>();
-    public static HashSet<String> fluttersToConnect = new HashSet<>();
+    public static HashSet<String> hummingbitsToConnect = new HashSet<>();
+    public static HashSet<String> microbitsToConnect = new HashSet<>();
 
     HttpService service;
     private static BluetoothHelper btHelper;
@@ -77,8 +66,11 @@ public class RobotRequestHandler implements RequestHandler {
     private static UARTSettings HBUARTSettings;
     private static HashMap<String, Hummingbird> connectedHummingbirds;
 
-    private static UARTSettings FLUARTSettings;
-    private static HashMap<String, Flutter> connectedFlutters;
+    private static UARTSettings HBitUARTSettings;
+    private static HashMap<String, Hummingbit> connectedHummingbits;
+
+    private static UARTSettings MBitUARTSettings;
+    private static HashMap<String, Microbit> connectedMicrobits;
 
     public static String lastScanType;
 
@@ -91,7 +83,8 @@ public class RobotRequestHandler implements RequestHandler {
         threadMap = new HashMap<>();
 
         connectedHummingbirds = new HashMap<>();
-        connectedFlutters = new HashMap<>();
+        connectedHummingbits = new HashMap<>();
+        connectedMicrobits = new HashMap<>();
 
         // Build Hummingbird UART settings
         HBUARTSettings = (new UARTSettings.Builder())
@@ -101,23 +94,21 @@ public class RobotRequestHandler implements RequestHandler {
                 .setRxConfigUUID(RX_CONFIG_UUID)
                 .build();
 
-        // Build Flutter UART settings
-        FLUARTSettings = (new UARTSettings.Builder())
-                .setUARTServiceUUID(FL_UART_UUID)
-                .setRxCharacteristicUUID(FL_RX_UUID)
-                .setTxCharacteristicUUID(FL_TX_UUID)
-                .setRxConfigUUID(RX_CONFIG_UUID)
-                .build();
+        HBitUARTSettings = HBUARTSettings;
+        MBitUARTSettings = HBitUARTSettings;
+
     }
 
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         Map<String, List<String>> m = session.getParameters();
-
         // Generate response body
         String responseBody = "";
+        Robot robot;
+
         switch (path[0]) {
+
             case "startDiscover":
                 responseBody = startScan(robotTypeFromString(m.get("type").get(0)));
                 break;
@@ -134,7 +125,7 @@ public class RobotRequestHandler implements RequestHandler {
                 responseBody = disconnectFromRobot(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
                 break;
             case "out":
-                Robot robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
                 if (robot == null) {
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
                     return NanoHTTPD.newFixedLengthResponse(
@@ -150,12 +141,23 @@ public class RobotRequestHandler implements RequestHandler {
                 break;
             case "in":
                 robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+
                 if (robot == null) {
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
                     return NanoHTTPD.newFixedLengthResponse(
                             NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Robot " + m.get("id").get(0) + " was not found.");
                 } else {
-                    String sensorValue = robot.readSensor(m.get("sensor").get(0), m.get("port").get(0));
+                    String sensorPort = null;
+                    String sensorAxis = null;
+                    if (m.get("port") != null) {
+                        sensorPort = m.get("port").get(0);
+                    }
+
+                    if (m.get("axis") != null) {
+                        sensorAxis = m.get("axis").get(0);
+                    }
+//                    System.out.println("type" + m.get("sensor").get(0) + "axis" + sensorAxis + "id" + m.get("id").get(0));
+                    String sensorValue = robot.readSensor(m.get("sensor").get(0), sensorPort, sensorAxis);
                     if (sensorValue == null) {
                         runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
                         return NanoHTTPD.newFixedLengthResponse(
@@ -191,10 +193,12 @@ public class RobotRequestHandler implements RequestHandler {
 
     private String startScan(final RobotType robotType) {
         // TODO: Handle error in this case
-        if (robotType == null)
+        if (robotType == null) {
             return "";
-        if (BluetoothHelper.currentlyScanning && lastScanType.equals(robotType.toString().toLowerCase()))
+        }
+        if (BluetoothHelper.currentlyScanning && lastScanType.equals(robotType.toString().toLowerCase())) {
             return "";
+        }
         if (BluetoothHelper.currentlyScanning) {
             stopDiscover();
         }
@@ -209,59 +213,30 @@ public class RobotRequestHandler implements RequestHandler {
     }
 
     /**
-     * Lists the Robots (of a given type) that are seen
-     *
-     * @return List of Robots of the given type
-     */
-    private synchronized String listRobots(final RobotType robotType) {
-        if (!BluetoothHelper.currentlyScanning) {
-            new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-                @Override
-                public void run() {
-                    btHelper.scanDevices(generateDeviceFilter(robotType));
-                }
-            });
-        }
-        List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
-        JSONArray robots = new JSONArray();
-        for (BluetoothDevice device : BLEDeviceList) {
-            String name = NamingHandler.GenerateName(service.getApplicationContext(), device.getAddress());
-            JSONObject robot = new JSONObject();
-            try {
-                robot.put("id", device.getAddress());
-                robot.put("name", name);
-            } catch (JSONException e) {
-                Log.e("JSON", "JSONException while discovering " + lastScanType);
-            }
-            robots.put(robot);
-        }
-        runJavascript("CallbackManager.robot.discovered('" + lastScanType + "', '" + bbxEncode(robots.toString()) + "');");
-        return robots.toString();
-    }
-
-    /**
      * Finds a robotId in the list of connected robots. Null if it does not exist.
      *
-     * @param robotType The type of the robot to be found. Must be 'hummingbird' or 'flutter'.
+     * @param robotType The type of the robot to be found. Must be 'hummingbird' or 'hummingbit' or 'microbit'.
      * @param robotId   Robot ID to find.
      * @return The connected Robot if it exists, null otherwise.
      */
     private Robot getRobotFromId(RobotType robotType, String robotId) {
         if (robotType == RobotType.Hummingbird) {
             return connectedHummingbirds.get(robotId);
+        } else if (robotType == RobotType.Hummingbit) {
+            return connectedHummingbits.get(robotId);
         } else {
-            return connectedFlutters.get(robotId);
+            return connectedMicrobits.get(robotId);
         }
     }
 
     /**
      * Creates a Bluetooth scan Robot filter that only matches the required 'type' of Robot.
      *
-     * @param robotType The 'type' of Robot to be scanned for (Hummingbird or Flutter).
+     * @param robotType The 'type' of Robot to be scanned for (Hummingbird or Hummingbit or Microbit).
      * @return List of scan filters.
      */
     private static List<ScanFilter> generateDeviceFilter(RobotType robotType) {
-        String ROBOT_UUID = (robotType == RobotType.Hummingbird ? HB_ROBOT_UUID : FL_ROBOT_UUID);
+        String ROBOT_UUID = (robotType == RobotType.Hummingbird || robotType == RobotType.Hummingbit || robotType == RobotType.Microbit) ? HB_ROBOT_UUID : "";
         ScanFilter scanFilter = (new ScanFilter.Builder())
                 .setServiceUuid(ParcelUuid.fromString(ROBOT_UUID))
                 .build();
@@ -279,18 +254,20 @@ public class RobotRequestHandler implements RequestHandler {
     public static String connectToRobot(RobotType robotType, String robotId) {
         if (robotType == RobotType.Hummingbird) {
             connectToHummingbird(robotId);
+        } else if (robotType == RobotType.Hummingbit) {
+            connectToHummingbit(robotId);
         } else {
-            connectToFlutter(robotId);
+            connectToMicrobit(robotId);
         }
         BluetoothHelper.currentlyScanning = false;
         return "";
     }
 
-    /**
-     *
-     * @param hummingbirdId
-     * @return
-     */
+//    /**
+//     *
+//     * @param hummingbirdId
+//     * @return
+//     */
     private static void connectToHummingbird(final String hummingbirdId) {
         final UARTSettings HBUART = HBUARTSettings;
         try {
@@ -320,24 +297,21 @@ public class RobotRequestHandler implements RequestHandler {
         }
     }
 
-    /**
-     * @param FlutterId
-     */
-    private static void connectToFlutter(final String FlutterId) {
-        final UARTSettings FLUART = FLUARTSettings;
+    private static void connectToHummingbit(final String hummingbitId) {
+        final UARTSettings HBitUART = HBitUARTSettings;
         try {
-            Thread flConnectionThread = new Thread() {
+            Thread hbitConnectionThread = new Thread() {
                 @Override
                 public void run() {
-                    MelodySmartConnection flConn = btHelper.connectToDeviceMelodySmart(FlutterId, FLUART);
-                    if (flConn != null && connectedFlutters != null) {
-                        Flutter flutter = new Flutter(flConn);
-                        connectedFlutters.put(FlutterId, flutter);
+                    UARTConnection hbitConn = btHelper.connectToDeviceUART(hummingbitId, HBitUART);
+                    if (hbitConn != null && connectedHummingbits != null) {
+                        Hummingbit hummingbit = new Hummingbit(hbitConn);
+                        connectedHummingbits.put(hummingbitId, hummingbit);
                     }
                 }
             };
-            flConnectionThread.start();
-            final Thread oldThread = threadMap.put(FlutterId, flConnectionThread);
+            hbitConnectionThread.start();
+            final Thread oldThread = threadMap.put(hummingbitId, hbitConnectionThread);
             if (oldThread != null) {
                 new Thread() {
                     @Override
@@ -348,7 +322,36 @@ public class RobotRequestHandler implements RequestHandler {
                 }.start();
             }
         } catch (Exception e) {
-            Log.e("ConnectFL", " Error while connecting to FL " + e.getMessage());
+            Log.e("ConnectHBit", " Error while connecting to HBit " + e.getMessage());
+        }
+    }
+
+    private static void connectToMicrobit(final String microbitId) {
+        final UARTSettings MBitUART = MBitUARTSettings;
+        try {
+            Thread mbitConnectionThread = new Thread() {
+                @Override
+                public void run() {
+                    UARTConnection mbitConn = btHelper.connectToDeviceUART(microbitId, MBitUART);
+                    if (mbitConn != null && connectedMicrobits != null) {
+                        Microbit microbit = new Microbit(mbitConn);
+                        connectedMicrobits.put(microbitId, microbit);
+                    }
+                }
+            };
+            mbitConnectionThread.start();
+            final Thread oldThread = threadMap.put(microbitId, mbitConnectionThread);
+            if (oldThread != null) {
+                new Thread() {
+                    @Override
+                    public void run() {
+                        super.run();
+                        oldThread.interrupt();
+                    }
+                }.start();
+            }
+        } catch (Exception e) {
+            Log.e("ConnectHBit", " Error while connecting to HBit " + e.getMessage());
         }
     }
 
@@ -368,12 +371,14 @@ public class RobotRequestHandler implements RequestHandler {
         }.start();
 
         if (robotType == RobotType.Hummingbird) disconnectFromHummingbird(robotId);
-        else disconnectFromFlutter(robotId);
+        else if (robotType == RobotType.Hummingbit) disconnectFromHummingbit(robotId);
+        else  disconnectFromMicrobit(robotId);
 
         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(robotId) + "', false);");
 
         Log.d("TotStat", "Connected Hummingbirds: " + connectedHummingbirds.toString());
-        Log.d("TotStat", "Connected Flutters: " + connectedFlutters.toString());
+        Log.d("TotStat", "Connected Hummingbits: " + connectedHummingbits.toString());
+        Log.d("TotStat", "Connected Hummingbits: " + connectedMicrobits.toString());
         return robotType.toString() + " disconnected successfully.";
     }
 
@@ -397,30 +402,56 @@ public class RobotRequestHandler implements RequestHandler {
     }
 
     /**
-     * @param flutterId
+     * @param hummingbitId
      */
-    private void disconnectFromFlutter(String flutterId) {
+    private void disconnectFromHummingbit(String hummingbitId) {
         try {
-            Flutter flutter = (Flutter) getRobotFromId(RobotType.Flutter, flutterId);
-            if (flutter != null) {
-                Log.d(TAG, "Disconnecting from flutter: " + flutterId);
-                if (flutter.isConnected())
-                    flutter.disconnect();
-                Log.d("TotStat", "Removing flutter: " + flutterId);
-                connectedFlutters.remove(flutterId);
-                fluttersToConnect.remove(flutterId);
+            Hummingbit hummingbit = (Hummingbit) getRobotFromId(RobotType.Hummingbit, hummingbitId);
+            if (hummingbit != null) {
+                Log.d(TAG, "Disconnecting from hummingbit: " + hummingbitId);
+                if (hummingbit.isConnected())
+                    hummingbit.disconnect();
+                Log.d("TotStat", "Removing hummingbit: " + hummingbitId);
+                connectedHummingbits.remove(hummingbitId);
+                hummingbitsToConnect.remove(hummingbitId);
             }
         } catch (Exception e) {
-            Log.e("ConnectFL", " Error while disconnecting from FL " + e.getMessage());
+            Log.e("ConnectHB", " Error while disconnecting from HB " + e.getMessage());
         }
     }
+
+    /**
+     * @param microbitId
+     */
+    private void disconnectFromMicrobit(String microbitId) {
+        try {
+            Microbit microbit = (Microbit) getRobotFromId(RobotType.Microbit, microbitId);
+            if (microbit != null) {
+                Log.d(TAG, "Disconnecting from microbit: " + microbitId);
+                if (microbit.isConnected())
+                    microbit.disconnect();
+                Log.d("TotStat", "Removing microbit: " + microbitId);
+                connectedMicrobits.remove(microbitId);
+                microbitsToConnect.remove(microbitId);
+            }
+        } catch (Exception e) {
+            Log.e("ConnectHB", " Error while disconnecting from MB " + e.getMessage());
+        }
+    }
+
 
     /**
      * @param robotType
      * @return
      */
     private String getTotalStatus(RobotType robotType) {
-        return (robotType == RobotType.Hummingbird) ? getTotalHBStatus() : getTotalFLStatus();
+        if (robotType == RobotType.Hummingbird) {
+            return getTotalHBStatus() ;
+        } else if (robotType == RobotType.Hummingbit){
+            return getTotalHBitStatus();
+        } else {
+            return getTotalMBitStatus();
+        }
     }
 
     /**
@@ -442,17 +473,33 @@ public class RobotRequestHandler implements RequestHandler {
     /**
      * @return
      */
-    private String getTotalFLStatus() {
-        Log.d("TotStat", "Connected Flutters: " + connectedFlutters.toString());
-        if (connectedFlutters.size() == 0) {
-            return "2";  // No flutters connected
+    private String getTotalHBitStatus() {
+        Log.d("TotStat", "Connected Hummingbits: " + connectedHummingbits.toString());
+        if (connectedHummingbits.size() == 0) {
+            return "2";  // No hummingbits connected
         }
-        for (Flutter flutter : connectedFlutters.values()) {
-            if (!flutter.isConnected()) {
-                return "0";  // Some flutter is disconnected
+        for (Hummingbit hummingbit : connectedHummingbits.values()) {
+            if (!hummingbit.isConnected()) {
+                return "0";  // Some hummingbit is disconnected
             }
         }
-        return "1";  // All flutters are OK
+        return "1";  // All hummingbits are OK
+    }
+
+    /**
+     * @return
+     */
+    private String getTotalMBitStatus() {
+        Log.d("TotStat", "Connected Microbits: " + connectedMicrobits.toString());
+        if (connectedMicrobits.size() == 0) {
+            return "2";  // No hummingbits connected
+        }
+        for (Microbit microbit : connectedMicrobits.values()) {
+            if (!microbit.isConnected()) {
+                return "0";  // Some hummingbit is disconnected
+            }
+        }
+        return "1";  // All hummingbits are OK
     }
 
     private String stopDiscover() {
@@ -470,8 +517,16 @@ public class RobotRequestHandler implements RequestHandler {
         String name = robot.getName();
         String macAddress = robot.getMacAddress();
         String gapName = robot.getGAPName();
-        String hardwareVersion = (robotType == RobotType.Hummingbird) ? ((Hummingbird) robot).getHardwareVersion() : null;
-        String firmwareVersion = (robotType == RobotType.Hummingbird) ? ((Hummingbird) robot).getFirmwareVersion() : null;
+        String hardwareVersion = "";
+        String firmwareVersion = "";
+        if (robotType == RobotType.Hummingbird) {
+            hardwareVersion = ((Hummingbird) robot).getHardwareVersion();
+            firmwareVersion = ((Hummingbird) robot).getFirmwareVersion();
+        } else if (robotType == RobotType.Hummingbit || robotType == RobotType.Microbit) {
+            hardwareVersion = ((Hummingbit) robot).getHardwareVersion();
+            firmwareVersion = "major: " + ((Hummingbit) robot).getFirmwareMajorVersion() +"minor: " + ((Hummingbit) robot).getFirmwareMinorVersion();
+        }
+
 
         builder.setTitle(robotType.toString() + " Peripheral");
         String message = "";
@@ -536,13 +591,15 @@ public class RobotRequestHandler implements RequestHandler {
 
     /**
      * Resets the values of the peripherals of all connected hummingbirds
-     * and flutters to their default values.
+     * and microbits and hummingbits to their default values.
      */
     private void stopAll() {
         for (Hummingbird hummingbird : connectedHummingbirds.values())
             hummingbird.stopAll();
-        for (Flutter flutter : connectedFlutters.values())
-            flutter.stopAll();
+        for (Hummingbit hummingbit : connectedHummingbits.values())
+            hummingbit.stopAll();
+        for (Microbit microbit : connectedMicrobits.values())
+            microbit.stopAll();
     }
 
 }

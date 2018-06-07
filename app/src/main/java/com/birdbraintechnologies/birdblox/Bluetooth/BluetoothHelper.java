@@ -23,9 +23,11 @@ import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.connectToRobot;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.fluttersToConnect;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbirdsToConnect;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbitsToConnect;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.lastScanType;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.microbitsToConnect;
+
 /**
  * Helper class for basic Bluetooth connectivity
  *
@@ -53,9 +55,13 @@ public class BluetoothHelper {
                     if (hummingbirdsToConnect.contains(result.getDevice().getAddress())) {
                         connectToRobot(RobotType.Hummingbird, result.getDevice().getAddress());
                     }
-                } else if (lastScanType.equals("flutter") && fluttersToConnect != null) {
-                    if (fluttersToConnect.contains(result.getDevice().getAddress())) {
-                        connectToRobot(RobotType.Flutter, result.getDevice().getAddress());
+                } else if (lastScanType.equals("hummingbit") && hummingbitsToConnect != null){
+                    if (hummingbitsToConnect.contains(result.getDevice().getAddress())) {
+                        connectToRobot(RobotType.Hummingbit, result.getDevice().getAddress());
+                    }
+                } else {
+                    if (microbitsToConnect.contains(result.getDevice().getAddress())) {
+                        connectToRobot(RobotType.Microbit, result.getDevice().getAddress());
                     }
                 }
                 deviceRSSI.put(result.getDevice().getAddress(),result.getRssi());
@@ -63,7 +69,6 @@ public class BluetoothHelper {
                 for (BluetoothDevice device : BLEDeviceList) {
                     String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
                     String prefix = "";
-                    System.out.println("name:"+device.getName().substring(0,2));
                     switch (device.getName().substring(0,2)) {
                         case "HM":
                             prefix = "Duo";
@@ -90,9 +95,9 @@ public class BluetoothHelper {
                     } catch (JSONException e) {
                         Log.e("JSON", "JSONException while discovering " + lastScanType);
                     }
+
                     robots.put(robot);
                 }
-                System.out.println("robot"+robots.toString());
                 runJavascript("CallbackManager.robot.discovered('" + lastScanType + "', '" + bbxEncode(robots.toString()) + "');");
             }
         }
@@ -129,7 +134,8 @@ public class BluetoothHelper {
             Log.d("BLEScan", "Scan already running.");
             return;
         }
-        if (scanner == null) {
+        if (scanner == null && btAdapter.isEnabled()) {
+
             // Start scanning for devices
             scanner = btAdapter.getBluetoothLeScanner();
             // Schedule thread to stop scanning after SCAN_DURATION
@@ -176,22 +182,7 @@ public class BluetoothHelper {
         UARTConnection conn = new UARTConnection(context, device, settings);
         return conn;
     }
-    /**
-     * Connects to a device and returns the resulting connection
-     *
-     * @param addr     MAC Address of the device to connect to
-     * @param settings Settings to define the UART connection's TX and RX lines
-     * @return Result connection, null if the given MAC Address doesn't match any scanned device
-     */
-    synchronized public MelodySmartConnection connectToDeviceMelodySmart(String addr, UARTSettings settings) {
-        BluetoothDevice device = deviceList.get(addr);
-        if (device == null) {
-            Log.e(TAG, "Unable to connect to device: " + addr);
-            return null;
-        }
-        MelodySmartConnection conn = new MelodySmartConnection(context, device, settings);
-        return conn;
-    }
+
     public void stopScan() {
         if (scanner != null) {
             scanner.stopScan(populateDevices);

@@ -15,8 +15,16 @@ public class DeviceUtil {
      * @param raw Raw reading from sensor
      * @return Sensor reading as a percentage
      */
+    public static double RawToKnob(int raw) {
+        return (raw * 100.0/230.0) > 100.0 ? 100.0 : (raw * 100.0/230.0);
+    }
+
     public static double RawToPercent(byte raw) {
         return RawToInt(raw) / 2.55;
+    }
+
+    public static double RawToDistance(int raw) {
+        return raw * 1.0;
     }
 
     /**
@@ -61,6 +69,65 @@ public class DeviceUtil {
             }
         }
     }
+    public static double RawToAccl(byte[] rawAccl, String axisString) {
+        switch (axisString) {
+            case "x":
+                return RawToInt(rawAccl[0]) * 196.0/1280.0 ;
+            case "y":
+                return RawToInt(rawAccl[1]) * 196.0/1280.0 ;
+            case "z":
+                return RawToInt(rawAccl[2]) * 196.0/1280.0 ;
+        }
+        return 0.0;
+    }
+
+    public static double RawToMag(byte[] rawMag, String axisString) {
+        double mx = ((short) (rawMag[1] | (rawMag[0] << 8))) * 1.0;
+        double my = ((short) (rawMag[2] | (rawMag[3] << 8))) * 1.0;
+        double mz = ((short) (rawMag[4] | (rawMag[5] << 8))) * 1.0;
+
+        switch (axisString) {
+            case "x":
+                return mx;
+            case "y":
+                return my;
+            case "z":
+                return mz;
+        }
+        return 0.0;
+    }
+
+    public static double RawToCompass(byte[] rawAccl, byte[] rawMag) {
+        double ax = ((short) rawAccl[0]) * 1.0;
+        double ay = ((short) rawAccl[1]) * 1.0;
+        double az = ((short) rawAccl[2]) * 1.0;
+
+        double mx = ((short) (rawMag[1] | (rawMag[0] << 8))) * 1.0;
+        double my = ((short) (rawMag[2] | (rawMag[3] << 8))) * 1.0;
+        double mz = ((short) (rawMag[4] | (rawMag[5] << 8))) * 1.0;
+
+        double phi = Math.atan(-ay / az);
+        double theta = Math.atan(ax / (ay * Math.sin(phi) + az * Math.cos(phi)));
+
+        double xp = mx;
+        double yp = my * Math.cos(phi) - mz * Math.sin(phi);
+        double zp = my * Math.sin(phi) + mz * Math.cos(phi);
+
+        double xpp = xp * Math.cos(theta) + zp * Math.sin(theta);
+        double ypp = yp;
+
+        double angle = 180.0 + Math.toDegrees(Math.atan(xpp/ypp));
+        return angle;
+    }
+
+    public static double RawToSound(int raw) {
+        return (raw * 200.0) / 255.0;
+    }
+
+    public static double RawToLight(int raw) {
+        return (raw * 100.0) / 255.0;
+    }
+
 
     /**
      * Converts raw readings from sensors [0,255] into voltage

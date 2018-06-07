@@ -58,7 +58,6 @@ class RequestRouter {
         /**
          * These were older command patterns (NOT to be used anymore):
          * addRoute("^/hummingbird/(.*)$", new HummingbirdRequestHandler(service));
-         * addRoute("^/flutter/(.*)$", new FlutterRequestHandler(service));
          *
          * They have now been replaced with:
          * addRoute("^/robot/(.*)$", new RobotRequestHandler(service));
@@ -97,6 +96,7 @@ class RequestRouter {
                 for (int i = 1; i <= match.groupCount(); i++) {
                     args.add(match.group(i));
                 }
+                System.out.println("args" + args.toString());
                 return e.getValue().handleRequest(session, args);
             }
         }
