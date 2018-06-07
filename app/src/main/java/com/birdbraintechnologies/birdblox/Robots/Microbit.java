@@ -6,13 +6,11 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
-import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBitState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.MBState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -177,7 +175,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 if (!hasLatestFirmware()) {
                     cf.set(true);
-                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareMajorVersion()) + "', '" + bbxEncode(getLatestFirmwareMinorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion())+"')");
+                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareMajorVersion()) + "', '" + bbxEncode(getLatestFirmwareMinorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion()) + "')");
                     disconnect();
                 }
             } else {
@@ -277,8 +275,6 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                     rawSensorValues = startPollingSensors();
                     conn.addRxDataListener(this);
                 }
-                System.out.println("rawValues" + Arrays.toString(rawSensorValues));
-
                 rawAccelerometerValue[0] = rawSensorValues[4];
                 rawAccelerometerValue[1] = rawSensorValues[5];
                 rawAccelerometerValue[2] = rawSensorValues[6];
@@ -380,6 +376,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
      * Disconnects the device
      */
     public void disconnect() {
+        conn.writeBytes(new byte[]{TERMINATE_CMD});
         AndroidSchedulers.from(sendThread.getLooper()).shutdown();
         sendThread.getLooper().quit();
         if (sendDisposable != null && !sendDisposable.isDisposed())
@@ -393,7 +390,10 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
         if (conn != null) {
             conn.removeRxDataListener(this);
             stopPollingSensors();
-            conn.writeBytes(new byte[]{TERMINATE_CMD});
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+            }
             conn.disconnect();
         }
     }

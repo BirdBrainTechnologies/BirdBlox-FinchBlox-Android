@@ -12,7 +12,6 @@ import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.R
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -76,6 +75,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private byte[] cfresponse;
     private static MBState oldMBState = new MBState();
     private static MBState newMBState = new MBState();
+
     /**
      * Initializes a Hummingbit device
      *
@@ -180,7 +180,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 if (!hasLatestFirmware()) {
                     cf.set(true);
-                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareMajorVersion()) + "', '" + bbxEncode(getLatestFirmwareMajorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion())+"')");
+                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareMajorVersion()) + "', '" + bbxEncode(getLatestFirmwareMajorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion()) + "')");
                     disconnect();
                 }
             } else {
@@ -276,7 +276,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         switch (outputType) {
             case "servo":
                 port = Integer.parseInt(args.get("port").get(0));
-                if (args.get("angle")==null) {
+                if (args.get("angle") == null) {
                     return setRbSOOutput(oldState.getHBitServo(port), newState.getHBitServo(port), Integer.parseInt(args.get("percent").get(0)), ROTATION);
                 } else {
                     return setRbSOOutput(oldState.getHBitServo(port), newState.getHBitServo(port), Integer.parseInt(args.get("angle").get(0)), POSITION);
@@ -322,11 +322,9 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     rawSensorValues = startPollingSensors();
                     conn.addRxDataListener(this);
                 }
-                System.out.println("rawValues" + Arrays.toString(rawSensorValues));
                 if (portString != null) {
                     int port = Integer.parseInt(portString) - 1;
                     rawSensorValue = (rawSensorValues[port] & 0xFF);
-                    System.out.println("rawSensorValue" + rawSensorValue);
                 } else {
                     rawAccelerometerValue[0] = rawSensorValues[4];
                     rawAccelerometerValue[1] = rawSensorValues[5];
@@ -344,8 +342,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return null;
             }
         }
-        System.out.println("type of sensor" + sensorType);
-
         switch (sensorType) {
             case "distance":
                 return Double.toString(DeviceUtil.RawToDistance(rawSensorValue));
@@ -439,6 +435,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
      * Disconnects the device
      */
     public void disconnect() {
+        conn.writeBytes(new byte[]{TERMINATE_CMD});
         AndroidSchedulers.from(sendThread.getLooper()).shutdown();
         sendThread.getLooper().quit();
         if (sendDisposable != null && !sendDisposable.isDisposed())
@@ -452,7 +449,10 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         if (conn != null) {
             conn.removeRxDataListener(this);
             stopPollingSensors();
-            conn.writeBytes(new byte[]{TERMINATE_CMD});
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+            }
             conn.disconnect();
         }
     }

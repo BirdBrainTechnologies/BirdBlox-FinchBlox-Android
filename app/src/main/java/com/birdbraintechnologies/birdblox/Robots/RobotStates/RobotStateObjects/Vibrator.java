@@ -4,7 +4,7 @@ package com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects;
  * @author Shreyan Bakshi (AppyFizz).
  */
 
-public class Vibrator extends RobotStateObject{
+public class Vibrator extends RobotStateObject {
 
     private byte intensity;
 
@@ -29,14 +29,14 @@ public class Vibrator extends RobotStateObject{
     }
 
     @Override
-    public void setValue(int...values) {
+    public void setValue(int... values) {
         if (values.length == 1) {
             setIntensity(values[0]);
         }
     }
 
     @Override
-    public void setValue(byte...values) {
+    public void setValue(byte... values) {
         if (values.length == 1) {
             setIntensity(values[0]);
         }

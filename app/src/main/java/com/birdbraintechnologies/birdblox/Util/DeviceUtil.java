@@ -16,7 +16,7 @@ public class DeviceUtil {
      * @return Sensor reading as a percentage
      */
     public static double RawToKnob(int raw) {
-        return (raw * 100.0/230.0) > 100.0 ? 100.0 : (raw * 100.0/230.0);
+        return (raw * 100.0 / 230.0) > 100.0 ? 100.0 : (raw * 100.0 / 230.0);
     }
 
     public static double RawToPercent(byte raw) {
@@ -30,7 +30,9 @@ public class DeviceUtil {
     /**
      * Converts percent readings [0,100] to raw [0,255]
      */
-    public static byte PercentToRaw(double percent) { return (byte) (percent * 2.55); }
+    public static byte PercentToRaw(double percent) {
+        return (byte) (percent * 2.55);
+    }
 
     /**
      * Converts raw readings from sensors [0,255] into temperature
@@ -69,14 +71,15 @@ public class DeviceUtil {
             }
         }
     }
+
     public static double RawToAccl(byte[] rawAccl, String axisString) {
         switch (axisString) {
             case "x":
-                return RawToInt(rawAccl[0]) * 196.0/1280.0 ;
+                return RawToInt(rawAccl[0]) * 196.0 / 1280.0;
             case "y":
-                return RawToInt(rawAccl[1]) * 196.0/1280.0 ;
+                return RawToInt(rawAccl[1]) * 196.0 / 1280.0;
             case "z":
-                return RawToInt(rawAccl[2]) * 196.0/1280.0 ;
+                return RawToInt(rawAccl[2]) * 196.0 / 1280.0;
         }
         return 0.0;
     }
@@ -116,7 +119,7 @@ public class DeviceUtil {
         double xpp = xp * Math.cos(theta) + zp * Math.sin(theta);
         double ypp = yp;
 
-        double angle = 180.0 + Math.toDegrees(Math.atan(xpp/ypp));
+        double angle = 180.0 + Math.toDegrees(Math.atan(xpp / ypp));
         return angle;
     }
 

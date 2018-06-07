@@ -2,7 +2,7 @@ package com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects;
 
 import java.util.Arrays;
 
-public class LEDArray extends RobotStateObject{
+public class LEDArray extends RobotStateObject {
 
     private int[] characters;
 
@@ -38,7 +38,6 @@ public class LEDArray extends RobotStateObject{
             characters[i] = (int) asciis[i];
         }
     }
-
 
 
     @Override

@@ -4,7 +4,7 @@ package com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects;
  * @author Shreyan Bakshi (AppyFizz).
  */
 
-public class Motor extends RobotStateObject{
+public class Motor extends RobotStateObject {
 
     private byte speed;
 
@@ -35,14 +35,14 @@ public class Motor extends RobotStateObject{
     }
 
     @Override
-    public void setValue(int...values) {
+    public void setValue(int... values) {
         if (values.length == 1) {
             setSpeed(values[0]);
         }
     }
 
     @Override
-    public void setValue(byte...values) {
+    public void setValue(byte... values) {
         if (values.length == 1) {
             setSpeed(values[0]);
         }

@@ -26,9 +26,9 @@ public enum RobotType {
     public static RobotType robotTypeFromString(String robotType) {
         if (robotType.toLowerCase().equals("hummingbird")) {
             return RobotType.Hummingbird;
-        } else if (robotType.toLowerCase().equals("hummingbirdbit")){
+        } else if (robotType.toLowerCase().equals("hummingbirdbit")) {
             return RobotType.Hummingbit;
-        } else if (robotType.toLowerCase().equals("microbit")){
+        } else if (robotType.toLowerCase().equals("microbit")) {
             return RobotType.Microbit;
         }
 

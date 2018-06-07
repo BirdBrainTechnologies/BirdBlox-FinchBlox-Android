@@ -156,7 +156,6 @@ public class RobotRequestHandler implements RequestHandler {
                     if (m.get("axis") != null) {
                         sensorAxis = m.get("axis").get(0);
                     }
-//                    System.out.println("type" + m.get("sensor").get(0) + "axis" + sensorAxis + "id" + m.get("id").get(0));
                     String sensorValue = robot.readSensor(m.get("sensor").get(0), sensorPort, sensorAxis);
                     if (sensorValue == null) {
                         runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
@@ -263,7 +262,7 @@ public class RobotRequestHandler implements RequestHandler {
         return "";
     }
 
-//    /**
+    //    /**
 //     *
 //     * @param hummingbirdId
 //     * @return

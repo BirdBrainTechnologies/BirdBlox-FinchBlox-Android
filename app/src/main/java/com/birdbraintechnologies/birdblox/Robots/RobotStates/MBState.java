@@ -1,13 +1,11 @@
 package com.birdbraintechnologies.birdblox.Robots.RobotStates;
 
 
-
-
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.LEDArray;
 
 import java.util.Arrays;
 
-public class MBState extends RobotState<MBState>{
+public class MBState extends RobotState<MBState> {
     private LEDArray[] ledArray;
 
     public MBState() {
@@ -24,7 +22,7 @@ public class MBState extends RobotState<MBState>{
      *
      * @param hbs The other HBitState object.
      * @return Returns true if they're equal (all their attributes
-     *         have the same values), false otherwise.
+     * have the same values), false otherwise.
      */
     @Override
     public synchronized boolean equals_helper(MBState hbs) {
@@ -37,7 +35,7 @@ public class MBState extends RobotState<MBState>{
      *
      * @param hbs The other object.
      * @return Returns true if they're equal (they're both HBitState objects, and all
-     *         their attributes have the same values), false otherwise.
+     * their attributes have the same values), false otherwise.
      */
     @Override
     public synchronized boolean equals(Object hbs) {

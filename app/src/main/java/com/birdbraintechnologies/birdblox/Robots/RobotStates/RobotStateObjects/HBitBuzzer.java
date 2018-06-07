@@ -1,7 +1,8 @@
 package com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects;
+
 import java.util.Arrays;
 
-public class HBitBuzzer  extends RobotStateObject{
+public class HBitBuzzer extends RobotStateObject {
     private short frequency;
     private short duration;
 

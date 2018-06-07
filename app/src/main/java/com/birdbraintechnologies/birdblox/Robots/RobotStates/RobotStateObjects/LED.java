@@ -4,7 +4,7 @@ package com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects;
  * @author Shreyan Bakshi (AppyFizz).
  */
 
-public class LED extends RobotStateObject{
+public class LED extends RobotStateObject {
 
     private byte intensity;
 
@@ -29,14 +29,14 @@ public class LED extends RobotStateObject{
     }
 
     @Override
-    public void setValue(int...values) {
+    public void setValue(int... values) {
         if (values.length == 1) {
             setIntensity(values[0]);
         }
     }
 
     @Override
-    public void setValue(byte...values) {
+    public void setValue(byte... values) {
         if (values.length == 1) {
             setIntensity(values[0]);
         }

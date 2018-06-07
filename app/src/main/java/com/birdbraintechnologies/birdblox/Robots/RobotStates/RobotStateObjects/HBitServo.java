@@ -40,8 +40,8 @@ public class HBitServo extends RobotStateObject {
     }
 
     @Override
-    public void setValue(int...values) {
-        if (values[values.length-1] == 0) {
+    public void setValue(int... values) {
+        if (values[values.length - 1] == 0) {
             setPosition(values[0]);
         } else {
             setRotation(values[0]);
@@ -49,8 +49,8 @@ public class HBitServo extends RobotStateObject {
     }
 
     @Override
-    public void setValue(byte...values) {
-        if (values[values.length-1] == 0) {
+    public void setValue(byte... values) {
+        if (values[values.length - 1] == 0) {
             setPosition(values[0]);
         } else {
             setRotation(values[0]);

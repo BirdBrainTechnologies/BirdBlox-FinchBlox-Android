@@ -36,7 +36,9 @@ public abstract class Robot<T extends RobotState<T>> {
         sending = false;
     }
 
-    public synchronized boolean statesEqual() { return oldState.equals(newState);}
+    public synchronized boolean statesEqual() {
+        return oldState.equals(newState);
+    }
 
     /**
      * Actually sends the commands to the physical Robot,
@@ -56,7 +58,7 @@ public abstract class Robot<T extends RobotState<T>> {
      * @param portString
      * @return
      */
-    public abstract String readSensor(String sensorType, String portString,  String axisString);
+    public abstract String readSensor(String sensorType, String portString, String axisString);
 
     public abstract String getMacAddress();
 

@@ -92,7 +92,7 @@ public class HBState extends RobotState<HBState> {
      *
      * @param hbs The other HBState object.
      * @return Returns true if they're equal (all their attributes
-     *         have the same values), false otherwise.
+     * have the same values), false otherwise.
      */
     @Override
     public synchronized boolean equals_helper(HBState hbs) {
@@ -107,7 +107,7 @@ public class HBState extends RobotState<HBState> {
      *
      * @param hbs The other object.
      * @return Returns true if they're equal (they're both HBState objects, and all
-     *         their attributes have the same values), false otherwise.
+     * their attributes have the same values), false otherwise.
      */
     @Override
     public synchronized boolean equals(Object hbs) {

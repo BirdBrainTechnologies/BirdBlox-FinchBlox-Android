@@ -7,7 +7,7 @@ import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.T
 
 import java.util.Arrays;
 
-public class HBitState extends RobotState<HBitState>{
+public class HBitState extends RobotState<HBitState> {
     private LED[] leds;
     private TriLED[] trileds;
     private HBitServo[] hbitservos;
@@ -41,7 +41,7 @@ public class HBitState extends RobotState<HBitState>{
         hbitservos[1] = new HBitServo(servo2);
         hbitservos[2] = new HBitServo(servo3);
         hbitservos[3] = new HBitServo(servo4);
-        hbitbuzzers[0] = new HBitBuzzer((short)(((buzzerFreqHigh & 0xFF) << 8) | (buzzerFreqLow & 0xFF)),(short)(((buzzerTimeHigh & 0xFF) << 8) | (buzzerTimeLow & 0xFF)));
+        hbitbuzzers[0] = new HBitBuzzer((short) (((buzzerFreqHigh & 0xFF) << 8) | (buzzerFreqLow & 0xFF)), (short) (((buzzerTimeHigh & 0xFF) << 8) | (buzzerTimeLow & 0xFF)));
     }
 
     public LED getLED(int port) {
@@ -71,7 +71,7 @@ public class HBitState extends RobotState<HBitState>{
      *
      * @param hbs The other HBitState object.
      * @return Returns true if they're equal (all their attributes
-     *         have the same values), false otherwise.
+     * have the same values), false otherwise.
      */
     @Override
     public synchronized boolean equals_helper(HBitState hbs) {
@@ -85,7 +85,7 @@ public class HBitState extends RobotState<HBitState>{
      *
      * @param hbs The other object.
      * @return Returns true if they're equal (they're both HBitState objects, and all
-     *         their attributes have the same values), false otherwise.
+     * their attributes have the same values), false otherwise.
      */
     @Override
     public synchronized boolean equals(Object hbs) {
@@ -119,7 +119,7 @@ public class HBitState extends RobotState<HBitState>{
             hbitservos[i].setValue(source.hbitservos[i].getConfig());
         }
         for (int i = 0; i < hbitbuzzers.length; i++) {
-            hbitbuzzers[i].setValue((int)source.hbitbuzzers[i].getFrequency(),(int)source.hbitbuzzers[i].getDuration());
+            hbitbuzzers[i].setValue((int) source.hbitbuzzers[i].getFrequency(), (int) source.hbitbuzzers[i].getDuration());
         }
     }
 
@@ -163,14 +163,13 @@ public class HBitState extends RobotState<HBitState>{
     }
 
 
-
-
     private synchronized void resetHBitBuzzer() {
         int resetVal = 0;
         for (int i = 0; i < hbitbuzzers.length; i++) {
             hbitbuzzers[i].setValue(resetVal, resetVal);
         }
     }
+
     /**
      * Resets all attributes of all state objects to their default values.
      */

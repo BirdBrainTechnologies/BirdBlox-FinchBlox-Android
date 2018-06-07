@@ -393,6 +393,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
      * Disconnects the device
      */
     public void disconnect() {
+        conn.writeBytes(new byte[]{TERMINATE_CMD});
         AndroidSchedulers.from(sendThread.getLooper()).shutdown();
         sendThread.getLooper().quit();
         if (sendDisposable != null && !sendDisposable.isDisposed())
@@ -406,7 +407,10 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         if (conn != null) {
             conn.removeRxDataListener(this);
             stopPollingSensors();
-            conn.writeBytes(new byte[]{TERMINATE_CMD});
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+            }
             conn.disconnect();
         }
     }
