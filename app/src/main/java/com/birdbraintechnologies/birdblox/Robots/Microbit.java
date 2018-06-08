@@ -11,6 +11,7 @@ import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.R
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -50,6 +51,8 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
     private static final byte latestHardwareMajorVersion = 0x01;
     private static final byte latestFirmwareMajorVersion = 0x00;
     private static final byte latestFirmwareMinorVersion = 0x01;
+    private static final int SYMBOL = 0;
+    private static final int FLASH = 1;
 
 
     private AtomicBoolean cf;
@@ -245,12 +248,24 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
         switch (outputType) {
             case "ledArray":
                 String charactersInInts = args.get("ledArrayStatus").get(0);
-
-                int[] asciCode = new int[charactersInInts.length()];
+                int[] bitsInInt = new int[charactersInInts.length() + 1];
                 for (int i = 0; i < charactersInInts.length(); i++) {
-                    asciCode[i] = Integer.parseInt(charactersInInts.charAt(i) + "");
+                    bitsInInt[i] = Integer.parseInt(charactersInInts.charAt(i) + "");
                 }
-                return setRbSOOutput(oldState.getLedArray(), newState.getLedArray(), asciCode);
+                bitsInInt[bitsInInt.length - 1] = SYMBOL;
+                return setRbSOOutput(oldState.getLedArray(), newState.getLedArray(), bitsInInt);
+            case "printBlock":
+                String printString = args.get("printString").get(0);
+                printString = printString.replaceAll("[^a-zA-Z]", "");
+                printString = printString.toUpperCase();
+                byte[] tmpAscii = printString.getBytes(StandardCharsets.US_ASCII);
+                int[] charsInInts = new int[tmpAscii.length + 1];
+
+                for (int i = 0; i < tmpAscii.length; i++) {
+                    charsInInts[i] = (int) tmpAscii[i];
+                }
+                charsInInts[charsInInts.length - 1] = FLASH;
+                return setRbSOOutput(oldState.getLedArray(), newState.getLedArray(), charsInInts);
         }
 
         return false;

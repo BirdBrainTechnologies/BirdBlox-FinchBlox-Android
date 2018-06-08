@@ -308,6 +308,8 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), bitsInInt);
             case "printBlock":
                 String printString = args.get("printString").get(0);
+                printString = printString.replaceAll("[^a-zA-Z]", "");
+                printString = printString.toUpperCase();
                 byte[] tmpAscii = printString.getBytes(StandardCharsets.US_ASCII);
                 int[] charsInInts = new int[tmpAscii.length + 1];
 
