@@ -333,6 +333,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         int rawSensorValue = 0;
         byte[] rawMagnetometerValue = new byte[6];
         byte[] rawAccelerometerValue = new byte[3];
+        byte[] rawButtonShakeValue = new byte[1];
         synchronized (rawSensorValuesLock) {
             try {
                 if (rawSensorValues == null) {
@@ -346,7 +347,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     rawAccelerometerValue[0] = rawSensorValues[4];
                     rawAccelerometerValue[1] = rawSensorValues[5];
                     rawAccelerometerValue[2] = rawSensorValues[6];
-
+                    rawButtonShakeValue[0] = rawSensorValues[7];
                     rawMagnetometerValue[0] = rawSensorValues[8];
                     rawMagnetometerValue[1] = rawSensorValues[9];
                     rawMagnetometerValue[2] = rawSensorValues[10];
@@ -372,6 +373,16 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return Double.toString(DeviceUtil.RawToAccl(rawAccelerometerValue, axisString));
             case "compass":
                 return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue));
+            case "buttonA":
+                if (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) {
+                    return "true";
+                }
+                return "false";
+            case "buttonB":
+                if (((rawButtonShakeValue[0] >> 5) & 0x1) == 0x0) {
+                    return "true";
+                }
+                return "false";
             default:
                 return Double.toString(DeviceUtil.RawToKnob(rawSensorValue));
         }

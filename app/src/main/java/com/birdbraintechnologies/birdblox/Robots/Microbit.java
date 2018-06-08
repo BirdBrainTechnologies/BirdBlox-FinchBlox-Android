@@ -269,6 +269,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
         int rawSensorValue = 0;
         byte[] rawMagnetometerValue = new byte[6];
         byte[] rawAccelerometerValue = new byte[3];
+        byte[] rawButtonShakeValue = new byte[1];
         synchronized (rawSensorValuesLock) {
             try {
                 if (rawSensorValues == null) {
@@ -278,7 +279,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 rawAccelerometerValue[0] = rawSensorValues[4];
                 rawAccelerometerValue[1] = rawSensorValues[5];
                 rawAccelerometerValue[2] = rawSensorValues[6];
-
+                rawButtonShakeValue[0] = rawSensorValues[7];
                 rawMagnetometerValue[0] = rawSensorValues[8];
                 rawMagnetometerValue[1] = rawSensorValues[9];
                 rawMagnetometerValue[2] = rawSensorValues[10];
@@ -296,6 +297,16 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 return Double.toString(DeviceUtil.RawToMag(rawMagnetometerValue, axisString));
             case "accelerometer":
                 return Double.toString(DeviceUtil.RawToAccl(rawAccelerometerValue, axisString));
+            case "buttonA":
+                if (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) {
+                    return "true";
+                }
+                return "false";
+            case "buttonB":
+                if (((rawButtonShakeValue[0] >> 5) & 0x1) == 0x0) {
+                    return "true";
+                }
+                return "false";
             default:
                 return "";
         }
