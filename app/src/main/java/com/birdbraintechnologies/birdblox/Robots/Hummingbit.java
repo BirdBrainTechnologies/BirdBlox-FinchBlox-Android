@@ -290,14 +290,18 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                         Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));
             case "buzzer":
                 return setRbSOOutput(oldState.getHBBuzzer(port), newState.getHBBuzzer(port), Integer.parseInt(args.get("note").get(0)), Integer.parseInt(args.get("duration").get(0)));
-            case "LedArray":
-                String charactersInInts = args.get("asciis").get(0);
+            case "ledArray":
+                String charactersInInts = args.get("ledArrayStatus").get(0);
                 String[] characterArray = charactersInInts.split(" ");
                 int[] asciCode = new int[characterArray.length];
                 for (int i = 0; i < asciCode.length; i++) {
                     asciCode[i] = Integer.parseInt(characterArray[i]);
                 }
                 return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), asciCode);
+//            case "printBlock":
+//                String charactersInInts = args.get("ledArrayStatus").get(0) = printS
+//                return setRbSOOutp
+
         }
 
         return false;

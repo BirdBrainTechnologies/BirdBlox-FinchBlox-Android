@@ -152,7 +152,7 @@ public class UARTConnection extends BluetoothGattCallback {
      */
     private boolean establishUARTConnection(Context context, final BluetoothDevice device) {
         // Connect to device
-        this.btGatt = device.connectGatt(context, false, this);
+        this.btGatt = device.connectGatt(context, true, this);
         // Initialize serialization
         startLatch.countDown();
         try {
