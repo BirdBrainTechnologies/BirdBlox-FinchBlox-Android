@@ -7,7 +7,8 @@ public class LEDArray extends RobotStateObject {
     private int[] characters;
 
     public LEDArray() {
-        characters = new int[25];
+        characters = new int[1];
+        characters[0] = -1;
     }
 
     public LEDArray(int[] asciis) {
@@ -25,6 +26,7 @@ public class LEDArray extends RobotStateObject {
 
     private void setCharacters(int[] asciis) {
         int size = asciis.length;
+        characters = new int[size];
         for (int i = 0; i < size; i++) {
             characters[i] = asciis[i];
         }
@@ -32,6 +34,7 @@ public class LEDArray extends RobotStateObject {
 
     private void setCharacters(byte[] asciis) {
         int size = asciis.length;
+        characters = new int[size];
         for (int i = 0; i < size; i++) {
             characters[i] = (int) asciis[i];
         }

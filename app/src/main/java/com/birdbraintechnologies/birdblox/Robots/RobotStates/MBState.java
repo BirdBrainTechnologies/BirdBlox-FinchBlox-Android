@@ -73,12 +73,38 @@ public class MBState extends RobotState<MBState> {
      */
     @Override
     public synchronized byte[] setAll() {
-        byte[] all = new byte[19];
-        // This must always be the first byte sent for the setAll command.
+        byte[] all = new byte[20];
         all[0] = (byte) 0xCC;
-        // Now, we send the other bytes in the order shown below:
-
+        int[] lightData = ledArray[0].getCharacters();
+        if (lightData[lightData.length - 1] == 0) {
+            // symbol
+            all[1] = (byte) 0x80;
+            all[2] = ConstructByteFromInts(lightData, 24, 25);
+            all[3] = ConstructByteFromInts(lightData, 16, 24);
+            all[4] = ConstructByteFromInts(lightData, 8, 16);
+            all[5] = ConstructByteFromInts(lightData, 0, 8);
+        } else if (lightData.length == 1 && lightData[0] == -1) {
+            all[1] = (byte) 0x00;
+            all[2] = (byte) 0xFF;
+            all[3] = (byte) 0xFF;
+            all[4] = (byte) 0xFF;
+        } else {
+            // flash
+            int flashLen = lightData.length - 1;
+            all[1] = (byte) ((byte) 0x40 | (byte) flashLen);
+            for (int i = 0; i < flashLen; i++) {
+                all[2 + i] = (byte) lightData[i];
+            }
+        }
         return all;
+    }
+
+    private synchronized byte ConstructByteFromInts(int[] data, int start, int end) {
+        int resultByte = 0;
+        for (int i = start; i < end; i++) {
+            resultByte = resultByte + (data[i] << (i - start));
+        }
+        return (byte) resultByte;
     }
 
     /**

@@ -243,12 +243,12 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
         // All remaining outputs are of the format: /out/<outputType>/<port>/<args>...
         int port = 0;
         switch (outputType) {
-            case "LedArray":
-                String charactersInInts = args.get("asciis").get(0);
-                String[] characterArray = charactersInInts.split(" ");
-                int[] asciCode = new int[characterArray.length];
-                for (int i = 0; i < asciCode.length; i++) {
-                    asciCode[i] = Integer.parseInt(characterArray[i]);
+            case "ledArray":
+                String charactersInInts = args.get("ledArrayStatus").get(0);
+
+                int[] asciCode = new int[charactersInInts.length()];
+                for (int i = 0; i < charactersInInts.length(); i++) {
+                    asciCode[i] = Integer.parseInt(charactersInInts.charAt(i) + "");
                 }
                 return setRbSOOutput(oldState.getLedArray(), newState.getLedArray(), asciCode);
         }
@@ -377,6 +377,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
      */
     public void disconnect() {
         conn.writeBytes(new byte[]{TERMINATE_CMD});
+        newState.resetAll();
         AndroidSchedulers.from(sendThread.getLooper()).shutdown();
         sendThread.getLooper().quit();
         if (sendDisposable != null && !sendDisposable.isDisposed())

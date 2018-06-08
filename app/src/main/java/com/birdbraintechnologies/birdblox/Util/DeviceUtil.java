@@ -75,19 +75,19 @@ public class DeviceUtil {
     public static double RawToAccl(byte[] rawAccl, String axisString) {
         switch (axisString) {
             case "x":
-                return RawToInt(rawAccl[0]) * 196.0 / 1280.0;
+                return Complement(RawToInt(rawAccl[0])) * 196.0 / 1280.0;
             case "y":
-                return RawToInt(rawAccl[1]) * 196.0 / 1280.0;
+                return Complement(RawToInt(rawAccl[1])) * 196.0 / 1280.0;
             case "z":
-                return RawToInt(rawAccl[2]) * 196.0 / 1280.0;
+                return Complement(RawToInt(rawAccl[2])) * 196.0 / 1280.0;
         }
         return 0.0;
     }
 
     public static double RawToMag(byte[] rawMag, String axisString) {
-        double mx = ((short) (rawMag[1] | (rawMag[0] << 8))) * 1.0;
-        double my = ((short) (rawMag[2] | (rawMag[3] << 8))) * 1.0;
-        double mz = ((short) (rawMag[4] | (rawMag[5] << 8))) * 1.0;
+        double mx = Complement (rawMag[1] | (rawMag[0] << 8)) * 1.0;
+        double my = Complement (rawMag[2] | (rawMag[3] << 8)) * 1.0;
+        double mz = Complement (rawMag[4] | (rawMag[5] << 8)) * 1.0;
 
         switch (axisString) {
             case "x":
@@ -101,13 +101,13 @@ public class DeviceUtil {
     }
 
     public static double RawToCompass(byte[] rawAccl, byte[] rawMag) {
-        double ax = ((short) rawAccl[0]) * 1.0;
-        double ay = ((short) rawAccl[1]) * 1.0;
-        double az = ((short) rawAccl[2]) * 1.0;
+        double ax = Complement(RawToInt(rawAccl[0])) * 1.0;
+        double ay = Complement(RawToInt(rawAccl[0])) * 1.0;
+        double az = Complement(RawToInt(rawAccl[0])) * 1.0;
 
-        double mx = ((short) (rawMag[1] | (rawMag[0] << 8))) * 1.0;
-        double my = ((short) (rawMag[2] | (rawMag[3] << 8))) * 1.0;
-        double mz = ((short) (rawMag[4] | (rawMag[5] << 8))) * 1.0;
+        double mx = Complement (rawMag[1] | (rawMag[0] << 8)) * 1.0;
+        double my = Complement (rawMag[2] | (rawMag[3] << 8)) * 1.0;
+        double mz = Complement (rawMag[4] | (rawMag[5] << 8)) * 1.0;
 
         double phi = Math.atan(-ay / az);
         double theta = Math.atan(ax / (ay * Math.sin(phi) + az * Math.cos(phi)));
@@ -150,5 +150,11 @@ public class DeviceUtil {
      */
     public static int RawToInt(byte raw) {
         return raw & 0xff;
+    }
+    public static int Complement(int prev) {
+        if (prev > 127) {
+            prev = prev - 256;
+        }
+        return prev;
     }
 }

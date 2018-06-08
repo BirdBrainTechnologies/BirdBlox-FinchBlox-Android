@@ -12,6 +12,8 @@ import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.R
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +41,8 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private static final byte READ_ALL_CMD = 'b';
     private static final byte STOP_PERIPH_CMD = 'X';
     private static final byte TERMINATE_CMD = (byte) 0xCB;
+    private static final int SYMBOL = 0;
+    private static final int FLASH = 1;
 
     private static final int SETALL_INTERVAL_IN_MILLIS = 32;
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
@@ -206,6 +210,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     if (last_successfully_sent != null)
                         last_successfully_sent.set(currentTime);
                     oldState.copy(newState);
+                    oldMBState.copy(newMBState);
                     runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 } else {
                     // Sending Non-CF command failed
@@ -216,6 +221,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     if (last_successfully_sent != null)
                         last_successfully_sent.set(currentTime);
                     oldState.copy(newState);
+                    oldMBState.copy(newMBState);
                     runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 } else {
                     // Sending Non-CF command failed
@@ -236,6 +242,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                         if (last_successfully_sent != null)
                             last_successfully_sent.set(currentTime);
                         oldState.copy(newState);
+                        oldMBState.copy(newMBState);
                         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                     } else {
                         // Sending Non-CF command failed
@@ -246,6 +253,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                         if (last_successfully_sent != null)
                             last_successfully_sent.set(currentTime);
                         oldState.copy(newState);
+                        oldMBState.copy(newMBState);
                         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                     } else {
                         // Sending Non-CF command failed
@@ -292,18 +300,23 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return setRbSOOutput(oldState.getHBBuzzer(port), newState.getHBBuzzer(port), Integer.parseInt(args.get("note").get(0)), Integer.parseInt(args.get("duration").get(0)));
             case "ledArray":
                 String charactersInInts = args.get("ledArrayStatus").get(0);
-                String[] characterArray = charactersInInts.split(" ");
-                int[] asciCode = new int[characterArray.length];
-                for (int i = 0; i < asciCode.length; i++) {
-                    asciCode[i] = Integer.parseInt(characterArray[i]);
+                int[] bitsInInt = new int[charactersInInts.length() + 1];
+                for (int i = 0; i < charactersInInts.length(); i++) {
+                    bitsInInt[i] = Integer.parseInt(charactersInInts.charAt(i) + "");
                 }
-                return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), asciCode);
-//            case "printBlock":
-//                String charactersInInts = args.get("ledArrayStatus").get(0) = printS
-//                return setRbSOOutp
+                bitsInInt[bitsInInt.length - 1] = SYMBOL;
+                return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), bitsInInt);
+            case "printBlock":
+                String printString = args.get("printString").get(0);
+                byte[] tmpAscii = printString.getBytes(StandardCharsets.US_ASCII);
+                int[] charsInInts = new int[tmpAscii.length + 1];
 
+                for (int i = 0; i < tmpAscii.length; i++) {
+                    charsInInts[i] = (int) tmpAscii[i];
+                }
+                charsInInts[charsInInts.length - 1] = FLASH;
+                return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), charsInInts);
         }
-
         return false;
     }
 
@@ -412,6 +425,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             }
             if (statesEqual()) {
                 newState.resetAll();
+                newMBState.resetAll();
                 if (lock.isHeldByCurrentThread()) {
                     doneSending.signal();
                     lock.unlock();
@@ -440,6 +454,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
      */
     public void disconnect() {
         conn.writeBytes(new byte[]{TERMINATE_CMD});
+        newMBState.resetAll();
         AndroidSchedulers.from(sendThread.getLooper()).shutdown();
         sendThread.getLooper().quit();
         if (sendDisposable != null && !sendDisposable.isDisposed())
