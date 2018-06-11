@@ -364,7 +364,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return null;
             }
         }
-        System.out.println("sensorType" + sensorType);
         switch (sensorType) {
             case "distance":
                 return Double.toString(DeviceUtil.RawToDistance(rawSensorValue));
