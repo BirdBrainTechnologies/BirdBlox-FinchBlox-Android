@@ -310,7 +310,6 @@ public class FileManagementHandler implements RequestHandler {
      * and an 'ERROR' response otherwise.
      */
     private NanoHTTPD.Response exportProject(String name) {
-        System.out.println("getting the project name" + name);
         if (!projectExists(name)) {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " doesn't exist.");
