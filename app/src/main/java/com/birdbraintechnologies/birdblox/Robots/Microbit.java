@@ -317,7 +317,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             case "buttonB":
                 return (((rawButtonShakeValue[0] >> 5) & 0x1) == 0x0) ? "1" : "0";
             case "shake":
-                return ((rawButtonShakeValue[0] & 0x1) == 0x0) ? "1" : "0";
+                return ((rawButtonShakeValue[0] & 0x1) == 0x0) ? "0" : "1";
             case "screenUp":
                 return rawAccelerometerValue[2] > 51 ? "1" : "0";
             case "screenDown":
