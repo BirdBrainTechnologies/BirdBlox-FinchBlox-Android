@@ -378,23 +378,23 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             case "compass":
                 return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue));
             case "buttonA":
-                return (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) ? "true" : "false";
+                return (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) ? "1" : "0";
             case "buttonB":
-                return (((rawButtonShakeValue[0] >> 5) & 0x1) == 0x0) ? "true" : "false";
+                return (((rawButtonShakeValue[0] >> 5) & 0x1) == 0x0) ? "1" : "0";
             case "shake":
-                return ((rawButtonShakeValue[0] & 0x1) == 0x0) ? "true" : "false";
+                return ((rawButtonShakeValue[0] & 0x1) == 0x0) ? "1" : "0";
             case "screenUp":
-                return rawAccelerometerValue[2] > 51 ? "true" : "false";
+                return rawAccelerometerValue[2] > 51 ? "1" : "0";
             case "screenDown":
-                return rawAccelerometerValue[2] < -51 ? "true" : "false";
+                return rawAccelerometerValue[2] < -51 ? "1" : "0";
             case "tiltLeft":
-                return rawAccelerometerValue[0] > 51 ? "true" : "false";
+                return rawAccelerometerValue[0] > 51 ? "1" : "0";
             case "tiltRight":
-                return rawAccelerometerValue[0] < -51 ? "true" : "false";
+                return rawAccelerometerValue[0] < -51 ? "1" : "0";
             case "logoUp":
-                return rawAccelerometerValue[1] > 51 ? "true" : "false";
+                return rawAccelerometerValue[1] > 51 ? "1" : "0";
             case "logoDown":
-                return rawAccelerometerValue[1] < -51 ? "true" : "false";
+                return rawAccelerometerValue[1] < -51 ? "1" : "0";
 
             default:
                 return Double.toString(DeviceUtil.RawToKnob(rawSensorValue));

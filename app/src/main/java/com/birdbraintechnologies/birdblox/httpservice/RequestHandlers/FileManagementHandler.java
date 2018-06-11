@@ -3,6 +3,8 @@ package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
+import android.os.Environment;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
@@ -308,17 +310,20 @@ public class FileManagementHandler implements RequestHandler {
      * and an 'ERROR' response otherwise.
      */
     private NanoHTTPD.Response exportProject(String name) {
+        System.out.println("getting the project name" + name);
         if (!projectExists(name)) {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " doesn't exist.");
         }
         try {
             File dir = new File(getBirdbloxDir(), name);
-            File zip = new File(getBirdbloxDir(), name + ".bbx");
+            String zipName = name + ".zip";
+            File zip = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), zipName);
+
             ZipUtility.zipDirectory(dir, zip);
             if (zip.exists()) {
                 Intent showDialog = new Intent(MainWebView.SHARE_FILE);
-                showDialog.putExtra("file_path", zip.getAbsolutePath());
+                showDialog.putExtra("file_name", zipName);
                 LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully exported project " + name);
@@ -413,7 +418,7 @@ public class FileManagementHandler implements RequestHandler {
     /**
      * Creates a new project, with the name provided.
      *
-     * @param name The name of the new project to be created.
+     * @param name    The name of the new project to be created.
      * @param session HttpRequest to get the POST body of.
      * @return A 'OK' response if creating new project was successful,
      * and an 'ERROR' response otherwise.
