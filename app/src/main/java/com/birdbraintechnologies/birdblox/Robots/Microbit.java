@@ -313,15 +313,23 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             case "accelerometer":
                 return Double.toString(DeviceUtil.RawToAccl(rawAccelerometerValue, axisString));
             case "buttonA":
-                if (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) {
-                    return "true";
-                }
-                return "false";
+                return (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) ? "true" : "false";
             case "buttonB":
-                if (((rawButtonShakeValue[0] >> 5) & 0x1) == 0x0) {
-                    return "true";
-                }
-                return "false";
+                return (((rawButtonShakeValue[0] >> 5) & 0x1) == 0x0) ? "true" : "false";
+            case "shake":
+                return ((rawButtonShakeValue[0] & 0x1) == 0x0) ? "true" : "false";
+            case "screenUp":
+                return rawAccelerometerValue[2] > 51 ? "true" : "false";
+            case "screenDown":
+                return rawAccelerometerValue[2] < -51 ? "true" : "false";
+            case "tiltLeft":
+                return rawAccelerometerValue[0] > 51 ? "true" : "false";
+            case "tiltRight":
+                return rawAccelerometerValue[0] < -51 ? "true" : "false";
+            case "logoUp":
+                return rawAccelerometerValue[1] > 51 ? "true" : "false";
+            case "logoDown":
+                return rawAccelerometerValue[1] < -51 ? "true" : "false";
             default:
                 return "";
         }

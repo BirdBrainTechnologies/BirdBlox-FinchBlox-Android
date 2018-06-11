@@ -297,7 +297,9 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return setRbSOOutput(oldState.getTriLED(port), newState.getTriLED(port), Integer.parseInt(args.get("red").get(0)),
                         Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));
             case "buzzer":
-                return setRbSOOutput(oldState.getHBBuzzer(port), newState.getHBBuzzer(port), Integer.parseInt(args.get("note").get(0)), Integer.parseInt(args.get("duration").get(0)));
+                if (Integer.parseInt(args.get("duration").get(0)) != 0 && Integer.parseInt(args.get("note").get(0)) != 0) {
+                    return setRbSOOutput(oldState.getHBBuzzer(port), newState.getHBBuzzer(port), Integer.parseInt(args.get("note").get(0)), Integer.parseInt(args.get("duration").get(0)));
+                }
             case "ledArray":
                 String charactersInInts = args.get("ledArrayStatus").get(0);
                 int[] bitsInInt = new int[charactersInInts.length() + 1];
@@ -362,6 +364,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return null;
             }
         }
+        System.out.println("sensorType" + sensorType);
         switch (sensorType) {
             case "distance":
                 return Double.toString(DeviceUtil.RawToDistance(rawSensorValue));
@@ -376,15 +379,24 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             case "compass":
                 return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue));
             case "buttonA":
-                if (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) {
-                    return "true";
-                }
-                return "false";
+                return (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) ? "true" : "false";
             case "buttonB":
-                if (((rawButtonShakeValue[0] >> 5) & 0x1) == 0x0) {
-                    return "true";
-                }
-                return "false";
+                return (((rawButtonShakeValue[0] >> 5) & 0x1) == 0x0) ? "true" : "false";
+            case "shake":
+                return ((rawButtonShakeValue[0] & 0x1) == 0x0) ? "true" : "false";
+            case "screenUp":
+                return rawAccelerometerValue[2] > 51 ? "true" : "false";
+            case "screenDown":
+                return rawAccelerometerValue[2] < -51 ? "true" : "false";
+            case "tiltLeft":
+                return rawAccelerometerValue[0] > 51 ? "true" : "false";
+            case "tiltRight":
+                return rawAccelerometerValue[0] < -51 ? "true" : "false";
+            case "logoUp":
+                return rawAccelerometerValue[1] > 51 ? "true" : "false";
+            case "logoDown":
+                return rawAccelerometerValue[1] < -51 ? "true" : "false";
+
             default:
                 return Double.toString(DeviceUtil.RawToKnob(rawSensorValue));
         }
