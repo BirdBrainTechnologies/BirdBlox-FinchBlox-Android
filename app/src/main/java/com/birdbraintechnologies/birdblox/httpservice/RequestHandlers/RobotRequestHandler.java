@@ -277,6 +277,7 @@ public class RobotRequestHandler implements RequestHandler {
                     if (hbConn != null && connectedHummingbirds != null) {
                         Hummingbird hummingbird = new Hummingbird(hbConn);
                         connectedHummingbirds.put(hummingbirdId, hummingbird);
+                        hummingbird.setConnected();
                     }
                 }
             };
@@ -306,6 +307,7 @@ public class RobotRequestHandler implements RequestHandler {
                     if (hbitConn != null && connectedHummingbits != null) {
                         Hummingbit hummingbit = new Hummingbit(hbitConn);
                         connectedHummingbits.put(hummingbitId, hummingbit);
+                        hummingbit.setConnected();
                     }
                 }
             };
@@ -335,6 +337,7 @@ public class RobotRequestHandler implements RequestHandler {
                     if (mbitConn != null && connectedMicrobits != null) {
                         Microbit microbit = new Microbit(mbitConn);
                         connectedMicrobits.put(microbitId, microbit);
+                        microbit.setConnected();
                     }
                 }
             };
@@ -521,9 +524,12 @@ public class RobotRequestHandler implements RequestHandler {
         if (robotType == RobotType.Hummingbird) {
             hardwareVersion = ((Hummingbird) robot).getHardwareVersion();
             firmwareVersion = ((Hummingbird) robot).getFirmwareVersion();
-        } else if (robotType == RobotType.Hummingbit || robotType == RobotType.Microbit) {
+        } else if (robotType == RobotType.Hummingbit) {
             hardwareVersion = ((Hummingbit) robot).getHardwareVersion();
-            firmwareVersion = "major: " + ((Hummingbit) robot).getFirmwareMajorVersion() +"minor: " + ((Hummingbit) robot).getFirmwareMinorVersion();
+            firmwareVersion = "microBit: " + ((Hummingbit) robot).getMicroBitVersion() +"SMD: " + ((Hummingbit) robot).getSMDVersion();
+        } else if (robotType == RobotType.Microbit) {
+            hardwareVersion = ((Microbit) robot).getHardwareVersion();
+            firmwareVersion = "microBit: " + ((Microbit) robot).getMicroBitVersion() +"SMD: " + ((Microbit) robot).getSMDVersion();
         }
 
 

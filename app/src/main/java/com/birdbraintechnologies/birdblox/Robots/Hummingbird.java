@@ -92,6 +92,8 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
     private byte[] g4response;
 
+    private static boolean ATTEMPTED = false;
+    private static boolean DISCONNECTED = false;
     /**
      * Initializes a Hummingbird device
      *
@@ -389,29 +391,62 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         return conn.isConnected();
     }
 
+    public void setConnected() {
+        DISCONNECTED = false;
+    }
     /**
      * Disconnects the device
      */
     public void disconnect() {
-        conn.writeBytes(new byte[]{TERMINATE_CMD});
-        AndroidSchedulers.from(sendThread.getLooper()).shutdown();
-        sendThread.getLooper().quit();
-        if (sendDisposable != null && !sendDisposable.isDisposed())
-            sendDisposable.dispose();
-        sendThread.quitSafely();
-        AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
-        monitorThread.getLooper().quit();
-        if (monitorDisposable != null && !monitorDisposable.isDisposed())
-            monitorDisposable.dispose();
-        monitorThread.quitSafely();
-        if (conn != null) {
-            conn.removeRxDataListener(this);
-            stopPollingSensors();
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
+        if (!DISCONNECTED) {
+            if (ATTEMPTED) {
+                forceDisconnect();
+                return;
             }
-            conn.disconnect();
+            ATTEMPTED = true;
+            conn.writeBytes(new byte[]{TERMINATE_CMD});
+            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
+            sendThread.getLooper().quit();
+            if (sendDisposable != null && !sendDisposable.isDisposed())
+                sendDisposable.dispose();
+            sendThread.quitSafely();
+            AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
+            monitorThread.getLooper().quit();
+            if (monitorDisposable != null && !monitorDisposable.isDisposed())
+                monitorDisposable.dispose();
+            monitorThread.quitSafely();
+            if (conn != null) {
+                conn.removeRxDataListener(this);
+                stopPollingSensors();
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                }
+                conn.disconnect();
+            }
+            ATTEMPTED = false;
+            DISCONNECTED = true;
+        }
+    }
+
+    public void forceDisconnect() {
+        if (!DISCONNECTED) {
+            ATTEMPTED = false;
+            if (conn != null) {
+                conn.removeRxDataListener(this);
+                conn.disconnect();
+            }
+            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
+            sendThread.getLooper().quit();
+            if (sendDisposable != null && !sendDisposable.isDisposed())
+                sendDisposable.dispose();
+            sendThread.quitSafely();
+            AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
+            monitorThread.getLooper().quit();
+            if (monitorDisposable != null && !monitorDisposable.isDisposed())
+                monitorDisposable.dispose();
+            monitorThread.quitSafely();
+            DISCONNECTED = true;
         }
     }
 

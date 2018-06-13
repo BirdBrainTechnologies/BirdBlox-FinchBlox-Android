@@ -44,13 +44,16 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 50;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
     private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
-    private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 10000;
+    private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
     private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
 
     private static byte[] FIRMWARECOMMAND = new byte[1];
-    private static final byte latestHardwareMajorVersion = 0x01;
-    private static final byte latestFirmwareMajorVersion = 0x00;
-    private static final byte latestFirmwareMinorVersion = 0x01;
+    private static final byte latestHardwareVersion = 0x01;
+    private static final byte latestMicroBitVersion = 0x01;
+    private static final byte latestSMDVersion = (byte) 0xFF;
+    private static int microBitVersion = 0;
+    private static int SMDVersion = 0;
+
     private static final int SYMBOL = 0;
     private static final int FLASH = 1;
 
@@ -74,6 +77,8 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
 
     private byte[] cfresponse;
 
+    private static boolean ATTEMPTED = false;
+    private static boolean DISCONNECTED = false;
     /**
      * Initializes a Microbit device
      *
@@ -129,7 +134,8 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                     last_successfully_sent = new AtomicLong(System.currentTimeMillis());
                 }
                 long timeOut = cf.get() ? MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
-                if (System.currentTimeMillis() - last_successfully_sent.get() >= timeOut) {
+                long passedTime = System.currentTimeMillis() - last_successfully_sent.get();
+                if (passedTime >= timeOut) {
                     try {
                         new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
                             @Override
@@ -178,7 +184,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 if (!hasLatestFirmware()) {
                     cf.set(true);
-                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareMajorVersion()) + "', '" + bbxEncode(getLatestFirmwareMinorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion()) + "')");
+                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
                     disconnect();
                 }
             } else {
@@ -343,6 +349,8 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
         conn.writeBytes(new byte[]{READ_ALL_CMD, 's'});
     }
 
+
+
     private boolean setRbSOOutput(RobotStateObject oldobj, RobotStateObject newobj, int... values) {
         try {
             lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
@@ -406,30 +414,65 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
         return conn.isConnected();
     }
 
+    public void setConnected() {
+        DISCONNECTED = false;
+    }
+
     /**
      * Disconnects the device
      */
     public void disconnect() {
-        conn.writeBytes(new byte[]{TERMINATE_CMD});
-        newState.resetAll();
-        AndroidSchedulers.from(sendThread.getLooper()).shutdown();
-        sendThread.getLooper().quit();
-        if (sendDisposable != null && !sendDisposable.isDisposed())
-            sendDisposable.dispose();
-        sendThread.quitSafely();
-        AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
-        monitorThread.getLooper().quit();
-        if (monitorDisposable != null && !monitorDisposable.isDisposed())
-            monitorDisposable.dispose();
-        monitorThread.quitSafely();
-        if (conn != null) {
-            conn.removeRxDataListener(this);
-            stopPollingSensors();
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
+        if (!DISCONNECTED) {
+            if (ATTEMPTED) {
+                forceDisconnect();
+                return;
             }
-            conn.disconnect();
+            ATTEMPTED = true;
+
+            conn.writeBytes(new byte[]{TERMINATE_CMD});
+            newState.resetAll();
+            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
+            sendThread.getLooper().quit();
+            if (sendDisposable != null && !sendDisposable.isDisposed())
+                sendDisposable.dispose();
+            sendThread.quitSafely();
+            AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
+            monitorThread.getLooper().quit();
+            if (monitorDisposable != null && !monitorDisposable.isDisposed())
+                monitorDisposable.dispose();
+            monitorThread.quitSafely();
+            if (conn != null) {
+                conn.removeRxDataListener(this);
+                stopPollingSensors();
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                }
+                conn.disconnect();
+            }
+            ATTEMPTED = false;
+            DISCONNECTED = true;
+        }
+    }
+
+    public void forceDisconnect() {
+        if (!DISCONNECTED) {
+            ATTEMPTED = false;
+            if (conn != null) {
+                conn.removeRxDataListener(this);
+                conn.disconnect();
+            }
+            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
+            sendThread.getLooper().quit();
+            if (sendDisposable != null && !sendDisposable.isDisposed())
+                sendDisposable.dispose();
+            sendThread.quitSafely();
+            AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
+            monitorThread.getLooper().quit();
+            if (monitorDisposable != null && !monitorDisposable.isDisposed())
+                monitorDisposable.dispose();
+            monitorThread.quitSafely();
+            DISCONNECTED = true;
         }
     }
 
@@ -476,37 +519,27 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
         }
     }
 
-    public String getFirmwareMajorVersion() {
-        try {
-            return Byte.toString(cfresponse[1]);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            Log.e(TAG, "Microbit firmwareMajor version: " + e.getMessage());
-            return null;
-        }
+    public String getLatestMicroBitVersion() {
+        return Byte.toString(latestMicroBitVersion);
     }
 
-    public String getFirmwareMinorVersion() {
-        try {
-            return Byte.toString(cfresponse[2]);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            Log.e(TAG, "Microbit firmwareMinor version: " + e.getMessage());
-            return null;
-        }
+    public String getLatestSMDVersion() {
+        return Byte.toString(latestSMDVersion);
     }
 
-    public String getLatestFirmwareMinorVersion() {
-        return Byte.toString(latestFirmwareMinorVersion);
+    public String getMicroBitVersion() {
+        return Integer.toString(microBitVersion);
     }
 
-    public String getLatestFirmwareMajorVersion() {
-        return Byte.toString(latestFirmwareMajorVersion);
+    public String getSMDVersion() {
+        return Integer.toString(SMDVersion);
     }
 
     public boolean hasLatestFirmware() {
         try {
-            int fwMinor = (int) cfresponse[1];
-            int fwMajor = (int) cfresponse[2];
-            if (fwMinor == (int) latestFirmwareMinorVersion && fwMajor == (int) latestFirmwareMajorVersion) {
+            microBitVersion = (int) cfresponse[1];
+            SMDVersion = (int) cfresponse[2];
+            if (microBitVersion == (int) latestMicroBitVersion && SMDVersion == (int) latestSMDVersion) {
                 return true;
             } else {
                 return false;

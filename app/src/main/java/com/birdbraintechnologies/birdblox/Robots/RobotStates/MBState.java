@@ -84,6 +84,7 @@ public class MBState extends RobotState<MBState> {
             all[4] = ConstructByteFromInts(lightData, 8, 16);
             all[5] = ConstructByteFromInts(lightData, 0, 8);
         } else if (lightData.length == 1 && lightData[0] == -1) {
+            //reset
             all[1] = (byte) 0x00;
             all[2] = (byte) 0xFF;
             all[3] = (byte) 0xFF;

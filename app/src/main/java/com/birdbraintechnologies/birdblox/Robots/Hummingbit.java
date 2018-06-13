@@ -49,15 +49,16 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 50;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
     private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
-    private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 10000;
+    private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
     private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
     private static final int ROTATION = 1;
     private static final int POSITION = 0;
     private static byte[] FIRMWARECOMMAND = new byte[1];
-    private static final byte latestHardwareMajorVersion = 0x01;
-    private static final byte latestFirmwareMajorVersion = 0x00;
-    private static final byte latestFirmwareMinorVersion = 0x01;
-
+    private static final byte latestHardwareVersion = 0x01;
+    private static final byte latestMicroBitVersion = 0x01;
+    private static final byte latestSMDVersion = 0x01;
+    private static int microBitVersion = 0;
+    private static int SMDVersion = 0;
 
     private AtomicBoolean cf;
     private AtomicLong last_sent;
@@ -80,6 +81,8 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private static MBState oldMBState = new MBState();
     private static MBState newMBState = new MBState();
 
+    private static boolean ATTEMPTED = false;
+    private static boolean DISCONNECTED = false;
     /**
      * Initializes a Hummingbit device
      *
@@ -135,13 +138,14 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     last_successfully_sent = new AtomicLong(System.currentTimeMillis());
                 }
                 long timeOut = cf.get() ? MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
-                if (System.currentTimeMillis() - last_successfully_sent.get() >= timeOut) {
+                long passedTime = System.currentTimeMillis() - last_successfully_sent.get();
+                if (passedTime >= timeOut) {
                     try {
                         new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
                             @Override
                             public void run() {
-                                String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
-                                Toast.makeText(mainWebViewContext, "Connection to Hummingbit " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
+                                String HBitName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
+                                Toast.makeText(mainWebViewContext, "Connection to Hummingbit " + HBitName + " timed out.", Toast.LENGTH_SHORT).show();
                             }
                         });
                         synchronized (hummingbitsToConnect) {
@@ -165,6 +169,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 START_SENDING_INTERVAL_IN_MILLIS, MONITOR_CONNECTION_INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
     }
 
+
     /**
      * Actually sends the commands to the physical Hummingbit,
      * based on certain conditions.
@@ -184,7 +189,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 if (!hasLatestFirmware()) {
                     cf.set(true);
-                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareMajorVersion()) + "', '" + bbxEncode(getLatestFirmwareMajorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion()) + "', '" + bbxEncode(getFirmwareMinorVersion()) + "')");
+                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
                     disconnect();
                 }
             } else {
@@ -205,6 +210,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             // Send here
             setSendingTrue();
             if (!newMBState.equals(oldMBState)) {
+
                 if (conn.writeBytes(newState.setAll()) && conn.writeBytes(newMBState.setAll())) {
                     // Successfully sent Non-CF command
                     if (last_successfully_sent != null)
@@ -338,12 +344,14 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         byte[] rawMagnetometerValue = new byte[6];
         byte[] rawAccelerometerValue = new byte[3];
         byte[] rawButtonShakeValue = new byte[1];
+        byte[] rawBatteryValue = new byte[1];
         synchronized (rawSensorValuesLock) {
             try {
                 if (rawSensorValues == null) {
                     rawSensorValues = startPollingSensors();
                     conn.addRxDataListener(this);
                 }
+                rawBatteryValue[0] = rawSensorValues[3];
                 if (portString != null) {
                     int port = Integer.parseInt(portString) - 1;
                     rawSensorValue = (rawSensorValues[port] & 0xFF);
@@ -364,6 +372,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return null;
             }
         }
+
         switch (sensorType) {
             case "distance":
                 return Double.toString(DeviceUtil.RawToDistance(rawSensorValue));
@@ -395,7 +404,15 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return rawAccelerometerValue[1] > 51 ? "1" : "0";
             case "logoDown":
                 return rawAccelerometerValue[1] < -51 ? "1" : "0";
-
+            case "battery":
+                double batteryVoltage = rawBatteryValue[0] * 0.037;
+                if (batteryVoltage > 4.7) {
+                    return "Good";
+                } else if (batteryVoltage > 3.3) {
+                    return "Warning";
+                } else {
+                    return "Bad";
+                }
             default:
                 return Double.toString(DeviceUtil.RawToKnob(rawSensorValue));
         }
@@ -473,33 +490,65 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         return conn.isConnected();
     }
 
+    public void setConnected() {
+        DISCONNECTED = false;
+    }
     /**
      * Disconnects the device
      */
     public void disconnect() {
-        conn.writeBytes(new byte[]{TERMINATE_CMD});
-        newMBState.resetAll();
-        AndroidSchedulers.from(sendThread.getLooper()).shutdown();
-        sendThread.getLooper().quit();
-        if (sendDisposable != null && !sendDisposable.isDisposed())
-            sendDisposable.dispose();
-        sendThread.quitSafely();
-        AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
-        monitorThread.getLooper().quit();
-        if (monitorDisposable != null && !monitorDisposable.isDisposed())
-            monitorDisposable.dispose();
-        monitorThread.quitSafely();
-        if (conn != null) {
-            conn.removeRxDataListener(this);
-            stopPollingSensors();
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
+        if (!DISCONNECTED) {
+            if (ATTEMPTED) {
+                forceDisconnect();
+                return;
             }
-            conn.disconnect();
+            ATTEMPTED = true;
+            conn.writeBytes(new byte[]{TERMINATE_CMD});
+            newMBState.resetAll();
+            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
+            sendThread.getLooper().quit();
+            if (sendDisposable != null && !sendDisposable.isDisposed())
+                sendDisposable.dispose();
+            sendThread.quitSafely();
+            AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
+            monitorThread.getLooper().quit();
+            if (monitorDisposable != null && !monitorDisposable.isDisposed())
+                monitorDisposable.dispose();
+            monitorThread.quitSafely();
+            if (conn != null) {
+                conn.removeRxDataListener(this);
+                stopPollingSensors();
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                }
+                conn.disconnect();
+            }
+            ATTEMPTED = false;
+            DISCONNECTED = true;
         }
     }
 
+    public void forceDisconnect() {
+        if (!DISCONNECTED) {
+            ATTEMPTED = false;
+            if (conn != null) {
+                conn.removeRxDataListener(this);
+                conn.disconnect();
+            }
+            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
+            sendThread.getLooper().quit();
+            if (sendDisposable != null && !sendDisposable.isDisposed())
+                sendDisposable.dispose();
+            sendThread.quitSafely();
+            AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
+            monitorThread.getLooper().quit();
+            if (monitorDisposable != null && !monitorDisposable.isDisposed())
+                monitorDisposable.dispose();
+            monitorThread.quitSafely();
+            DISCONNECTED = true;
+        }
+    }
     @Override
     public void onRXData(byte[] newData) {
         synchronized (rawSensorValuesLock) {
@@ -543,37 +592,27 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         }
     }
 
-    public String getFirmwareMajorVersion() {
-        try {
-            return Byte.toString(cfresponse[1]);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            Log.e(TAG, "Hummingbit firmwareMajor version: " + e.getMessage());
-            return null;
-        }
+    public String getLatestMicroBitVersion() {
+        return Byte.toString(latestMicroBitVersion);
     }
 
-    public String getFirmwareMinorVersion() {
-        try {
-            return Byte.toString(cfresponse[2]);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            Log.e(TAG, "Hummingbit firmwareMinor version: " + e.getMessage());
-            return null;
-        }
+    public String getLatestSMDVersion() {
+        return Byte.toString(latestSMDVersion);
     }
 
-    public String getLatestFirmwareMinorVersion() {
-        return Byte.toString(latestFirmwareMinorVersion);
+    public String getMicroBitVersion() {
+        return Integer.toString(microBitVersion);
     }
 
-    public String getLatestFirmwareMajorVersion() {
-        return Byte.toString(latestFirmwareMajorVersion);
+    public String getSMDVersion() {
+        return Integer.toString(SMDVersion);
     }
 
     public boolean hasLatestFirmware() {
         try {
-            int fwMinor = (int) cfresponse[1];
-            int fwMajor = (int) cfresponse[2];
-            if (fwMinor == (int) latestFirmwareMinorVersion && fwMajor == (int) latestFirmwareMajorVersion) {
+            microBitVersion = (int) cfresponse[1];
+            SMDVersion = (int) cfresponse[2];
+            if (microBitVersion == (int) latestMicroBitVersion && SMDVersion == (int) latestSMDVersion) {
                 return true;
             } else {
                 return false;
