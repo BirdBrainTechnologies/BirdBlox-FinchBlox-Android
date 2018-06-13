@@ -13,7 +13,6 @@ import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -83,6 +82,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
 
     private static boolean ATTEMPTED = false;
     private static boolean DISCONNECTED = false;
+
     /**
      * Initializes a Hummingbit device
      *
@@ -493,6 +493,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     public void setConnected() {
         DISCONNECTED = false;
     }
+
     /**
      * Disconnects the device
      */
@@ -549,6 +550,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             DISCONNECTED = true;
         }
     }
+
     @Override
     public void onRXData(byte[] newData) {
         synchronized (rawSensorValuesLock) {

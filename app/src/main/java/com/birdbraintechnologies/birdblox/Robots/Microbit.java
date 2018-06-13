@@ -79,6 +79,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
 
     private static boolean ATTEMPTED = false;
     private static boolean DISCONNECTED = false;
+
     /**
      * Initializes a Microbit device
      *
@@ -348,7 +349,6 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
     private void stopPollingSensors() {
         conn.writeBytes(new byte[]{READ_ALL_CMD, 's'});
     }
-
 
 
     private boolean setRbSOOutput(RobotStateObject oldobj, RobotStateObject newobj, int... values) {

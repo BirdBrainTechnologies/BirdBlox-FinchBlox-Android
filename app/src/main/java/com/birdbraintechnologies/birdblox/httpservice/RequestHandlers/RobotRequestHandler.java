@@ -21,7 +21,6 @@ import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -245,7 +244,6 @@ public class RobotRequestHandler implements RequestHandler {
     }
 
     /**
-     *
      * @param robotType
      * @param robotId
      * @return
@@ -374,7 +372,7 @@ public class RobotRequestHandler implements RequestHandler {
 
         if (robotType == RobotType.Hummingbird) disconnectFromHummingbird(robotId);
         else if (robotType == RobotType.Hummingbit) disconnectFromHummingbit(robotId);
-        else  disconnectFromMicrobit(robotId);
+        else disconnectFromMicrobit(robotId);
 
         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(robotId) + "', false);");
 
@@ -448,8 +446,8 @@ public class RobotRequestHandler implements RequestHandler {
      */
     private String getTotalStatus(RobotType robotType) {
         if (robotType == RobotType.Hummingbird) {
-            return getTotalHBStatus() ;
-        } else if (robotType == RobotType.Hummingbit){
+            return getTotalHBStatus();
+        } else if (robotType == RobotType.Hummingbit) {
             return getTotalHBitStatus();
         } else {
             return getTotalMBitStatus();
@@ -526,10 +524,10 @@ public class RobotRequestHandler implements RequestHandler {
             firmwareVersion = ((Hummingbird) robot).getFirmwareVersion();
         } else if (robotType == RobotType.Hummingbit) {
             hardwareVersion = ((Hummingbit) robot).getHardwareVersion();
-            firmwareVersion = "microBit: " + ((Hummingbit) robot).getMicroBitVersion() +"SMD: " + ((Hummingbit) robot).getSMDVersion();
+            firmwareVersion = "microBit: " + ((Hummingbit) robot).getMicroBitVersion() + "SMD: " + ((Hummingbit) robot).getSMDVersion();
         } else if (robotType == RobotType.Microbit) {
             hardwareVersion = ((Microbit) robot).getHardwareVersion();
-            firmwareVersion = "microBit: " + ((Microbit) robot).getMicroBitVersion() +"SMD: " + ((Microbit) robot).getSMDVersion();
+            firmwareVersion = "microBit: " + ((Microbit) robot).getMicroBitVersion() + "SMD: " + ((Microbit) robot).getSMDVersion();
         }
 
 

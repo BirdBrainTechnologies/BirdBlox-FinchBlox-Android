@@ -56,10 +56,10 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
     private static final int SETALL_INTERVAL_IN_MILLIS = 32;
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
-    private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 4000;
+    private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 50;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
     private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
-    private static final int MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 10000;
+    private static final int MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
     private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
 
 
