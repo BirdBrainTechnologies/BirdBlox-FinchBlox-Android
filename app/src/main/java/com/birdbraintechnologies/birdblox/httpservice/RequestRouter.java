@@ -58,7 +58,6 @@ class RequestRouter {
         /**
          * These were older command patterns (NOT to be used anymore):
          * addRoute("^/hummingbird/(.*)$", new HummingbirdRequestHandler(service));
-         * addRoute("^/flutter/(.*)$", new FlutterRequestHandler(service));
          *
          * They have now been replaced with:
          * addRoute("^/robot/(.*)$", new RobotRequestHandler(service));

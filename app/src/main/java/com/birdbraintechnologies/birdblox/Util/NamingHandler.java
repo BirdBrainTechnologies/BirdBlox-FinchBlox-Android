@@ -10,7 +10,7 @@ import com.birdbraintechnologies.birdblox.R;
  *
  * NamingHandler
  *
- * A class that handles naming flutters.
+ * A class that handles naming devices.
  *
  */
 public class NamingHandler {

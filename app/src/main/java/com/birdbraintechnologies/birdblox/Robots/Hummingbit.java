@@ -6,12 +6,13 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
-import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBState;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBitState;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.MBState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -28,52 +29,37 @@ import static android.content.ContentValues.TAG;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbirdsToConnect;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbitsToConnect;
 import static io.reactivex.android.schedulers.AndroidSchedulers.from;
 
-/**
- * Represents a Hummingbird device and all of its functionality: Setting outputs, reading sensors
- *
- * @author Terence Sun (tsun1215)
- * @author Shreyan Bakshi (AppyFizz)
- */
-public class Hummingbird extends Robot<HBState> implements UARTConnection.RXDataListener {
+public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDataListener {
     /*
-     * Command prefixes for the Hummingbird according to spec
-     * More info: http://www.hummingbirdkit.com/learning/hummingbird-duo-usb-protocol
+     * Command prefixes for the Hummingbit according to spec
      */
-    private static final byte TRI_LED_CMD = 'O';
-    private static final byte LED_CMD = 'L';
-    private static final byte MOTOR_CMD = 'M';
-    private static final byte VIB_MOTOR_CMD = 'V';
-    private static final byte SERVO_CMD = 'S';
-    private static final byte READ_SENSOR_CMD = 's';
-    private static final byte READ_ALL_CMD = 'G';
+
+    private static final byte READ_ALL_CMD = 'b';
     private static final byte STOP_PERIPH_CMD = 'X';
-    private static final byte TERMINATE_CMD = 'R';
-    private static final byte PING_CMD = 'z';
-    private static final String RENAME_CMD = "AT+GAPDEVNAME";
+    private static final byte TERMINATE_CMD = (byte) 0xCB;
+    private static final int SYMBOL = 0;
+    private static final int FLASH = 1;
 
     private static final int SETALL_INTERVAL_IN_MILLIS = 32;
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 50;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
     private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
-    private static final int MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
+    private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
     private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
+    private static final int ROTATION = 1;
+    private static final int POSITION = 0;
+    private static byte[] FIRMWARECOMMAND = new byte[1];
+    private static final byte latestHardwareVersion = 0x01;
+    private static final byte latestMicroBitVersion = 0x01;
+    private static final byte latestSMDVersion = 0x01;
+    private static int microBitVersion = 0;
+    private static int SMDVersion = 0;
 
-
-    // This represents the firmware version 2.2a
-    private static final byte minFirmwareVersion1 = 2;
-    private static final byte minFirmwareVersion2 = 2;
-    private static final String minFirmwareVersion3 = "a";
-
-    // This represents the firmware version 2.2b
-    private static final byte latestFirmwareVersion1 = 2;
-    private static final byte latestFirmwareVersion2 = 2;
-    private static final String latestFirmwareVersion3 = "b";
-
-    private AtomicBoolean g4;
+    private AtomicBoolean cf;
     private AtomicLong last_sent;
     private AtomicLong last_successfully_sent;
 
@@ -90,23 +76,29 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private Disposable sendDisposable;
     private Disposable monitorDisposable;
 
-    private byte[] g4response;
+    private byte[] cfresponse;
+    private static MBState oldMBState = new MBState();
+    private static MBState newMBState = new MBState();
 
     private static boolean ATTEMPTED = false;
     private static boolean DISCONNECTED = false;
+
     /**
-     * Initializes a Hummingbird device
+     * Initializes a Hummingbit device
      *
-     * @param conn Connection established with the Hummingbird device
+     * @param conn Connection established with the Hummingbit device
      */
-    public Hummingbird(final UARTConnection conn) {
+    public Hummingbit(final UARTConnection conn) {
         super();
         this.conn = conn;
 
-        oldState = new HBState();
-        newState = new HBState();
+        oldState = new HBitState();
+        newState = new HBitState();
 
-        g4 = new AtomicBoolean(true);
+
+        FIRMWARECOMMAND[0] = (byte) 0xCF;
+
+        cf = new AtomicBoolean(true);
         last_sent = new AtomicLong(System.currentTimeMillis());
         last_successfully_sent = new AtomicLong(System.currentTimeMillis());
 
@@ -145,18 +137,19 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 if (last_successfully_sent == null) {
                     last_successfully_sent = new AtomicLong(System.currentTimeMillis());
                 }
-                long timeOut = g4.get() ? MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
-                if (System.currentTimeMillis() - last_successfully_sent.get() >= timeOut) {
+                long timeOut = cf.get() ? MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
+                long passedTime = System.currentTimeMillis() - last_successfully_sent.get();
+                if (passedTime >= timeOut) {
                     try {
                         new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
                             @Override
                             public void run() {
-                                String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
-                                Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
+                                String HBitName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
+                                Toast.makeText(mainWebViewContext, "Connection to Hummingbit " + HBitName + " timed out.", Toast.LENGTH_SHORT).show();
                             }
                         });
-                        synchronized (hummingbirdsToConnect) {
-                            hummingbirdsToConnect.add(getMacAddress());
+                        synchronized (hummingbitsToConnect) {
+                            hummingbitsToConnect.add(getMacAddress());
                         }
                         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
                         new Thread() {
@@ -176,37 +169,37 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 START_SENDING_INTERVAL_IN_MILLIS, MONITOR_CONNECTION_INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
     }
 
+
     /**
-     * Actually sends the commands to the physical Hummingbird,
+     * Actually sends the commands to the physical Hummingbit,
      * based on certain conditions.
      */
     public synchronized void sendToRobot() {
         long currentTime = System.currentTimeMillis();
-        if (g4.get()) {
+        if (cf.get()) {
             // Send here
             setSendingTrue();
-            g4response = conn.writeBytesWithResponse("G4".getBytes());
-            if (g4response != null && g4response.length > 0) {
-                // Successfully sent G4 command
+
+            cfresponse = conn.writeBytesWithResponse(FIRMWARECOMMAND);
+            if (cfresponse != null && cfresponse.length > 0) {
+                // Successfully sent CF command
                 if (last_successfully_sent != null)
                     last_successfully_sent.set(currentTime);
-                g4.set(false);
+                cf.set(false);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                if (!hasMinFirmware()) {
-                    g4.set(true);
-                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareVersion()) + "', '" + bbxEncode(getMinFirmwareVersion()) + "')");
+                if (!hasLatestFirmware()) {
+                    cf.set(true);
+                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
                     disconnect();
-                } else if (!hasLatestFirmware()) {
-                    runJavascript("CallbackManager.robot.updateFirmwareStatus('" + bbxEncode(getMacAddress()) + "', 'old')");
                 }
             } else {
-                // Sending Non-G4 command failed
+                // Sending Non-CF command failed
             }
             setSendingFalse();
             last_sent.set(currentTime);
             return;
         }
-        // Not G4
+        // Not CF
         if (isCurrentlySending()) {
             // do nothing in this case
             return;
@@ -216,15 +209,31 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             // Not currently sending, but oldState and newState are different
             // Send here
             setSendingTrue();
-            if (conn.writeBytes(newState.setAll())) {
-                // Successfully sent Non-G4 command
-                if (last_successfully_sent != null)
-                    last_successfully_sent.set(currentTime);
-                oldState.copy(newState);
-                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+            if (!newMBState.equals(oldMBState)) {
+
+                if (conn.writeBytes(newState.setAll()) && conn.writeBytes(newMBState.setAll())) {
+                    // Successfully sent Non-CF command
+                    if (last_successfully_sent != null)
+                        last_successfully_sent.set(currentTime);
+                    oldState.copy(newState);
+                    oldMBState.copy(newMBState);
+                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                } else {
+                    // Sending Non-CF command failed
+                }
             } else {
-                // Sending Non-G4 command failed
+                if (conn.writeBytes(newState.setAll())) {
+                    // Successfully sent Non-CF command
+                    if (last_successfully_sent != null)
+                        last_successfully_sent.set(currentTime);
+                    oldState.copy(newState);
+                    oldMBState.copy(newMBState);
+                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                } else {
+                    // Sending Non-CF command failed
+                }
             }
+
             setSendingFalse();
             last_sent.set(currentTime);
         } else {
@@ -232,14 +241,29 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             if (currentTime - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
                 // Send here
                 setSendingTrue();
-                if (conn.writeBytes(newState.setAll())) {
-                    // Successfully sent Non-G4 command
-                    if (last_successfully_sent != null)
-                        last_successfully_sent.set(currentTime);
-                    oldState.copy(newState);
-                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                // Not currently sending, and oldState and newState are the same
+                if (!newMBState.equals(oldMBState)) {
+                    if (conn.writeBytes(newState.setAll()) && conn.writeBytes(newMBState.setAll())) {
+                        // Successfully sent Non-CF command
+                        if (last_successfully_sent != null)
+                            last_successfully_sent.set(currentTime);
+                        oldState.copy(newState);
+                        oldMBState.copy(newMBState);
+                        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                    } else {
+                        // Sending Non-CF command failed
+                    }
                 } else {
-                    // Sending Non-G4 command failed
+                    if (conn.writeBytes(newState.setAll())) {
+                        // Successfully sent Non-CF command
+                        if (last_successfully_sent != null)
+                            last_successfully_sent.set(currentTime);
+                        oldState.copy(newState);
+                        oldMBState.copy(newMBState);
+                        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                    } else {
+                        // Sending Non-CF command failed
+                    }
                 }
                 setSendingFalse();
                 last_sent.set(currentTime);
@@ -262,22 +286,46 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         }
 
         // All remaining outputs are of the format: /out/<outputType>/<port>/<args>...
-
-        int port = Integer.parseInt(args.get("port").get(0));
-
+        int port = 0;
         switch (outputType) {
             case "servo":
-                return setRbSOOutput(oldState.getServo(port), newState.getServo(port), Integer.parseInt(args.get("angle").get(0)));
-            case "motor":
-                return setRbSOOutput(oldState.getMotor(port), newState.getMotor(port), Integer.parseInt(args.get("speed").get(0)));
-            case "vibration":
-                return setRbSOOutput(oldState.getVibrator(port), newState.getVibrator(port),
-                        Integer.parseInt(args.get("intensity").get(0)));
+                port = Integer.parseInt(args.get("port").get(0));
+                if (args.get("angle") == null) {
+                    return setRbSOOutput(oldState.getHBitServo(port), newState.getHBitServo(port), Integer.parseInt(args.get("percent").get(0)), ROTATION);
+                } else {
+                    return setRbSOOutput(oldState.getHBitServo(port), newState.getHBitServo(port), Integer.parseInt(args.get("angle").get(0)), POSITION);
+                }
             case "led":
+                port = Integer.parseInt(args.get("port").get(0));
                 return setRbSOOutput(oldState.getLED(port), newState.getLED(port), Integer.parseInt(args.get("intensity").get(0)));
             case "triled":
+                port = Integer.parseInt(args.get("port").get(0));
                 return setRbSOOutput(oldState.getTriLED(port), newState.getTriLED(port), Integer.parseInt(args.get("red").get(0)),
                         Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));
+            case "buzzer":
+                if (Integer.parseInt(args.get("duration").get(0)) != 0 && Integer.parseInt(args.get("note").get(0)) != 0) {
+                    return setRbSOOutput(oldState.getHBBuzzer(port), newState.getHBBuzzer(port), Integer.parseInt(args.get("note").get(0)), Integer.parseInt(args.get("duration").get(0)));
+                }
+            case "ledArray":
+                String charactersInInts = args.get("ledArrayStatus").get(0);
+                int[] bitsInInt = new int[charactersInInts.length() + 1];
+                for (int i = 0; i < charactersInInts.length(); i++) {
+                    bitsInInt[i] = Integer.parseInt(charactersInInts.charAt(i) + "");
+                }
+                bitsInInt[bitsInInt.length - 1] = SYMBOL;
+                return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), bitsInInt);
+            case "printBlock":
+                String printString = args.get("printString").get(0);
+                printString = printString.replaceAll("[^a-zA-Z]", "");
+                printString = printString.toUpperCase();
+                byte[] tmpAscii = printString.getBytes(StandardCharsets.US_ASCII);
+                int[] charsInInts = new int[tmpAscii.length + 1];
+
+                for (int i = 0; i < tmpAscii.length; i++) {
+                    charsInInts[i] = (int) tmpAscii[i];
+                }
+                charsInInts[charsInInts.length - 1] = FLASH;
+                return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), charsInInts);
         }
         return false;
     }
@@ -292,15 +340,33 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
      * @return A string representing the value of the sensor
      */
     public String readSensor(String sensorType, String portString, String axisString) {
-        byte rawSensorValue;
+        int rawSensorValue = 0;
+        byte[] rawMagnetometerValue = new byte[6];
+        byte[] rawAccelerometerValue = new byte[3];
+        byte[] rawButtonShakeValue = new byte[1];
+        byte[] rawBatteryValue = new byte[1];
         synchronized (rawSensorValuesLock) {
             try {
                 if (rawSensorValues == null) {
                     rawSensorValues = startPollingSensors();
                     conn.addRxDataListener(this);
                 }
-                int port = Integer.parseInt(portString) - 1;
-                rawSensorValue = rawSensorValues[port];
+                rawBatteryValue[0] = rawSensorValues[3];
+                if (portString != null) {
+                    int port = Integer.parseInt(portString) - 1;
+                    rawSensorValue = (rawSensorValues[port] & 0xFF);
+                } else {
+                    rawAccelerometerValue[0] = rawSensorValues[4];
+                    rawAccelerometerValue[1] = rawSensorValues[5];
+                    rawAccelerometerValue[2] = rawSensorValues[6];
+                    rawButtonShakeValue[0] = rawSensorValues[7];
+                    rawMagnetometerValue[0] = rawSensorValues[8];
+                    rawMagnetometerValue[1] = rawSensorValues[9];
+                    rawMagnetometerValue[2] = rawSensorValues[10];
+                    rawMagnetometerValue[3] = rawSensorValues[11];
+                    rawMagnetometerValue[4] = rawSensorValues[12];
+                    rawMagnetometerValue[5] = rawSensorValues[13];
+                }
             } catch (RuntimeException e) {
                 Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
                 return null;
@@ -309,23 +375,55 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
         switch (sensorType) {
             case "distance":
-                return Double.toString(DeviceUtil.RawToDist(rawSensorValue));
-            case "temperature":
-                return Double.toString(DeviceUtil.RawToTemp(rawSensorValue));
+                return Double.toString(DeviceUtil.RawToDistance(rawSensorValue));
             case "sound":
+                return Double.toString(DeviceUtil.RawToSound(rawSensorValue));
             case "light":
-            case "sensor":
+                return Double.toString(DeviceUtil.RawToLight(rawSensorValue));
+            case "magnetometer":
+                return Double.toString(DeviceUtil.RawToMag(rawMagnetometerValue, axisString));
+            case "accelerometer":
+                return Double.toString(DeviceUtil.RawToAccl(rawAccelerometerValue, axisString));
+            case "compass":
+                return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue));
+            case "buttonA":
+                return (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) ? "1" : "0";
+            case "buttonB":
+                return (((rawButtonShakeValue[0] >> 5) & 0x1) == 0x0) ? "1" : "0";
+            case "shake":
+                return ((rawButtonShakeValue[0] & 0x1) == 0x0) ? "0" : "1";
+            case "screenUp":
+                return rawAccelerometerValue[2] > 51 ? "1" : "0";
+            case "screenDown":
+                return rawAccelerometerValue[2] < -51 ? "1" : "0";
+            case "tiltLeft":
+                return rawAccelerometerValue[0] > 51 ? "1" : "0";
+            case "tiltRight":
+                return rawAccelerometerValue[0] < -51 ? "1" : "0";
+            case "logoUp":
+                return rawAccelerometerValue[1] > 51 ? "1" : "0";
+            case "logoDown":
+                return rawAccelerometerValue[1] < -51 ? "1" : "0";
+            case "battery":
+                double batteryVoltage = rawBatteryValue[0] * 0.037;
+                if (batteryVoltage > 4.7) {
+                    return "Good";
+                } else if (batteryVoltage > 3.3) {
+                    return "Warning";
+                } else {
+                    return "Bad";
+                }
             default:
-                return Double.toString(DeviceUtil.RawToPercent(rawSensorValue));
+                return Double.toString(DeviceUtil.RawToKnob(rawSensorValue));
         }
     }
 
     private byte[] startPollingSensors() {
-        return conn.writeBytesWithResponse(new byte[]{READ_ALL_CMD, '5'});
+        return conn.writeBytesWithResponse(new byte[]{READ_ALL_CMD, 'g'});
     }
 
     private void stopPollingSensors() {
-        conn.writeBytes(new byte[]{READ_ALL_CMD, '6'});
+        conn.writeBytes(new byte[]{READ_ALL_CMD, 's'});
     }
 
     private boolean setRbSOOutput(RobotStateObject oldobj, RobotStateObject newobj, int... values) {
@@ -353,7 +451,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     }
 
     /**
-     * Resets all hummingbird peripherals to their default values.
+     * Resets all hummingbit peripherals to their default values.
      * <p>
      * Sending a {@value #STOP_PERIPH_CMD} should achieve the same
      * thing on legacy firmware.
@@ -368,6 +466,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             }
             if (statesEqual()) {
                 newState.resetAll();
+                newMBState.resetAll();
                 if (lock.isHeldByCurrentThread()) {
                     doneSending.signal();
                     lock.unlock();
@@ -394,6 +493,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     public void setConnected() {
         DISCONNECTED = false;
     }
+
     /**
      * Disconnects the device
      */
@@ -405,6 +505,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             }
             ATTEMPTED = true;
             conn.writeBytes(new byte[]{TERMINATE_CMD});
+            newMBState.resetAll();
             AndroidSchedulers.from(sendThread.getLooper()).shutdown();
             sendThread.getLooper().quit();
             if (sendDisposable != null && !sendDisposable.isDisposed())
@@ -461,7 +562,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         try {
             return conn.getBLEDevice().getAddress();
         } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting hummingbird mac address: " + e.getMessage());
+            Log.e(TAG, "Error getting hummingbit mac address: " + e.getMessage());
             return null;
         }
     }
@@ -470,7 +571,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         try {
             return NamingHandler.GenerateName(mainWebViewContext, conn.getBLEDevice().getAddress());
         } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting hummingbird name: " + e.getMessage());
+            Log.e(TAG, "Error getting hummingbit name: " + e.getMessage());
             return null;
         }
     }
@@ -479,70 +580,52 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         try {
             return conn.getBLEDevice().getName();
         } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting hummingbird gap name: " + e.getMessage());
+            Log.e(TAG, "Error getting hummingbit gap name: " + e.getMessage());
             return null;
         }
     }
 
     public String getHardwareVersion() {
         try {
-            return Byte.toString(g4response[0]) + Byte.toString(g4response[1]);
+            return Byte.toString(cfresponse[0]);
         } catch (ArrayIndexOutOfBoundsException e) {
-            Log.e(TAG, "Hummingbird hardware version: " + e.getMessage());
+            Log.e(TAG, "Hummingbit hardware version: " + e.getMessage());
             return null;
         }
     }
 
-    public String getFirmwareVersion() {
-        try {
-            return Byte.toString(g4response[2]) + "." + Byte.toString(g4response[3]) + new String(new byte[]{g4response[4]}, "utf-8");
-        } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException e) {
-            Log.e(TAG, "Hummingbird firmware version: " + e.getMessage());
-            return null;
-        }
+    public String getLatestMicroBitVersion() {
+        return Byte.toString(latestMicroBitVersion);
     }
 
-    String getMinFirmwareVersion() {
-        return Byte.toString(minFirmwareVersion1) + "." + Byte.toString(minFirmwareVersion2) + minFirmwareVersion3;
+    public String getLatestSMDVersion() {
+        return Byte.toString(latestSMDVersion);
     }
 
-    public String getLatestFirmwareVersion() {
-        return Byte.toString(latestFirmwareVersion1) + "." + Byte.toString(latestFirmwareVersion2) + latestFirmwareVersion3;
+    public String getMicroBitVersion() {
+        return Integer.toString(microBitVersion);
     }
 
-    public boolean hasMinFirmware() {
-        try {
-            int fw1 = (int) g4response[2];
-            int fw2 = (int) g4response[3];
-            String fw3 = new String(new byte[]{g4response[4]}, "utf-8");
-            if (fw1 >= minFirmwareVersion1) {
-                if (fw1 > minFirmwareVersion1) return true;
-                if (fw2 >= minFirmwareVersion2) {
-                    return ((fw2 > minFirmwareVersion2) || (fw3.compareTo(minFirmwareVersion3) >= 0));
-                }
-            }
-            return false;
-        } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException | NullPointerException e) {
-            Log.e(TAG, "Hummingbird firmware version: " + e.getMessage());
-            return false;
-        }
+    public String getSMDVersion() {
+        return Integer.toString(SMDVersion);
     }
 
     public boolean hasLatestFirmware() {
         try {
-            int fw1 = (int) g4response[2];
-            int fw2 = (int) g4response[3];
-            String fw3 = new String(new byte[]{g4response[4]}, "utf-8");
-            if (fw1 >= latestFirmwareVersion1) {
-                if (fw1 > latestFirmwareVersion1) return true;
-                if (fw2 >= latestFirmwareVersion2) {
-                    return ((fw2 > latestFirmwareVersion2) || (fw3.compareTo(latestFirmwareVersion3) >= 0));
-                }
+            microBitVersion = (int) cfresponse[1];
+            SMDVersion = (int) cfresponse[2];
+            if (microBitVersion == (int) latestMicroBitVersion && SMDVersion == (int) latestSMDVersion) {
+                return true;
+            } else {
+                return false;
             }
-            return false;
-        } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException | NullPointerException e) {
-            Log.e(TAG, "Hummingbird firmware version: " + e.getMessage());
+        } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
+            Log.e(TAG, "Hummingbit firmware version: " + e.getMessage());
             return false;
         }
+    }
+
+    public boolean hasMinFirmware() {
+        return true;
     }
 }

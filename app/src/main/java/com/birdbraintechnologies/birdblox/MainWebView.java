@@ -19,6 +19,7 @@ import android.media.AudioTrack;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.NetworkOnMainThreadException;
 import android.provider.MediaStore;
@@ -577,21 +578,15 @@ public class MainWebView extends AppCompatActivity {
      */
     private void showShareDialog(Bundle b) {
         try {
-            // create new intent
+            String filename = b.getString("file_name");
+            File filelocation = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), filename);
+            Uri path = Uri.fromFile(filelocation);
             Intent sendIntent = new Intent(Intent.ACTION_SEND);
-            // set flag to give temporary permission to external app to use your FileProvider
             sendIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            // generate URI, with authority defined as the application ID
-            // in the Manifest, the last param is file I want to open
-            Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID,
-                    new File((String) b.get("file_path")));
-            sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
-            // We are sharing zip files, so we give it a valid MIME type
+            sendIntent.putExtra(Intent.EXTRA_STREAM, path);
             sendIntent.setType("application/zip");
-            // Validate that the device can open the File
-            if (sendIntent.resolveActivity(MainWebView.this.getPackageManager()) != null) {
-                startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.share_with)));
-            }
+            startActivity(Intent.createChooser(sendIntent, "Send email..."));
+
         } catch (Exception e) {
             Log.e("FileProvider", e.getMessage());
         }
@@ -622,37 +617,6 @@ public class MainWebView extends AppCompatActivity {
         this.stopService(getIntent());
         this.finishAndRemoveTask();
     }
-
-    /**
-     * Determines availability of given port.
-     *
-     * @param port Port number of the required port
-     * @return Returns true if given is available (not in use), and false otherwise.
-     * // @throws RuntimeException
-     */
-    private static boolean port_available(int port) {
-        System.out.println("--------------Testing port " + port);
-        Socket s = null;
-        try {
-            s = new Socket("localhost", port);
-            // If the code makes it this far without an exception it means
-            // something is using the port and has responded.
-            System.out.println("--------------Port " + port + " is not available");
-            return false;
-        } catch (IOException e) {
-            System.out.println("--------------Port " + port + " is available");
-            return true;
-        } finally {
-            if (s != null) {
-                try {
-                    s.close();
-                } catch (IOException e) {
-                    // throw new RuntimeException("You should handle this error.", e);
-                }
-            }
-        }
-    }
-
 
     /**
      * Runs the given javascript within the main webview.

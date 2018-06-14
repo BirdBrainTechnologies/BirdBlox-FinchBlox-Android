@@ -86,72 +86,13 @@ public class HBState extends RobotState<HBState> {
         return null;
     }
 
-    public byte getLEDIntensity(int port) {
-        if (1 <= port && port <= leds.length)
-            return leds[port - 1].getIntensity();
-        return 0;
-    }
-
-    public void setLEDIntensity(int port, int intensity) {
-        if (1 <= port && port <= leds.length)
-            leds[port - 1].setValue(intensity);
-    }
-
-    public byte[] getTriLEDRGB(int port) {
-        if (1 <= port && port <= trileds.length)
-            return trileds[port - 1].getRGB();
-        return null;
-    }
-
-    public void setTriLEDRGB(int port, int red, int green, int blue) {
-        if (1 <= port && port <= trileds.length)
-            trileds[port - 1].setValue(red, green, blue);
-    }
-
-    public void setTriLEDRGB(int port, int[] rgb) {
-        if (1 <= port && port <= trileds.length)
-            trileds[port - 1].setValue(rgb);
-    }
-
-    public byte getServoAngle(int port) {
-        if (1 <= port && port <= servos.length)
-            return servos[port - 1].getAngle();
-        return (byte) 255;
-    }
-
-    public void setServoAngle(int port, int angle) {
-        if (1 <= port && port <= servos.length)
-            servos[port - 1].setValue(angle);
-    }
-
-    public byte getMotorSpeed(int port) {
-        if (1 <= port && port <= motors.length)
-            return motors[port - 1].getSpeed();
-        return 0;
-    }
-
-    public void setMotorSpeed(int port, int speed) {
-        if (1 <= port && speed <= motors.length)
-            motors[port - 1].setValue(speed);
-    }
-
-    public byte getVibratorIntensity(int port) {
-        if (1 <= port && port <= vibrators.length)
-            return vibrators[port - 1].getIntensity();
-        return 0;
-    }
-
-    public void setVibratorIntensity(int port, int intensity) {
-        if (1 <= port && intensity <= vibrators.length)
-            vibrators[port - 1].setValue(intensity);
-    }
 
     /**
      * Compares the current ('this') HBState object with another HBState object for equality.
      *
      * @param hbs The other HBState object.
      * @return Returns true if they're equal (all their attributes
-     *         have the same values), false otherwise.
+     * have the same values), false otherwise.
      */
     @Override
     public synchronized boolean equals_helper(HBState hbs) {
@@ -166,7 +107,7 @@ public class HBState extends RobotState<HBState> {
      *
      * @param hbs The other object.
      * @return Returns true if they're equal (they're both HBState objects, and all
-     *         their attributes have the same values), false otherwise.
+     * their attributes have the same values), false otherwise.
      */
     @Override
     public synchronized boolean equals(Object hbs) {
@@ -240,6 +181,7 @@ public class HBState extends RobotState<HBState> {
         all[18] = motors[1].getSpeed();
         return all;
     }
+
 
     /**
      * Resets all attributes of all state objects to their default values.
