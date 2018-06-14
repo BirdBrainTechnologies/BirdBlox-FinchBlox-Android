@@ -192,6 +192,15 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     last_successfully_sent.set(currentTime);
                 g4.set(false);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                try {
+                    if (rawSensorValues == null) {
+                        rawSensorValues = startPollingSensors();
+                        conn.addRxDataListener(this);
+                    }
+                }
+                catch (RuntimeException e) {
+                    Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
+                }
                 if (!hasMinFirmware()) {
                     g4.set(true);
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareVersion()) + "', '" + bbxEncode(getMinFirmwareVersion()) + "')");
@@ -294,19 +303,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     public String readSensor(String sensorType, String portString, String axisString) {
         byte rawSensorValue;
         synchronized (rawSensorValuesLock) {
-            try {
-                if (rawSensorValues == null) {
-                    rawSensorValues = startPollingSensors();
-                    conn.addRxDataListener(this);
-                }
-                int port = Integer.parseInt(portString) - 1;
-                rawSensorValue = rawSensorValues[port];
-            } catch (RuntimeException e) {
-                Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
-                return null;
-            }
+            int port = Integer.parseInt(portString) - 1;
+            rawSensorValue = rawSensorValues[port];
         }
-
         switch (sensorType) {
             case "distance":
                 return Double.toString(DeviceUtil.RawToDist(rawSensorValue));

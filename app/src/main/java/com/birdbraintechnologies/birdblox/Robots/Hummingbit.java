@@ -187,11 +187,22 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     last_successfully_sent.set(currentTime);
                 cf.set(false);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                try {
+                    if (rawSensorValues == null) {
+                        rawSensorValues = startPollingSensors();
+                        conn.addRxDataListener(this);
+                    }
+                }
+                catch (RuntimeException e) {
+                    Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
+                }
+
                 if (!hasLatestFirmware()) {
                     cf.set(true);
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
                     disconnect();
                 }
+
             } else {
                 // Sending Non-CF command failed
             }
@@ -346,11 +357,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         byte[] rawButtonShakeValue = new byte[1];
         byte[] rawBatteryValue = new byte[1];
         synchronized (rawSensorValuesLock) {
-            try {
-                if (rawSensorValues == null) {
-                    rawSensorValues = startPollingSensors();
-                    conn.addRxDataListener(this);
-                }
                 rawBatteryValue[0] = rawSensorValues[3];
                 if (portString != null) {
                     int port = Integer.parseInt(portString) - 1;
@@ -367,10 +373,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     rawMagnetometerValue[4] = rawSensorValues[12];
                     rawMagnetometerValue[5] = rawSensorValues[13];
                 }
-            } catch (RuntimeException e) {
-                Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
-                return null;
-            }
         }
 
         switch (sensorType) {

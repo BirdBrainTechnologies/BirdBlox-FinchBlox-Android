@@ -183,6 +183,15 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                     last_successfully_sent.set(currentTime);
                 cf.set(false);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                try {
+                    if (rawSensorValues == null) {
+                        rawSensorValues = startPollingSensors();
+                        conn.addRxDataListener(this);
+                    }
+                }
+                catch (RuntimeException e) {
+                    Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
+                }
                 if (!hasLatestFirmware()) {
                     cf.set(true);
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
@@ -293,11 +302,6 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
         byte[] rawAccelerometerValue = new byte[3];
         byte[] rawButtonShakeValue = new byte[1];
         synchronized (rawSensorValuesLock) {
-            try {
-                if (rawSensorValues == null) {
-                    rawSensorValues = startPollingSensors();
-                    conn.addRxDataListener(this);
-                }
                 rawAccelerometerValue[0] = rawSensorValues[4];
                 rawAccelerometerValue[1] = rawSensorValues[5];
                 rawAccelerometerValue[2] = rawSensorValues[6];
@@ -308,11 +312,6 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 rawMagnetometerValue[3] = rawSensorValues[11];
                 rawMagnetometerValue[4] = rawSensorValues[12];
                 rawMagnetometerValue[5] = rawSensorValues[13];
-
-            } catch (RuntimeException e) {
-                Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
-                return null;
-            }
         }
         switch (sensorType) {
             case "magnetometer":
