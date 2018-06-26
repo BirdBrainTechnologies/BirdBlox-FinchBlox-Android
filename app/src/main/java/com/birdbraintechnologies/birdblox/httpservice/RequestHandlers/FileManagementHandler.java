@@ -1,10 +1,14 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
+import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
@@ -318,12 +322,11 @@ public class FileManagementHandler implements RequestHandler {
             File dir = new File(getBirdbloxDir(), name);
             String zipName = name + ".zip";
             File zip = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), zipName);
-
             ZipUtility.zipDirectory(dir, zip);
             if (zip.exists()) {
                 Intent showDialog = new Intent(MainWebView.SHARE_FILE);
                 showDialog.putExtra("file_name", zipName);
-                LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+                    LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully exported project " + name);
             }

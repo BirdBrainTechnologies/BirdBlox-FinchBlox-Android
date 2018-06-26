@@ -1,9 +1,7 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
-import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBitState;
@@ -11,6 +9,7 @@ import com.birdbraintechnologies.birdblox.Robots.RobotStates.MBState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
+import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -42,13 +41,12 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private static final byte TERMINATE_CMD = (byte) 0xCB;
     private static final int SYMBOL = 0;
     private static final int FLASH = 1;
-
     private static final int SETALL_INTERVAL_IN_MILLIS = 32;
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 50;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
-    private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
-    private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
+    private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 2000;
+    private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 15000;
     private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
     private static final int ROTATION = 1;
     private static final int POSITION = 0;
@@ -77,11 +75,12 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private Disposable monitorDisposable;
 
     private byte[] cfresponse;
-    private static MBState oldMBState = new MBState();
-    private static MBState newMBState = new MBState();
+    private MBState oldMBState = new MBState();
+    private MBState newMBState = new MBState();
 
-    private static boolean ATTEMPTED = false;
-    private static boolean DISCONNECTED = false;
+    private boolean ATTEMPTED = false;
+    private boolean DISCONNECTED = false;
+
 
     /**
      * Initializes a Hummingbit device
@@ -101,6 +100,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         cf = new AtomicBoolean(true);
         last_sent = new AtomicLong(System.currentTimeMillis());
         last_successfully_sent = new AtomicLong(System.currentTimeMillis());
+        ;
 
         lock = new ReentrantLock();
         doneSending = lock.newCondition();
@@ -116,6 +116,9 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
                     sendToRobot();
                     doneSending.signal();
+                    if (DISCONNECTED) {
+                        return;
+                    }
                 } catch (NullPointerException | InterruptedException | IllegalMonitorStateException e) {
                     Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
                 } finally {
@@ -134,29 +137,22 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         Runnable monitorRunnable = new Runnable() {
             @Override
             public void run() {
-                if (last_successfully_sent == null) {
-                    last_successfully_sent = new AtomicLong(System.currentTimeMillis());
-                }
                 long timeOut = cf.get() ? MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
-                long passedTime = System.currentTimeMillis() - last_successfully_sent.get();
+                final long curSysTime = System.currentTimeMillis();
+                final long prevTime = last_successfully_sent.get();
+                final long passedTime = curSysTime - prevTime;
                 if (passedTime >= timeOut) {
                     try {
-                        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-                            @Override
-                            public void run() {
-                                String HBitName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
-                                Toast.makeText(mainWebViewContext, "Connection to Hummingbit " + HBitName + " timed out.", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                        synchronized (hummingbitsToConnect) {
-                            hummingbitsToConnect.add(getMacAddress());
-                        }
                         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
                         new Thread() {
                             @Override
                             public void run() {
                                 super.run();
-                                disconnect();
+                                String macAddr = getMacAddress();
+                                RobotRequestHandler.disconnectFromHummingbit(macAddr);
+                                if (DISCONNECTED) {
+                                    return;
+                                }
                             }
                         }.start();
                     } catch (Exception e) {
@@ -179,7 +175,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         if (cf.get()) {
             // Send here
             setSendingTrue();
-
             cfresponse = conn.writeBytesWithResponse(FIRMWARECOMMAND);
             if (cfresponse != null && cfresponse.length > 0) {
                 // Successfully sent CF command
@@ -192,8 +187,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                         rawSensorValues = startPollingSensors();
                         conn.addRxDataListener(this);
                     }
-                }
-                catch (RuntimeException e) {
+                } catch (RuntimeException e) {
                     Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
                 }
 
@@ -215,36 +209,39 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             // do nothing in this case
             return;
         }
+        if (!newMBState.equals(oldMBState)) {
+            setSendingTrue();
+
+            if (conn.writeBytes(newMBState.setAll())) {
+                // Successfully sent Non-CF command
+                if (last_successfully_sent != null)
+                    last_successfully_sent.set(currentTime);
+                oldMBState.copy(newMBState);
+                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+            } else {
+                // Sending Non-CF command failed
+            }
+
+            setSendingFalse();
+            last_sent.set(currentTime);
+        }
+
         // Not currently sending s
         if (!statesEqual()) {
             // Not currently sending, but oldState and newState are different
             // Send here
             setSendingTrue();
-            if (!newMBState.equals(oldMBState)) {
 
-                if (conn.writeBytes(newState.setAll()) && conn.writeBytes(newMBState.setAll())) {
-                    // Successfully sent Non-CF command
-                    if (last_successfully_sent != null)
-                        last_successfully_sent.set(currentTime);
-                    oldState.copy(newState);
-                    oldMBState.copy(newMBState);
-                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                } else {
-                    // Sending Non-CF command failed
-                }
+            if (conn.writeBytes(newState.setAll())) {
+                // Successfully sent Non-CF command
+                if (last_successfully_sent != null)
+                    last_successfully_sent.set(currentTime);
+                oldState.copy(newState);
+
+                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
             } else {
-                if (conn.writeBytes(newState.setAll())) {
-                    // Successfully sent Non-CF command
-                    if (last_successfully_sent != null)
-                        last_successfully_sent.set(currentTime);
-                    oldState.copy(newState);
-                    oldMBState.copy(newMBState);
-                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                } else {
-                    // Sending Non-CF command failed
-                }
+                // Sending Non-CF command failed
             }
-
             setSendingFalse();
             last_sent.set(currentTime);
         } else {
@@ -252,29 +249,14 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             if (currentTime - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
                 // Send here
                 setSendingTrue();
-                // Not currently sending, and oldState and newState are the same
-                if (!newMBState.equals(oldMBState)) {
-                    if (conn.writeBytes(newState.setAll()) && conn.writeBytes(newMBState.setAll())) {
-                        // Successfully sent Non-CF command
-                        if (last_successfully_sent != null)
-                            last_successfully_sent.set(currentTime);
-                        oldState.copy(newState);
-                        oldMBState.copy(newMBState);
-                        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                    } else {
-                        // Sending Non-CF command failed
-                    }
+
+                if (conn.writeBytes(newState.setAll())) {
+                    // Successfully sent Non-CF command
+                    if (last_successfully_sent != null)
+                        last_successfully_sent.set(currentTime);
+                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 } else {
-                    if (conn.writeBytes(newState.setAll())) {
-                        // Successfully sent Non-CF command
-                        if (last_successfully_sent != null)
-                            last_successfully_sent.set(currentTime);
-                        oldState.copy(newState);
-                        oldMBState.copy(newMBState);
-                        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                    } else {
-                        // Sending Non-CF command failed
-                    }
+                    // Sending Non-CF command failed
                 }
                 setSendingFalse();
                 last_sent.set(currentTime);
@@ -357,22 +339,22 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         byte[] rawButtonShakeValue = new byte[1];
         byte[] rawBatteryValue = new byte[1];
         synchronized (rawSensorValuesLock) {
-                rawBatteryValue[0] = rawSensorValues[3];
-                if (portString != null) {
-                    int port = Integer.parseInt(portString) - 1;
-                    rawSensorValue = (rawSensorValues[port] & 0xFF);
-                } else {
-                    rawAccelerometerValue[0] = rawSensorValues[4];
-                    rawAccelerometerValue[1] = rawSensorValues[5];
-                    rawAccelerometerValue[2] = rawSensorValues[6];
-                    rawButtonShakeValue[0] = rawSensorValues[7];
-                    rawMagnetometerValue[0] = rawSensorValues[8];
-                    rawMagnetometerValue[1] = rawSensorValues[9];
-                    rawMagnetometerValue[2] = rawSensorValues[10];
-                    rawMagnetometerValue[3] = rawSensorValues[11];
-                    rawMagnetometerValue[4] = rawSensorValues[12];
-                    rawMagnetometerValue[5] = rawSensorValues[13];
-                }
+            rawBatteryValue[0] = rawSensorValues[3];
+            if (portString != null) {
+                int port = Integer.parseInt(portString) - 1;
+                rawSensorValue = (rawSensorValues[port] & 0xFF);
+            } else {
+                rawAccelerometerValue[0] = rawSensorValues[4];
+                rawAccelerometerValue[1] = rawSensorValues[5];
+                rawAccelerometerValue[2] = rawSensorValues[6];
+                rawButtonShakeValue[0] = rawSensorValues[7];
+                rawMagnetometerValue[0] = rawSensorValues[8];
+                rawMagnetometerValue[1] = rawSensorValues[9];
+                rawMagnetometerValue[2] = rawSensorValues[10];
+                rawMagnetometerValue[3] = rawSensorValues[11];
+                rawMagnetometerValue[4] = rawSensorValues[12];
+                rawMagnetometerValue[5] = rawSensorValues[13];
+            }
         }
 
         switch (sensorType) {
@@ -395,17 +377,17 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             case "shake":
                 return ((rawButtonShakeValue[0] & 0x1) == 0x0) ? "0" : "1";
             case "screenUp":
-                return rawAccelerometerValue[2] > 51 ? "1" : "0";
-            case "screenDown":
                 return rawAccelerometerValue[2] < -51 ? "1" : "0";
+            case "screenDown":
+                return rawAccelerometerValue[2] > 51 ? "1" : "0";
             case "tiltLeft":
                 return rawAccelerometerValue[0] > 51 ? "1" : "0";
             case "tiltRight":
                 return rawAccelerometerValue[0] < -51 ? "1" : "0";
             case "logoUp":
-                return rawAccelerometerValue[1] > 51 ? "1" : "0";
-            case "logoDown":
                 return rawAccelerometerValue[1] < -51 ? "1" : "0";
+            case "logoDown":
+                return rawAccelerometerValue[1] > 51 ? "1" : "0";
             case "battery":
                 double batteryVoltage = rawBatteryValue[0] * 0.037;
                 if (batteryVoltage > 4.7) {
@@ -501,6 +483,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
      */
     public void disconnect() {
         if (!DISCONNECTED) {
+            String macAddr = getMacAddress();
             if (ATTEMPTED) {
                 forceDisconnect();
                 return;
@@ -508,16 +491,22 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             ATTEMPTED = true;
             conn.writeBytes(new byte[]{TERMINATE_CMD});
             newMBState.resetAll();
+
             AndroidSchedulers.from(sendThread.getLooper()).shutdown();
             sendThread.getLooper().quit();
             if (sendDisposable != null && !sendDisposable.isDisposed())
                 sendDisposable.dispose();
-            sendThread.quitSafely();
+            sendThread.interrupt();
+            sendThread.quit();
+
             AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
             monitorThread.getLooper().quit();
             if (monitorDisposable != null && !monitorDisposable.isDisposed())
                 monitorDisposable.dispose();
-            monitorThread.quitSafely();
+            monitorThread.interrupt();
+            monitorThread.quit();
+
+
             if (conn != null) {
                 conn.removeRxDataListener(this);
                 stopPollingSensors();
@@ -527,28 +516,47 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 }
                 conn.disconnect();
             }
+            synchronized (hummingbitsToConnect) {
+                if (!hummingbitsToConnect.contains(macAddr)) {
+                    hummingbitsToConnect.add(macAddr);
+                }
+            }
             ATTEMPTED = false;
             DISCONNECTED = true;
         }
     }
 
+    public boolean getDisconnected() {
+        return DISCONNECTED;
+    }
+
     public void forceDisconnect() {
         if (!DISCONNECTED) {
+            String macAddr = getMacAddress();
             ATTEMPTED = false;
-            if (conn != null) {
-                conn.removeRxDataListener(this);
-                conn.disconnect();
-            }
             AndroidSchedulers.from(sendThread.getLooper()).shutdown();
             sendThread.getLooper().quit();
             if (sendDisposable != null && !sendDisposable.isDisposed())
                 sendDisposable.dispose();
-            sendThread.quitSafely();
+            sendThread.interrupt();
+            sendThread.quit();
+
             AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
             monitorThread.getLooper().quit();
             if (monitorDisposable != null && !monitorDisposable.isDisposed())
                 monitorDisposable.dispose();
-            monitorThread.quitSafely();
+            monitorThread.interrupt();
+            monitorThread.quit();
+
+            if (conn != null) {
+                conn.removeRxDataListener(this);
+                conn.disconnect();
+            }
+            synchronized (hummingbitsToConnect) {
+                if (!hummingbitsToConnect.contains(macAddr)) {
+                    hummingbitsToConnect.add(macAddr);
+                }
+            }
             DISCONNECTED = true;
         }
     }

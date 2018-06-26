@@ -6,6 +6,7 @@ import android.os.IBinder;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
+import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
 import java.io.IOException;
 
@@ -100,4 +101,11 @@ public class HttpService extends Service {
             return response;
         }
     }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        RobotRequestHandler.disconnectAll();
+        stopSelf();
+    }
+
 }

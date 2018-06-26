@@ -1,4 +1,5 @@
 package com.birdbraintechnologies.birdblox.Bluetooth;
+
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -11,14 +12,18 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
 import android.util.Log;
+
 import com.birdbraintechnologies.birdblox.Robots.RobotType;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
@@ -44,6 +49,9 @@ public class BluetoothHelper {
     public static HashMap<String, BluetoothDevice> deviceList;
     private BluetoothLeScanner scanner;
     private static HashMap<String, Integer> deviceRSSI = new HashMap<>();
+    private static ScanSettings scanSettings = (new ScanSettings.Builder())
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .build();
     /* Callback for populating the device list */
     private ScanCallback populateDevices = new ScanCallback() {
         @Override
@@ -53,23 +61,35 @@ public class BluetoothHelper {
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
                 if (lastScanType.equals("hummingbird") && hummingbirdsToConnect != null) {
                     if (hummingbirdsToConnect.contains(result.getDevice().getAddress())) {
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException e) {
+                        }
                         connectToRobot(RobotType.Hummingbird, result.getDevice().getAddress());
                     }
-                } else if (lastScanType.equals("hummingbit") && hummingbitsToConnect != null){
+                } else if (lastScanType.equals("hummingbirdbit") && hummingbitsToConnect != null) {
                     if (hummingbitsToConnect.contains(result.getDevice().getAddress())) {
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException e) {
+                        }
                         connectToRobot(RobotType.Hummingbit, result.getDevice().getAddress());
                     }
-                } else {
+                } else if (lastScanType.equals("microbit") && microbitsToConnect != null) {
                     if (microbitsToConnect.contains(result.getDevice().getAddress())) {
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException e) {
+                        }
                         connectToRobot(RobotType.Microbit, result.getDevice().getAddress());
                     }
                 }
-                deviceRSSI.put(result.getDevice().getAddress(),result.getRssi());
+                deviceRSSI.put(result.getDevice().getAddress(), result.getRssi());
                 JSONArray robots = new JSONArray();
                 for (BluetoothDevice device : BLEDeviceList) {
                     String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
                     String prefix = "";
-                    switch (device.getName().substring(0,2)) {
+                    switch (device.getName().substring(0, 2)) {
                         case "HM":
                             prefix = "Duo";
                             break;
@@ -102,6 +122,7 @@ public class BluetoothHelper {
             }
         }
     };
+
     /**
      * Initializes a Bluetooth helper
      *
@@ -123,6 +144,7 @@ public class BluetoothHelper {
             context.startActivity(enableBtIntent);
         }
     }
+
     /**
      * Scans for Bluetooth devices that matches the filter.
      *
@@ -154,15 +176,14 @@ public class BluetoothHelper {
             }, SCAN_DURATION);
             btScanning = true;
             // Build scan settings (scan as fast as possible)
-            ScanSettings scanSettings = (new ScanSettings.Builder())
-                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-                    .build();
+
             currentlyScanning = true;
             scanner.startScan(scanFilters, scanSettings, populateDevices);
         } else {
             currentlyScanning = true;
         }
     }
+
     /**
      * Connects to a device and returns the resulting connection
      *
@@ -175,11 +196,16 @@ public class BluetoothHelper {
         synchronized (deviceList) {
             device = deviceList.get(addr);
         }
+
         if (device == null) {
             Log.e(TAG, "Unable to connect to device: " + addr);
             return null;
         }
+
         UARTConnection conn = new UARTConnection(context, device, settings);
+        while (!conn.isConnected()) {
+            conn = new UARTConnection(context, device, settings);
+        }
         return conn;
     }
 

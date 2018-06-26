@@ -44,7 +44,8 @@
         <service
             android:name="com.birdbraintechnologies.birdblox.httpservice.HttpService"
             android:enabled="true"
-            android:exported="true" />
+            android:exported="true"
+            android:stopWithTask="false"/>
 
         <activity
             android:name="com.birdbraintechnologies.birdblox.SplashScreen"

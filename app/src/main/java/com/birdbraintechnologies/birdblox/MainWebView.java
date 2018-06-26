@@ -2,6 +2,7 @@ package com.birdbraintechnologies.birdblox;
 
 import android.Manifest;
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
@@ -126,6 +127,34 @@ public class MainWebView extends AppCompatActivity {
     LocalBroadcastManager bManager;
     private static WebView webView;
     private long back_pressed;
+
+    private static final int REQUEST_PERMISSIONS = 1;
+    private static String[] APP_PERMISSIONS = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+    };
+
+
+
+    public static void verifyStoragePermissions(Activity activity) {
+        // Check if we have write permission
+        int permission = ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        int permission2 = ActivityCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO);
+        int permission3 = ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION);
+        if (permission != PackageManager.PERMISSION_GRANTED || permission2 != PackageManager.PERMISSION_GRANTED
+                || permission3 != PackageManager.PERMISSION_GRANTED) {
+            // We don't have permission so prompt the user
+            ActivityCompat.requestPermissions(
+                    activity,
+                    APP_PERMISSIONS,
+                    REQUEST_PERMISSIONS
+            );
+        }
+    }
+
+
     private BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -177,7 +206,7 @@ public class MainWebView extends AppCompatActivity {
         stopService(new Intent(this, HttpService.class));
 
         mainWebViewContext = MainWebView.this;
-
+        verifyStoragePermissions(this);
         // Hide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
         // We should never show the action bar if the status bar

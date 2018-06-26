@@ -1,15 +1,14 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
-import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
+import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
 import java.io.UnsupportedEncodingException;
 import java.util.List;
@@ -58,8 +57,8 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 50;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
-    private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
-    private static final int MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
+    private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 2000;
+    private static final int MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 15000;
     private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
 
 
@@ -92,8 +91,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
     private byte[] g4response;
 
-    private static boolean ATTEMPTED = false;
-    private static boolean DISCONNECTED = false;
+    private boolean ATTEMPTED = false;
+    private boolean DISCONNECTED = false;
+
     /**
      * Initializes a Hummingbird device
      *
@@ -124,6 +124,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
                     sendToRobot();
                     doneSending.signal();
+                    if (DISCONNECTED) {
+                        return;
+                    }
                 } catch (NullPointerException | InterruptedException | IllegalMonitorStateException e) {
                     Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
                 } finally {
@@ -142,28 +145,22 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         Runnable monitorRunnable = new Runnable() {
             @Override
             public void run() {
-                if (last_successfully_sent == null) {
-                    last_successfully_sent = new AtomicLong(System.currentTimeMillis());
-                }
                 long timeOut = g4.get() ? MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
-                if (System.currentTimeMillis() - last_successfully_sent.get() >= timeOut) {
+                final long curSysTime = System.currentTimeMillis();
+                final long prevTime = last_successfully_sent.get();
+                long passedTime = curSysTime - prevTime;
+                if (passedTime >= timeOut) {
                     try {
-                        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-                            @Override
-                            public void run() {
-                                String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
-                                Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                        synchronized (hummingbirdsToConnect) {
-                            hummingbirdsToConnect.add(getMacAddress());
-                        }
                         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
                         new Thread() {
                             @Override
                             public void run() {
                                 super.run();
-                                disconnect();
+                                String macAddr = getMacAddress();
+                                RobotRequestHandler.disconnectFromHummingbird(macAddr);
+                                if (DISCONNECTED) {
+                                    return;
+                                }
                             }
                         }.start();
                     } catch (Exception e) {
@@ -197,8 +194,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                         rawSensorValues = startPollingSensors();
                         conn.addRxDataListener(this);
                     }
-                }
-                catch (RuntimeException e) {
+                } catch (RuntimeException e) {
                     Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
                 }
                 if (!hasMinFirmware()) {
@@ -393,27 +389,35 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     public void setConnected() {
         DISCONNECTED = false;
     }
+
     /**
      * Disconnects the device
      */
     public void disconnect() {
         if (!DISCONNECTED) {
+            String macAddr = getMacAddress();
             if (ATTEMPTED) {
                 forceDisconnect();
                 return;
             }
             ATTEMPTED = true;
             conn.writeBytes(new byte[]{TERMINATE_CMD});
+
             AndroidSchedulers.from(sendThread.getLooper()).shutdown();
             sendThread.getLooper().quit();
             if (sendDisposable != null && !sendDisposable.isDisposed())
                 sendDisposable.dispose();
-            sendThread.quitSafely();
+            sendThread.interrupt();
+            sendThread.quit();
+
             AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
             monitorThread.getLooper().quit();
             if (monitorDisposable != null && !monitorDisposable.isDisposed())
                 monitorDisposable.dispose();
-            monitorThread.quitSafely();
+            monitorThread.interrupt();
+            monitorThread.quit();
+
+
             if (conn != null) {
                 conn.removeRxDataListener(this);
                 stopPollingSensors();
@@ -423,31 +427,51 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 }
                 conn.disconnect();
             }
+            synchronized (hummingbirdsToConnect) {
+                if (!hummingbirdsToConnect.contains(macAddr)) {
+                    hummingbirdsToConnect.add(macAddr);
+                }
+            }
             ATTEMPTED = false;
             DISCONNECTED = true;
         }
     }
 
+    public boolean getDisconnected() {
+        return DISCONNECTED;
+    }
+
     public void forceDisconnect() {
         if (!DISCONNECTED) {
+            String macAddr = getMacAddress();
             ATTEMPTED = false;
-            if (conn != null) {
-                conn.removeRxDataListener(this);
-                conn.disconnect();
-            }
             AndroidSchedulers.from(sendThread.getLooper()).shutdown();
             sendThread.getLooper().quit();
             if (sendDisposable != null && !sendDisposable.isDisposed())
                 sendDisposable.dispose();
-            sendThread.quitSafely();
+            sendThread.interrupt();
+            sendThread.quit();
+
             AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
             monitorThread.getLooper().quit();
             if (monitorDisposable != null && !monitorDisposable.isDisposed())
                 monitorDisposable.dispose();
-            monitorThread.quitSafely();
+            monitorThread.interrupt();
+            monitorThread.quit();
+
+            if (conn != null) {
+                conn.removeRxDataListener(this);
+                conn.disconnect();
+            }
+            synchronized (hummingbirdsToConnect) {
+                if (!hummingbirdsToConnect.contains(macAddr)) {
+                    hummingbirdsToConnect.add(macAddr);
+                }
+            }
             DISCONNECTED = true;
         }
     }
+
 
     @Override
     public void onRXData(byte[] newData) {

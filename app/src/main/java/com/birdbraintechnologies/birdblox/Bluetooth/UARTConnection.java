@@ -87,12 +87,11 @@ public class UARTConnection extends BluetoothGattCallback {
             // Wait for operation to complete
             startLatch.countDown();
             try {
-                doneLatch.await();
+                doneLatch.await(1000, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 Log.e(TAG, "Error: " + e);
                 return false;
             }
-
             return res;
         } catch (Exception e) {
         }
@@ -124,8 +123,8 @@ public class UARTConnection extends BluetoothGattCallback {
                 // Wait for a successful write and a response
                 startLatch.countDown();
                 try {
-                    doneLatch.await();
-                    resultLatch.await();
+                    doneLatch.await(1000, TimeUnit.MILLISECONDS);
+                    resultLatch.await(1000, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException e) {
                     Log.e(TAG, "Error: " + e);
                     return new byte[]{};
@@ -194,6 +193,7 @@ public class UARTConnection extends BluetoothGattCallback {
             tx = gatt.getService(uartUUID).getCharacteristic(txUUID);
             rx = gatt.getService(uartUUID).getCharacteristic(rxUUID);
             // Notify that the setup process is completed
+            gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_BALANCED);
             doneLatch.countDown();
         }
     }
@@ -218,6 +218,7 @@ public class UARTConnection extends BluetoothGattCallback {
         // For serializing write operations
         doneLatch.countDown();
     }
+
 
     @Override
     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
