@@ -308,7 +308,6 @@ public class RobotRequestHandler implements RequestHandler {
     }
 
     private static void connectToHummingbit(final String hummingbitId) {
-//        System.out.println("trying to connect");
         if (connectedHummingbits.containsKey(hummingbitId) == false) {
             final UARTSettings HBitUART = HBitUARTSettings;
             try {
@@ -318,8 +317,7 @@ public class RobotRequestHandler implements RequestHandler {
                         UARTConnection hbitConn = btHelper.connectToDeviceUART(hummingbitId, HBitUART);
                         if (hbitConn != null && hbitConn.isConnected() && connectedHummingbits != null) {
                             Hummingbit hummingbit = new Hummingbit(hbitConn);
-                            connectedHummingbits.put(hummingbitId, hummingbit);;
-//                            System.out.println("connected to" + hummingbitId);
+                            connectedHummingbits.put(hummingbitId, hummingbit);
                             btHelper.stopScan();
                             if (hummingbitsToConnect.contains(hummingbitId)) {
                                 hummingbitsToConnect.remove(hummingbitId);

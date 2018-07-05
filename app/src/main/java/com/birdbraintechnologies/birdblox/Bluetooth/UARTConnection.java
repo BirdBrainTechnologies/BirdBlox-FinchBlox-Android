@@ -255,6 +255,16 @@ public class UARTConnection extends BluetoothGattCallback {
     public void disconnect() {
         btGatt.disconnect();
         btGatt.close();
+        btGatt = null;
+        this.bluetoothDevice = null;
+    }
+
+    /**
+     * Disconnects and closes the connection with the device
+     */
+    public void forceDisconnect() {
+        btGatt.disconnect();
+        btGatt.close();
         this.bluetoothDevice = null;
     }
 

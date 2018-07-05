@@ -211,7 +211,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         }
         if (!newMBState.equals(oldMBState)) {
             setSendingTrue();
-
+            
             if (conn.writeBytes(newMBState.setAll())) {
                 // Successfully sent Non-CF command
                 if (last_successfully_sent != null)
@@ -550,7 +550,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
 
             if (conn != null) {
                 conn.removeRxDataListener(this);
-                conn.disconnect();
+                conn.forceDisconnect();
             }
             synchronized (hummingbitsToConnect) {
                 if (!hummingbitsToConnect.contains(macAddr)) {

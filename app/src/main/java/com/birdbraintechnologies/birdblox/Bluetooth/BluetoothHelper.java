@@ -39,8 +39,9 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Rob
  * @author Terence Sun (tsun1215)
  */
 public class BluetoothHelper {
+    private static final int THRESHOLD = 10;
     private static final String TAG = "BluetoothHelper";
-    private static final int SCAN_DURATION = 5000;  /* Length of time to perform a scan, in milliseconds */
+    private static final int SCAN_DURATION = 1500;  /* Length of time to perform a scan, in milliseconds */
     public static boolean currentlyScanning;
     private BluetoothAdapter btAdapter;
     private Handler handler;
@@ -52,6 +53,7 @@ public class BluetoothHelper {
     private static ScanSettings scanSettings = (new ScanSettings.Builder())
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build();
+
     /* Callback for populating the device list */
     private ScanCallback populateDevices = new ScanCallback() {
         @Override
@@ -84,7 +86,12 @@ public class BluetoothHelper {
                         connectToRobot(RobotType.Microbit, result.getDevice().getAddress());
                     }
                 }
-                deviceRSSI.put(result.getDevice().getAddress(), result.getRssi());
+
+                if (deviceRSSI.get(result.getDevice().getAddress()) == null ||
+                        Math.abs(result.getRssi() - deviceRSSI.get(result.getDevice().getAddress())) > THRESHOLD) {
+                    deviceRSSI.put(result.getDevice().getAddress(), result.getRssi());
+                }
+
                 JSONArray robots = new JSONArray();
                 for (BluetoothDevice device : BLEDeviceList) {
                     String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
@@ -160,6 +167,12 @@ public class BluetoothHelper {
 
             // Start scanning for devices
             scanner = btAdapter.getBluetoothLeScanner();
+
+            btScanning = true;
+            // Build scan settings (scan as fast as possible)
+
+            currentlyScanning = true;
+            scanner.startScan(scanFilters, scanSettings, populateDevices);
             // Schedule thread to stop scanning after SCAN_DURATION
             handler.postDelayed(new Runnable() {
                 @Override
@@ -174,11 +187,6 @@ public class BluetoothHelper {
                     runJavascript("CallbackManager.robot.discoverTimeOut('" + lastScanType + "');");
                 }
             }, SCAN_DURATION);
-            btScanning = true;
-            // Build scan settings (scan as fast as possible)
-
-            currentlyScanning = true;
-            scanner.startScan(scanFilters, scanSettings, populateDevices);
         } else {
             currentlyScanning = true;
         }
