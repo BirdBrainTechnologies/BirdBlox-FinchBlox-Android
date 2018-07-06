@@ -516,11 +516,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 }
                 conn.disconnect();
             }
-            synchronized (hummingbitsToConnect) {
-                if (!hummingbitsToConnect.contains(macAddr)) {
-                    hummingbitsToConnect.add(macAddr);
-                }
-            }
+
             ATTEMPTED = false;
             DISCONNECTED = true;
         }

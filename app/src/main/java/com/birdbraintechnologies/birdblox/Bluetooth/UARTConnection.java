@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.util.Log;
 
@@ -151,7 +152,7 @@ public class UARTConnection extends BluetoothGattCallback {
      */
     private boolean establishUARTConnection(Context context, final BluetoothDevice device) {
         // Connect to device
-        this.btGatt = device.connectGatt(context, true, this);
+        this.btGatt = device.connectGatt(context, false, this);
         // Initialize serialization
         startLatch.countDown();
         try {

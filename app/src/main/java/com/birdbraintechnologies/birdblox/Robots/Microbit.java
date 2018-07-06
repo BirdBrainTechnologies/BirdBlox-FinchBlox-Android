@@ -448,11 +448,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 }
                 conn.disconnect();
             }
-            synchronized (microbitsToConnect) {
-                if (!microbitsToConnect.contains(macAddr)) {
-                    microbitsToConnect.add(macAddr);
-                }
-            }
+
             ATTEMPTED = false;
             DISCONNECTED = true;
         }

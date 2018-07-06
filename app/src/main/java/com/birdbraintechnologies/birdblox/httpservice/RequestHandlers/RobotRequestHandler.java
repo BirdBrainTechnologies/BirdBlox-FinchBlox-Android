@@ -115,7 +115,6 @@ public class RobotRequestHandler implements RequestHandler {
         // Generate response body
         String responseBody = "";
         Robot robot;
-
         switch (path[0]) {
             case "startDiscover":
                 responseBody = startScan(robotTypeFromString(m.get("type").get(0)));
@@ -197,7 +196,8 @@ public class RobotRequestHandler implements RequestHandler {
     // TODO: Finish implementing new Robot commands and callbacks
 
 
-    private String startScan(final RobotType robotType) {
+    private static String startScan(final RobotType robotType) {
+        final List deviceFilter = generateDeviceFilter(robotType);
         // TODO: Handle error in this case
         if (robotType == null) {
             return "";
@@ -211,7 +211,7 @@ public class RobotRequestHandler implements RequestHandler {
         new Thread() {
             @Override
             public void run() {
-                btHelper.scanDevices(generateDeviceFilter(robotType));
+                btHelper.scanDevices(deviceFilter);
             }
         }.start();
         lastScanType = robotType.toString().toLowerCase();
@@ -274,39 +274,40 @@ public class RobotRequestHandler implements RequestHandler {
 //     * @return
 //     */
     private static void connectToHummingbird(final String hummingbirdId) {
-        final UARTSettings HBUART = HBUARTSettings;
-        try {
-            Thread hbConnectionThread = new Thread() {
-                @Override
-                public void run() {
-                    UARTConnection hbConn = btHelper.connectToDeviceUART(hummingbirdId, HBUART);
-                    if (hbConn != null && hbConn.isConnected() && connectedHummingbirds != null) {
-                        Hummingbird hummingbird = new Hummingbird(hbConn);
-                        connectedHummingbirds.put(hummingbirdId, hummingbird);
-                        btHelper.stopScan();
-                        if (hummingbirdsToConnect.contains(hummingbirdId)) {
-                            hummingbirdsToConnect.remove(hummingbirdId);
-                        }
-                        hummingbird.setConnected();
-                    }
-                }
-            };
-            hbConnectionThread.start();
-            final Thread oldThread = threadMap.put(hummingbirdId, hbConnectionThread);
-            if (oldThread != null) {
-                new Thread() {
+        if (connectedHummingbirds.containsKey(hummingbirdId) == false) {
+            final UARTSettings HBUART = HBUARTSettings;
+            try {
+                Thread hbConnectionThread = new Thread() {
                     @Override
                     public void run() {
-                        super.run();
-                        oldThread.interrupt();
+                        UARTConnection hbConn = btHelper.connectToDeviceUART(hummingbirdId, HBUART);
+                        if (hbConn != null && hbConn.isConnected() && connectedHummingbirds != null) {
+                            Hummingbird hummingbird = new Hummingbird(hbConn);
+                            connectedHummingbirds.put(hummingbirdId, hummingbird);
+                            btHelper.stopScan();
+                            if (hummingbirdsToConnect.contains(hummingbirdId)) {
+                                hummingbirdsToConnect.remove(hummingbirdId);
+                            }
+                            hummingbird.setConnected();
+                        }
                     }
-                }.start();
+                };
+                hbConnectionThread.start();
+                final Thread oldThread = threadMap.put(hummingbirdId, hbConnectionThread);
+                if (oldThread != null) {
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            super.run();
+                            oldThread.interrupt();
+                        }
+                    }.start();
+                }
+            } catch (Exception e) {
+                Log.e("ConnectHB", " Error while connecting to HB " + e.getMessage());
             }
-        } catch (Exception e) {
-            Log.e("ConnectHB", " Error while connecting to HB " + e.getMessage());
         }
     }
-
     private static void connectToHummingbit(final String hummingbitId) {
         if (connectedHummingbits.containsKey(hummingbitId) == false) {
             final UARTSettings HBitUART = HBitUARTSettings;
@@ -344,36 +345,38 @@ public class RobotRequestHandler implements RequestHandler {
     }
 
     private static void connectToMicrobit(final String microbitId) {
-        final UARTSettings MBitUART = MBitUARTSettings;
-        try {
-            Thread mbitConnectionThread = new Thread() {
-                @Override
-                public void run() {
-                    UARTConnection mbitConn = btHelper.connectToDeviceUART(microbitId, MBitUART);
-                    if (mbitConn != null && mbitConn.isConnected() && connectedMicrobits != null) {
-                        Microbit microbit = new Microbit(mbitConn);
-                        connectedMicrobits.put(microbitId, microbit);
-                        btHelper.stopScan();
-                        if (microbitsToConnect.contains(microbitId)) {
-                            microbitsToConnect.remove(microbitId);
-                        }
-                        microbit.setConnected();
-                    }
-                }
-            };
-            mbitConnectionThread.start();
-            final Thread oldThread = threadMap.put(microbitId, mbitConnectionThread);
-            if (oldThread != null) {
-                new Thread() {
+        if (connectedMicrobits.containsKey(microbitId) == false) {
+            final UARTSettings MBitUART = MBitUARTSettings;
+            try {
+                Thread mbitConnectionThread = new Thread() {
                     @Override
                     public void run() {
-                        super.run();
-                        oldThread.interrupt();
+                        UARTConnection mbitConn = btHelper.connectToDeviceUART(microbitId, MBitUART);
+                        if (mbitConn != null && mbitConn.isConnected() && connectedMicrobits != null) {
+                            Microbit microbit = new Microbit(mbitConn);
+                            connectedMicrobits.put(microbitId, microbit);
+                            btHelper.stopScan();
+                            if (microbitsToConnect.contains(microbitId)) {
+                                microbitsToConnect.remove(microbitId);
+                            }
+                            microbit.setConnected();
+                        }
                     }
-                }.start();
+                };
+                mbitConnectionThread.start();
+                final Thread oldThread = threadMap.put(microbitId, mbitConnectionThread);
+                if (oldThread != null) {
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            super.run();
+                            oldThread.interrupt();
+                        }
+                    }.start();
+                }
+            } catch (Exception e) {
+                Log.e("ConnectHBit", " Error while connecting to HBit " + e.getMessage());
             }
-        } catch (Exception e) {
-            Log.e("ConnectHBit", " Error while connecting to HBit " + e.getMessage());
         }
     }
 
@@ -421,13 +424,17 @@ public class RobotRequestHandler implements RequestHandler {
             if (hummingbird != null) {
                 if (hummingbird.isConnected())
                     hummingbird.disconnect();
-                if (!hummingbirdsToConnect.isEmpty()) {
-                    btHelper.stopScan();
-                    btHelper.scanDevices(generateDeviceFilter(RobotType.Hummingbird));
-                }
                 if (hummingbird.getDisconnected()) {
                     connectedHummingbirds.remove(hummingbirdId);
                 }
+                while (!hummingbirdsToConnect.isEmpty()) {
+                    startScan(RobotType.Hummingbird);
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                    }
+                }
+
                 Log.d("TotStat", "Removing hummingbird: " + hummingbirdId);
 
             }
@@ -445,13 +452,17 @@ public class RobotRequestHandler implements RequestHandler {
             if (hummingbit != null) {
                 if (hummingbit.isConnected())
                     hummingbit.disconnect();
-                if (!hummingbitsToConnect.isEmpty()) {
-                    btHelper.stopScan();
-                    btHelper.scanDevices(generateDeviceFilter(RobotType.Hummingbit));
-                }
                 if (hummingbit.getDisconnected()) {
                     connectedHummingbits.remove(hummingbitId);
                 }
+                while (!hummingbitsToConnect.isEmpty()) {
+                    startScan(RobotType.Hummingbit);
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                    }
+                }
+
                 Log.d("TotStat", "Removing hummingbit: " + hummingbitId);
             }
         } catch (Exception e) {
@@ -468,13 +479,17 @@ public class RobotRequestHandler implements RequestHandler {
             if (microbit != null) {
                 if (microbit.isConnected())
                     microbit.disconnect();
-                if (!microbitsToConnect.isEmpty()) {
-                    btHelper.stopScan();
-                    btHelper.scanDevices(generateDeviceFilter(RobotType.Microbit));
-                }
                 if (microbit.getDisconnected()) {
                     connectedMicrobits.remove(microbitId);
                 }
+                while (!microbitsToConnect.isEmpty()) {
+                    startScan(RobotType.Hummingbit);
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                    }
+                }
+
                 Log.d("TotStat", "Removing microbit: " + microbitId);
             }
         } catch (Exception e) {
@@ -567,7 +582,7 @@ public class RobotRequestHandler implements RequestHandler {
         return "1";  // All hummingbits are OK
     }
 
-    private String stopDiscover() {
+    private static String stopDiscover() {
         if (btHelper != null)
             btHelper.stopScan();
         runJavascript("CallbackManager.robot.stopDiscover('" + lastScanType + "');");

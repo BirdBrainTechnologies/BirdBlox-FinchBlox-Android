@@ -21,6 +21,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -41,7 +42,7 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Rob
 public class BluetoothHelper {
     private static final int THRESHOLD = 10;
     private static final String TAG = "BluetoothHelper";
-    private static final int SCAN_DURATION = 1500;  /* Length of time to perform a scan, in milliseconds */
+    private static final int SCAN_DURATION = 2000;  /* Length of time to perform a scan, in milliseconds */
     public static boolean currentlyScanning;
     private BluetoothAdapter btAdapter;
     private Handler handler;
@@ -62,7 +63,7 @@ public class BluetoothHelper {
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
                 if (lastScanType.equals("hummingbird") && hummingbirdsToConnect != null) {
-                    if (hummingbirdsToConnect.contains(result.getDevice().getAddress())) {
+                    if (hummingbirdsToConnect.contains(result.getDevice().getAddress()) ) {
                         try {
                             Thread.sleep(5000);
                         } catch (InterruptedException e) {
@@ -70,7 +71,7 @@ public class BluetoothHelper {
                         connectToRobot(RobotType.Hummingbird, result.getDevice().getAddress());
                     }
                 } else if (lastScanType.equals("hummingbirdbit") && hummingbitsToConnect != null) {
-                    if (hummingbitsToConnect.contains(result.getDevice().getAddress())) {
+                    if (hummingbitsToConnect.contains(result.getDevice().getAddress()) ) {
                         try {
                             Thread.sleep(5000);
                         } catch (InterruptedException e) {
@@ -78,7 +79,7 @@ public class BluetoothHelper {
                         connectToRobot(RobotType.Hummingbit, result.getDevice().getAddress());
                     }
                 } else if (lastScanType.equals("microbit") && microbitsToConnect != null) {
-                    if (microbitsToConnect.contains(result.getDevice().getAddress())) {
+                    if (microbitsToConnect.contains(result.getDevice().getAddress()) ) {
                         try {
                             Thread.sleep(5000);
                         } catch (InterruptedException e) {
