@@ -81,6 +81,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private boolean ATTEMPTED = false;
     private boolean DISCONNECTED = false;
 
+    private boolean FORCESEND = false;
 
     /**
      * Initializes a Hummingbit device
@@ -209,7 +210,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             // do nothing in this case
             return;
         }
-        if (!newMBState.equals(oldMBState)) {
+        if (!newMBState.equals(oldMBState) || FORCESEND) {
             setSendingTrue();
 
             if (conn.writeBytes(newMBState.setAll())) {
@@ -224,6 +225,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
 
             setSendingFalse();
             last_sent.set(currentTime);
+            FORCESEND = false;
         }
 
         // Not currently sending s
@@ -308,6 +310,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 bitsInInt[bitsInInt.length - 1] = SYMBOL;
                 return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), bitsInInt);
             case "printBlock":
+                FORCESEND = true;
                 String printString = args.get("printString").get(0);
                 printString = printString.replaceAll("[^a-zA-Z]", "");
                 printString = printString.toUpperCase();

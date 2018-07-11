@@ -264,7 +264,6 @@ public class RobotRequestHandler implements RequestHandler {
         } else {
             connectToMicrobit(robotId);
         }
-        BluetoothHelper.currentlyScanning = false;
         return "";
     }
 
@@ -284,7 +283,6 @@ public class RobotRequestHandler implements RequestHandler {
                         if (hbConn != null && hbConn.isConnected() && connectedHummingbirds != null) {
                             Hummingbird hummingbird = new Hummingbird(hbConn);
                             connectedHummingbirds.put(hummingbirdId, hummingbird);
-                            btHelper.stopScan();
                             if (hummingbirdsToConnect.contains(hummingbirdId)) {
                                 hummingbirdsToConnect.remove(hummingbirdId);
                             }
@@ -319,7 +317,6 @@ public class RobotRequestHandler implements RequestHandler {
                         if (hbitConn != null && hbitConn.isConnected() && connectedHummingbits != null) {
                             Hummingbit hummingbit = new Hummingbit(hbitConn);
                             connectedHummingbits.put(hummingbitId, hummingbit);
-                            btHelper.stopScan();
                             if (hummingbitsToConnect.contains(hummingbitId)) {
                                 hummingbitsToConnect.remove(hummingbitId);
                             }
@@ -355,7 +352,6 @@ public class RobotRequestHandler implements RequestHandler {
                         if (mbitConn != null && mbitConn.isConnected() && connectedMicrobits != null) {
                             Microbit microbit = new Microbit(mbitConn);
                             connectedMicrobits.put(microbitId, microbit);
-                            btHelper.stopScan();
                             if (microbitsToConnect.contains(microbitId)) {
                                 microbitsToConnect.remove(microbitId);
                             }
