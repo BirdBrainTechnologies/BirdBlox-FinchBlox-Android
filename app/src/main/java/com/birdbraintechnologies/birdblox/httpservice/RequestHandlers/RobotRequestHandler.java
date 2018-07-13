@@ -382,6 +382,9 @@ public class RobotRequestHandler implements RequestHandler {
      * @return
      */
     private String disconnectFromRobot(RobotType robotType, final String robotId) {
+        hummingbirdsToConnect = new HashSet<>();
+        hummingbitsToConnect = new HashSet<>();
+        microbitsToConnect = new HashSet<>();
         new Thread() {
             @Override
             public void run() {
@@ -393,13 +396,10 @@ public class RobotRequestHandler implements RequestHandler {
 
         if (robotType == RobotType.Hummingbird) {
             disconnectFromHummingbird(robotId);
-            hummingbirdsToConnect.remove(robotId);
         } else if (robotType == RobotType.Hummingbit) {
             disconnectFromHummingbit(robotId);
-            hummingbitsToConnect.remove(robotId);
         } else {
             disconnectFromMicrobit(robotId);
-            microbitsToConnect.remove(robotId);
         }
         btHelper.stopScan();
 
@@ -423,7 +423,7 @@ public class RobotRequestHandler implements RequestHandler {
                 if (hummingbird.getDisconnected()) {
                     connectedHummingbirds.remove(hummingbirdId);
                 }
-                while (!hummingbirdsToConnect.isEmpty()) {
+                while (hummingbirdsToConnect!=null && !hummingbirdsToConnect.isEmpty()) {
                     startScan(RobotType.Hummingbird);
                     try {
                         Thread.sleep(2000);
@@ -451,7 +451,7 @@ public class RobotRequestHandler implements RequestHandler {
                 if (hummingbit.getDisconnected()) {
                     connectedHummingbits.remove(hummingbitId);
                 }
-                while (!hummingbitsToConnect.isEmpty()) {
+                while (hummingbitsToConnect!=null && !hummingbitsToConnect.isEmpty()) {
                     startScan(RobotType.Hummingbit);
                     try {
                         Thread.sleep(2000);
@@ -478,7 +478,7 @@ public class RobotRequestHandler implements RequestHandler {
                 if (microbit.getDisconnected()) {
                     connectedMicrobits.remove(microbitId);
                 }
-                while (!microbitsToConnect.isEmpty()) {
+                while (microbitsToConnect!=null && !microbitsToConnect.isEmpty()) {
                     startScan(RobotType.Hummingbit);
                     try {
                         Thread.sleep(2000);
@@ -494,6 +494,9 @@ public class RobotRequestHandler implements RequestHandler {
     }
 
     public static void disconnectAll() {
+        hummingbirdsToConnect = null;
+        hummingbitsToConnect = null;
+        microbitsToConnect = null;
         if (connectedHummingbirds != null) {
             for (String individualHummingBird : connectedHummingbirds.keySet()) {
                 disconnectFromHummingbird(individualHummingBird);
@@ -511,9 +514,7 @@ public class RobotRequestHandler implements RequestHandler {
                 disconnectFromMicrobit(individualMicroBit);
             }
         }
-        hummingbirdsToConnect = null;
-        hummingbitsToConnect = null;
-        microbitsToConnect = null;
+
     }
 
     /**

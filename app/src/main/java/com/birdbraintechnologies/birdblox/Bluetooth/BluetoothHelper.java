@@ -22,6 +22,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
@@ -39,7 +40,8 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Rob
  * @author Terence Sun (tsun1215)
  */
 public class BluetoothHelper {
-    private static final int THRESHOLD = 10;
+    private static final int THRESHOLD = 20;
+    public static final int AUTOCONNECTION_THRESHOLD = -75;
     private static final String TAG = "BluetoothHelper";
     private static final int SCAN_DURATION = 2000;  /* Length of time to perform a scan, in milliseconds */
     public static boolean currentlyScanning;
@@ -63,27 +65,39 @@ public class BluetoothHelper {
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
                 if (lastScanType.equals("hummingbird") && hummingbirdsToConnect != null) {
                     if (hummingbirdsToConnect.contains(result.getDevice().getAddress())) {
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException e) {
+                        if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
+                            hummingbirdsToConnect = new HashSet<>();
+                        } else {
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException e) {
+                            }
+                            connectToRobot(RobotType.Hummingbird, result.getDevice().getAddress());
                         }
-                        connectToRobot(RobotType.Hummingbird, result.getDevice().getAddress());
                     }
                 } else if (lastScanType.equals("hummingbirdbit") && hummingbitsToConnect != null) {
                     if (hummingbitsToConnect.contains(result.getDevice().getAddress())) {
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException e) {
+                        if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
+                            hummingbitsToConnect = new HashSet<>();
+                        } else {
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException e) {
+                            }
+                            connectToRobot(RobotType.Hummingbit, result.getDevice().getAddress());
                         }
-                        connectToRobot(RobotType.Hummingbit, result.getDevice().getAddress());
                     }
                 } else if (lastScanType.equals("microbit") && microbitsToConnect != null) {
                     if (microbitsToConnect.contains(result.getDevice().getAddress())) {
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException e) {
+                        if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
+                            microbitsToConnect = new HashSet<>();
+                        } else {
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException e) {
+                            }
+                            connectToRobot(RobotType.Microbit, result.getDevice().getAddress());
                         }
-                        connectToRobot(RobotType.Microbit, result.getDevice().getAddress());
                     }
                 }
 
@@ -96,21 +110,27 @@ public class BluetoothHelper {
                 for (BluetoothDevice device : BLEDeviceList) {
                     String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
                     String prefix = "";
+                    String identifier = "";
                     switch (device.getName().substring(0, 2)) {
                         case "HM":
                             prefix = "Duo";
+                            identifier = "hummingbird";
                             break;
                         case "HB":
                             prefix = "Duo";
+                            identifier = "hummingbird";
                             break;
                         case "FN":
                             prefix = "Finch";
+                            identifier = "finch";
                             break;
                         case "BB":
                             prefix = "Bit";
+                            identifier = "hummingbirdbit";
                             break;
                         case "MB":
                             prefix = "micro:bit";
+                            identifier = "microbit";
                             break;
                     }
                     JSONObject robot = new JSONObject();
@@ -122,8 +142,9 @@ public class BluetoothHelper {
                     } catch (JSONException e) {
                         Log.e("JSON", "JSONException while discovering " + lastScanType);
                     }
-
-                    robots.put(robot);
+                    if (identifier.equals(lastScanType)) {
+                        robots.put(robot);
+                    }
                 }
                 runJavascript("CallbackManager.robot.discovered('" + lastScanType + "', '" + bbxEncode(robots.toString()) + "');");
             }
