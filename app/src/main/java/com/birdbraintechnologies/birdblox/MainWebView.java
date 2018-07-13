@@ -257,7 +257,7 @@ public class MainWebView extends AppCompatActivity {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
-                Log.d("MyApplication", "Message" + consoleMessage);
+                Log.d("MyApplication", "Message:" + consoleMessage.message() + ", Line:" + consoleMessage.lineNumber());
                 return super.onConsoleMessage(consoleMessage);
             }
         });
