@@ -31,6 +31,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
+import android.webkit.ConsoleMessage;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Toast;
@@ -206,6 +208,10 @@ public class MainWebView extends AppCompatActivity {
         stopService(new Intent(this, HttpService.class));
 
         mainWebViewContext = MainWebView.this;
+
+
+
+
         verifyStoragePermissions(this);
         // Hide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
@@ -246,6 +252,15 @@ public class MainWebView extends AppCompatActivity {
 
         // Create webview
         webView = (WebView) findViewById(R.id.main_webview);
+
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                Log.d("MyApplication", "Message" + consoleMessage);
+                return super.onConsoleMessage(consoleMessage);
+            }
+        });
 //        webView.loadUrl("file:///" + lFile.getAbsolutePath());
         webView.loadUrl(PAGE_URL);
         webView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
