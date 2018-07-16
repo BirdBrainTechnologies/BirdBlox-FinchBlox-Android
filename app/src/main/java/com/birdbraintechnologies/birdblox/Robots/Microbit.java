@@ -222,8 +222,9 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
         } else {
             // Not currently sending, and oldState and newState are the same
             if (currentTime - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
-                if (last_successfully_sent != null)
+                if (last_successfully_sent != null) {
                     last_successfully_sent.set(currentTime);
+                }
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 last_sent.set(currentTime);
             }
