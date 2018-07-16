@@ -87,7 +87,7 @@ public class UARTConnection extends BluetoothGattCallback {
             // Wait for operation to complete
             startLatch.countDown();
             try {
-                doneLatch.await(1000, TimeUnit.MILLISECONDS);
+                doneLatch.await(100, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 Log.e(TAG, "Error: " + e);
                 return false;
@@ -123,8 +123,8 @@ public class UARTConnection extends BluetoothGattCallback {
                 // Wait for a successful write and a response
                 startLatch.countDown();
                 try {
-                    doneLatch.await(1000, TimeUnit.MILLISECONDS);
-                    resultLatch.await(1000, TimeUnit.MILLISECONDS);
+                    doneLatch.await(100, TimeUnit.MILLISECONDS);
+                    resultLatch.await(100, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException e) {
                     Log.e(TAG, "Error: " + e);
                     return new byte[]{};

@@ -138,7 +138,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         Runnable monitorRunnable = new Runnable() {
             @Override
             public void run() {
-                long timeOut = cf.get() ? MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
+                final long timeOut = cf.get() ? MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
                 final long curSysTime = System.currentTimeMillis();
                 final long prevTime = last_successfully_sent.get();
                 final long passedTime = curSysTime - prevTime;
@@ -150,6 +150,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                             public void run() {
                                 super.run();
                                 String macAddr = getMacAddress();
+                                System.out.println("disconnect" + timeOut);
                                 RobotRequestHandler.disconnectFromHummingbit(macAddr);
                                 if (DISCONNECTED) {
                                     return;
@@ -173,6 +174,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
      */
     public synchronized void sendToRobot() {
         long currentTime = System.currentTimeMillis();
+        System.out.println("currentTime" + currentTime + ",last: " + last_successfully_sent.get());
         if (cf.get()) {
             // Send here
             setSendingTrue();
@@ -249,18 +251,9 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         } else {
             // Not currently sending, and oldState and newState are the same
             if (currentTime - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
-                // Send here
-                setSendingTrue();
-
-                if (conn.writeBytes(newState.setAll())) {
-                    // Successfully sent Non-CF command
-                    if (last_successfully_sent != null)
-                        last_successfully_sent.set(currentTime);
-                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                } else {
-                    // Sending Non-CF command failed
-                }
-                setSendingFalse();
+                if (last_successfully_sent != null)
+                    last_successfully_sent.set(currentTime);
+                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
                 last_sent.set(currentTime);
             }
         }
