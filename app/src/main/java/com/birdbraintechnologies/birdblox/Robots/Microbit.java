@@ -47,6 +47,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
     private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 3000;
 
     private static byte[] FIRMWARECOMMAND = new byte[1];
+    private static byte[] CALIBRATECOMMAND = new byte[4];
     private static final byte latestHardwareVersion = 0x01;
     private static final byte latestMicroBitVersion = 0x01;
     private static final byte latestSMDVersion = (byte) 0xFF;
@@ -79,6 +80,8 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
     private boolean ATTEMPTED = false;
     private boolean DISCONNECTED = false;
 
+    private boolean FORCESEND = false;
+    private AtomicBoolean CALIBRATE = new AtomicBoolean(false);
     /**
      * Initializes a Microbit device
      *
@@ -93,6 +96,10 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
 
 
         FIRMWARECOMMAND[0] = (byte) 0xCF;
+        CALIBRATECOMMAND[0] = (byte) 0xCE;
+        CALIBRATECOMMAND[1] = (byte) 0xCE;
+        CALIBRATECOMMAND[2] = (byte) 0xFF;
+        CALIBRATECOMMAND[3] = (byte) 0xFF;
 
         cf = new AtomicBoolean(true);
         last_sent = new AtomicLong(System.currentTimeMillis());
@@ -203,8 +210,23 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             // do nothing in this case
             return;
         }
-        // Not currently sending
-        if (!statesEqual()) {
+
+        if (CALIBRATE.get()) {
+            CALIBRATE.set(false);
+            setSendingTrue();
+            if (conn.writeBytes(CALIBRATECOMMAND)) {
+                // Successfully sent Non-CF command
+                if (last_successfully_sent != null)
+                    last_successfully_sent.set(currentTime);
+                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+            } else {
+                // Sending Non-CF command failed
+            }
+            setSendingFalse();
+            last_sent.set(currentTime);
+        }
+        
+        if (!statesEqual() || FORCESEND) {
             // Not currently sending, but oldState and newState are different
             // Send here
             setSendingTrue();
@@ -265,6 +287,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 bitsInInt[bitsInInt.length - 1] = SYMBOL;
                 return setRbSOOutput(oldState.getLedArray(), newState.getLedArray(), bitsInInt);
             case "printBlock":
+                FORCESEND = true;
                 String printString = args.get("printString").get(0);
                 printString = printString.replaceAll("[^a-zA-Z]", "");
                 printString = printString.toUpperCase();
@@ -276,6 +299,9 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 }
                 charsInInts[charsInInts.length - 1] = FLASH;
                 return setRbSOOutput(oldState.getLedArray(), newState.getLedArray(), charsInInts);
+            case "compassCalibrate":
+                CALIBRATE.set(true);
+                return true;
         }
 
         return false;

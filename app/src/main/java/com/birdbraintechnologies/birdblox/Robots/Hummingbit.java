@@ -51,6 +51,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private static final int ROTATION = 1;
     private static final int POSITION = 0;
     private static byte[] FIRMWARECOMMAND = new byte[1];
+    private static byte[] CALIBRATECOMMAND = new byte[4];
     private static final byte latestHardwareVersion = 0x01;
     private static final byte latestMicroBitVersion = 0x01;
     private static final byte latestSMDVersion = 0x01;
@@ -82,7 +83,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private boolean DISCONNECTED = false;
 
     private boolean FORCESEND = false;
-
+    private AtomicBoolean CALIBRATE = new AtomicBoolean(false);
     /**
      * Initializes a Hummingbit device
      *
@@ -97,6 +98,10 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
 
 
         FIRMWARECOMMAND[0] = (byte) 0xCF;
+        CALIBRATECOMMAND[0] = (byte) 0xCE;
+        CALIBRATECOMMAND[1] = (byte) 0xCE;
+        CALIBRATECOMMAND[2] = (byte) 0xFF;
+        CALIBRATECOMMAND[3] = (byte) 0xFF;
 
         cf = new AtomicBoolean(true);
         last_sent = new AtomicLong(System.currentTimeMillis());
@@ -210,6 +215,21 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             // do nothing in this case
             return;
         }
+        if (CALIBRATE.get()) {
+            CALIBRATE.set(false);
+            setSendingTrue();
+            if (conn.writeBytes(CALIBRATECOMMAND)) {
+                // Successfully sent Non-CF command
+                if (last_successfully_sent != null)
+                    last_successfully_sent.set(currentTime);
+                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+            } else {
+                // Sending Non-CF command failed
+            }
+            setSendingFalse();
+            last_sent.set(currentTime);
+        }
+
         if (!newMBState.equals(oldMBState) || FORCESEND) {
             setSendingTrue();
 
@@ -321,6 +341,9 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 }
                 charsInInts[charsInInts.length - 1] = FLASH;
                 return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), charsInInts);
+            case "compassCalibrate":
+                CALIBRATE.set(true);
+                return true;
         }
         return false;
     }
