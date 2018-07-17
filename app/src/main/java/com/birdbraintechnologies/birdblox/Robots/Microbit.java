@@ -80,7 +80,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
     private boolean ATTEMPTED = false;
     private boolean DISCONNECTED = false;
 
-    private boolean FORCESEND = false;
+    private AtomicBoolean FORCESEND = new AtomicBoolean(false);
     private AtomicBoolean CALIBRATE = new AtomicBoolean(false);
     /**
      * Initializes a Microbit device
@@ -225,8 +225,8 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             setSendingFalse();
             last_sent.set(currentTime);
         }
-        
-        if (!statesEqual() || FORCESEND) {
+
+        if (!statesEqual() || FORCESEND.get()) {
             // Not currently sending, but oldState and newState are different
             // Send here
             setSendingTrue();
@@ -241,6 +241,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             }
             setSendingFalse();
             last_sent.set(currentTime);
+            FORCESEND.set(false);
         } else {
             // Not currently sending, and oldState and newState are the same
             if (currentTime - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
@@ -287,7 +288,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 bitsInInt[bitsInInt.length - 1] = SYMBOL;
                 return setRbSOOutput(oldState.getLedArray(), newState.getLedArray(), bitsInInt);
             case "printBlock":
-                FORCESEND = true;
+                FORCESEND.set(true);
                 String printString = args.get("printString").get(0);
                 printString = printString.replaceAll("[^a-zA-Z]", "");
                 printString = printString.toUpperCase();
