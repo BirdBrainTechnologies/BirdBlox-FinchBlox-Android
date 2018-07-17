@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
@@ -55,7 +56,8 @@ public class BluetoothHelper {
     private static ScanSettings scanSettings = (new ScanSettings.Builder())
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build();
-
+    private AtomicLong last_sent = new AtomicLong(System.currentTimeMillis());
+    private static final int SEND_INTERVAL = 3000;
     /* Callback for populating the device list */
     private ScanCallback populateDevices = new ScanCallback() {
         @Override
@@ -105,48 +107,50 @@ public class BluetoothHelper {
                         Math.abs(result.getRssi() - deviceRSSI.get(result.getDevice().getAddress())) > THRESHOLD) {
                     deviceRSSI.put(result.getDevice().getAddress(), result.getRssi());
                 }
-
-                JSONArray robots = new JSONArray();
-                for (BluetoothDevice device : BLEDeviceList) {
-                    String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
-                    String prefix = "";
-                    String identifier = "";
-                    switch (device.getName().substring(0, 2)) {
-                        case "HM":
-                            prefix = "Duo";
-                            identifier = "hummingbird";
-                            break;
-                        case "HB":
-                            prefix = "Duo";
-                            identifier = "hummingbird";
-                            break;
-                        case "FN":
-                            prefix = "Finch";
-                            identifier = "finch";
-                            break;
-                        case "BB":
-                            prefix = "Bit";
-                            identifier = "hummingbirdbit";
-                            break;
-                        case "MB":
-                            prefix = "micro:bit";
-                            identifier = "microbit";
-                            break;
+                if (System.currentTimeMillis() - last_sent.get() >= SEND_INTERVAL) {
+                    last_sent.set(System.currentTimeMillis());
+                    JSONArray robots = new JSONArray();
+                    for (BluetoothDevice device : BLEDeviceList) {
+                        String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
+                        String prefix = "";
+                        String identifier = "";
+                        switch (device.getName().substring(0, 2)) {
+                            case "HM":
+                                prefix = "Duo";
+                                identifier = "hummingbird";
+                                break;
+                            case "HB":
+                                prefix = "Duo";
+                                identifier = "hummingbird";
+                                break;
+                            case "FN":
+                                prefix = "Finch";
+                                identifier = "finch";
+                                break;
+                            case "BB":
+                                prefix = "Bit";
+                                identifier = "hummingbirdbit";
+                                break;
+                            case "MB":
+                                prefix = "micro:bit";
+                                identifier = "microbit";
+                                break;
+                        }
+                        JSONObject robot = new JSONObject();
+                        try {
+                            robot.put("id", device.getAddress());
+                            robot.put("device", prefix);
+                            robot.put("name", name);
+                            robot.put("RSSI", deviceRSSI.get(device.getAddress()));
+                        } catch (JSONException e) {
+                            Log.e("JSON", "JSONException while discovering " + lastScanType);
+                        }
+                        if (identifier.equals(lastScanType)) {
+                            robots.put(robot);
+                        }
                     }
-                    JSONObject robot = new JSONObject();
-                    try {
-                        robot.put("id", device.getAddress());
-                        robot.put("device", prefix);
-                        robot.put("name", name);
-                        robot.put("RSSI", deviceRSSI.get(device.getAddress()));
-                    } catch (JSONException e) {
-                        Log.e("JSON", "JSONException while discovering " + lastScanType);
-                    }
-                    if (identifier.equals(lastScanType)) {
-                        robots.put(robot);
-                    }
+                    runJavascript("CallbackManager.robot.discovered('" + lastScanType + "', '" + bbxEncode(robots.toString()) + "');");
                 }
-                runJavascript("CallbackManager.robot.discovered('" + lastScanType + "', '" + bbxEncode(robots.toString()) + "');");
             }
         }
     };
