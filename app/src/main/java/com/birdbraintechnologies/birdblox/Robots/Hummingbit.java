@@ -150,7 +150,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                             public void run() {
                                 super.run();
                                 String macAddr = getMacAddress();
-                                System.out.println("disconnect" + timeOut);
                                 RobotRequestHandler.disconnectFromHummingbit(macAddr);
                                 if (DISCONNECTED) {
                                     return;
@@ -174,7 +173,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
      */
     public synchronized void sendToRobot() {
         long currentTime = System.currentTimeMillis();
-        System.out.println("currentTime" + currentTime + ",last: " + last_successfully_sent.get());
         if (cf.get()) {
             // Send here
             setSendingTrue();
@@ -251,10 +249,17 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         } else {
             // Not currently sending, and oldState and newState are the same
             if (currentTime - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
-                if (last_successfully_sent != null) {
-                    last_successfully_sent.set(currentTime);
+                setSendingTrue();
+                if (conn.writeBytes(newState.setAll())) {
+                    // Successfully sent Non-G4 command
+                    if (last_successfully_sent != null)
+                        last_successfully_sent.set(currentTime);
+                    oldState.copy(newState);
+                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                } else {
+                    // Sending Non-G4 command failed
                 }
-                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                setSendingFalse();
                 last_sent.set(currentTime);
             }
         }
@@ -513,7 +518,11 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 }
                 conn.disconnect();
             }
-
+            synchronized (hummingbitsToConnect) {
+                if (!hummingbitsToConnect.contains(macAddr)) {
+                    hummingbitsToConnect.add(macAddr);
+                }
+            }
             ATTEMPTED = false;
             DISCONNECTED = true;
         }
