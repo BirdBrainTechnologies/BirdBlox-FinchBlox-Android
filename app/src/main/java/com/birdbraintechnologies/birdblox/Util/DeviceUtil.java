@@ -85,9 +85,9 @@ public class DeviceUtil {
     }
 
     public static double RawToMag(byte[] rawMag, String axisString) {
-        double mx = Complement (rawMag[1] | (rawMag[0] << 8)) * 1.0;
-        double my = Complement (rawMag[2] | (rawMag[3] << 8)) * 1.0;
-        double mz = Complement (rawMag[4] | (rawMag[5] << 8)) * 1.0;
+        short mx = (short) (rawMag[1] | (rawMag[0] << 8)) ;
+        short my = (short) (rawMag[3] | (rawMag[2] << 8)) ;
+        short mz = (short) (rawMag[5] | (rawMag[4] << 8)) ;
 
         switch (axisString) {
             case "x":
@@ -102,13 +102,15 @@ public class DeviceUtil {
 
     public static double RawToCompass(byte[] rawAccl, byte[] rawMag) {
         double ax = Complement(RawToInt(rawAccl[0])) * 1.0;
-        double ay = Complement(RawToInt(rawAccl[0])) * 1.0;
-        double az = Complement(RawToInt(rawAccl[0])) * 1.0;
+        double ay = Complement(RawToInt(rawAccl[1])) * 1.0;
+        double az = Complement(RawToInt(rawAccl[2])) * 1.0;
 
-        double mx = Complement (rawMag[1] | (rawMag[0] << 8)) * 1.0;
-        double my = Complement (rawMag[2] | (rawMag[3] << 8)) * 1.0;
-        double mz = Complement (rawMag[4] | (rawMag[5] << 8)) * 1.0;
+        short mx = (short) (rawMag[1] | (rawMag[0] << 8)) ;
+        short my = (short) (rawMag[3] | (rawMag[2] << 8)) ;
+        short mz = (short) (rawMag[5] | (rawMag[4] << 8)) ;
 
+        System.out.println("x:" + ax + "y" + ay + "z" + az);
+        System.out.println("mx:" + mx + "my" + my + "mz" + mz);
         double phi = Math.atan(-ay / az);
         double theta = Math.atan(ax / (ay * Math.sin(phi) + az * Math.cos(phi)));
 
@@ -119,7 +121,7 @@ public class DeviceUtil {
         double xpp = xp * Math.cos(theta) + zp * Math.sin(theta);
         double ypp = yp;
 
-        double angle = 180.0 + Math.toDegrees(Math.atan(xpp / ypp));
+        double angle = 180.0 + Math.toDegrees(Math.atan2(xpp, ypp));
         return angle;
     }
 

@@ -57,12 +57,13 @@ public class BluetoothHelper {
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build();
     private AtomicLong last_sent = new AtomicLong(System.currentTimeMillis());
-    private static final int SEND_INTERVAL = 3000;
+    private static final int SEND_INTERVAL = 1000;
     /* Callback for populating the device list */
     private ScanCallback populateDevices = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             synchronized (deviceList) {
+                System.out.println("devicelist" + deviceList.toString() + hummingbitsToConnect.toString());
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
                 if (lastScanType.equals("hummingbird") && hummingbirdsToConnect != null) {

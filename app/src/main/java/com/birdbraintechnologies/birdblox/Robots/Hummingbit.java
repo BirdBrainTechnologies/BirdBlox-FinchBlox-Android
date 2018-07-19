@@ -12,6 +12,7 @@ import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -200,7 +201,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 if (!hasLatestFirmware()) {
                     cf.set(true);
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
-                    disconnect();
+                    disconnect(true);
                 }
 
             } else {
@@ -342,6 +343,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 charsInInts[charsInInts.length - 1] = FLASH;
                 return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), charsInInts);
             case "compassCalibrate":
+                System.out.println("calibrate compass");
                 CALIBRATE.set(true);
                 return true;
         }
@@ -394,6 +396,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             case "accelerometer":
                 return Double.toString(DeviceUtil.RawToAccl(rawAccelerometerValue, axisString));
             case "compass":
+                System.out.println("getting compass value" + Arrays.toString(rawAccelerometerValue) + "," + Arrays.toString(rawMagnetometerValue));
                 return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue));
             case "buttonA":
                 return (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) ? "1" : "0";
@@ -506,7 +509,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     /**
      * Disconnects the device
      */
-    public void disconnect() {
+    public void disconnect(boolean autoConnect) {
         if (!DISCONNECTED) {
             String macAddr = getMacAddress();
             if (ATTEMPTED) {
@@ -541,11 +544,14 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 }
                 conn.disconnect();
             }
-            synchronized (hummingbitsToConnect) {
-                if (!hummingbitsToConnect.contains(macAddr)) {
-                    hummingbitsToConnect.add(macAddr);
+            if (autoConnect) {
+                synchronized (hummingbitsToConnect) {
+                    if (!hummingbitsToConnect.contains(macAddr)) {
+                        hummingbitsToConnect.add(macAddr);
+                    }
                 }
             }
+
             ATTEMPTED = false;
             DISCONNECTED = true;
         }
@@ -582,6 +588,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     hummingbitsToConnect.add(macAddr);
                 }
             }
+            System.out.println("force disconnect");
             DISCONNECTED = true;
         }
     }

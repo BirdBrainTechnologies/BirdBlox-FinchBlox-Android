@@ -196,7 +196,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 if (!hasLatestFirmware()) {
                     cf.set(true);
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
-                    disconnect();
+                    disconnect(true);
                 }
             } else {
                 // Sending Non-CF command failed
@@ -441,7 +441,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
     /**
      * Disconnects the device
      */
-    public void disconnect() {
+    public void disconnect(boolean autoConnect) {
         if (!DISCONNECTED) {
             String macAddr = getMacAddress();
             if (ATTEMPTED) {
@@ -475,9 +475,11 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 }
                 conn.disconnect();
             }
-            synchronized (microbitsToConnect) {
-                if (!microbitsToConnect.contains(macAddr)) {
-                    microbitsToConnect.add(macAddr);
+            if (autoConnect) {
+                synchronized (microbitsToConnect) {
+                    if (!microbitsToConnect.contains(macAddr)) {
+                        microbitsToConnect.add(macAddr);
+                    }
                 }
             }
             ATTEMPTED = false;
