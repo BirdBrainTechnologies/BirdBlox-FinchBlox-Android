@@ -63,7 +63,6 @@ public class BluetoothHelper {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             synchronized (deviceList) {
-                System.out.println("devicelist" + deviceList.toString() + hummingbitsToConnect.toString());
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
                 if (lastScanType.equals("hummingbird") && hummingbirdsToConnect != null) {

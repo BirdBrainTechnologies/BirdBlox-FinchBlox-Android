@@ -343,7 +343,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 charsInInts[charsInInts.length - 1] = FLASH;
                 return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), charsInInts);
             case "compassCalibrate":
-                System.out.println("calibrate compass");
                 CALIBRATE.set(true);
                 return true;
         }
@@ -396,7 +395,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             case "accelerometer":
                 return Double.toString(DeviceUtil.RawToAccl(rawAccelerometerValue, axisString));
             case "compass":
-                System.out.println("getting compass value" + Arrays.toString(rawAccelerometerValue) + "," + Arrays.toString(rawMagnetometerValue));
                 return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue));
             case "buttonA":
                 return (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) ? "1" : "0";
@@ -588,7 +586,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     hummingbitsToConnect.add(macAddr);
                 }
             }
-            System.out.println("force disconnect");
             DISCONNECTED = true;
         }
     }
