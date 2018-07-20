@@ -32,7 +32,6 @@ import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.connectToRobot;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbirdsToConnect;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbitsToConnect;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.lastScanType;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.microbitsToConnect;
 
 /**
@@ -65,7 +64,7 @@ public class BluetoothHelper {
             synchronized (deviceList) {
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
-                if (lastScanType.equals("hummingbird") && hummingbirdsToConnect != null) {
+                if (hummingbirdsToConnect != null) {
                     if (hummingbirdsToConnect.contains(result.getDevice().getAddress())) {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             hummingbirdsToConnect = new HashSet<>();
@@ -77,7 +76,7 @@ public class BluetoothHelper {
                             connectToRobot(RobotType.Hummingbird, result.getDevice().getAddress());
                         }
                     }
-                } else if (lastScanType.equals("hummingbirdbit") && hummingbitsToConnect != null) {
+                } else if (hummingbitsToConnect != null) {
                     if (hummingbitsToConnect.contains(result.getDevice().getAddress())) {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             hummingbitsToConnect = new HashSet<>();
@@ -89,7 +88,7 @@ public class BluetoothHelper {
                             connectToRobot(RobotType.Hummingbit, result.getDevice().getAddress());
                         }
                     }
-                } else if (lastScanType.equals("microbit") && microbitsToConnect != null) {
+                } else if (microbitsToConnect != null) {
                     if (microbitsToConnect.contains(result.getDevice().getAddress())) {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             microbitsToConnect = new HashSet<>();
@@ -143,13 +142,11 @@ public class BluetoothHelper {
                             robot.put("name", name);
                             robot.put("RSSI", deviceRSSI.get(device.getAddress()));
                         } catch (JSONException e) {
-                            Log.e("JSON", "JSONException while discovering " + lastScanType);
+                            Log.e("JSON", "JSONException while discovering devices");
                         }
-                        if (identifier.equals(lastScanType)) {
-                            robots.put(robot);
-                        }
+                        robots.put(robot);
                     }
-                    runJavascript("CallbackManager.robot.discovered('" + lastScanType + "', '" + bbxEncode(robots.toString()) + "');");
+                    runJavascript("CallbackManager.robot.discovered('" + bbxEncode(robots.toString()) + "');");
                 }
             }
         }
@@ -195,8 +192,8 @@ public class BluetoothHelper {
 
             btScanning = true;
             // Build scan settings (scan as fast as possible)
-
             currentlyScanning = true;
+
             scanner.startScan(scanFilters, scanSettings, populateDevices);
             // Schedule thread to stop scanning after SCAN_DURATION
             handler.postDelayed(new Runnable() {
@@ -209,7 +206,7 @@ public class BluetoothHelper {
                         scanner = null;
                     }
                     currentlyScanning = false;
-                    runJavascript("CallbackManager.robot.discoverTimeOut('" + lastScanType + "');");
+                    runJavascript("CallbackManager.robot.discoverTimeOut();");
                 }
             }, SCAN_DURATION);
         } else {

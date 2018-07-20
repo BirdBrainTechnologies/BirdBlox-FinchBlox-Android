@@ -45,7 +45,7 @@ public class RobotRequestHandler implements RequestHandler {
 
     private static final String FIRMWARE_UPDATE_URL = "http://www.hummingbirdkit.com/learning/installing-birdblox#BurnFirmware";
     /* UUIDs for different Hummingbird features */
-    private static final String HB_ROBOT_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
+    private static final String DEVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
     private static final UUID HB_UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
     private static final UUID HB_TX_UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
     private static final UUID HB_RX_UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
@@ -117,7 +117,7 @@ public class RobotRequestHandler implements RequestHandler {
         Robot robot;
         switch (path[0]) {
             case "startDiscover":
-                responseBody = startScan(robotTypeFromString(m.get("type").get(0)));
+                responseBody = startScan();
                 break;
             case "stopDiscover":
                 responseBody = stopDiscover();
@@ -196,13 +196,10 @@ public class RobotRequestHandler implements RequestHandler {
     // TODO: Finish implementing new Robot commands and callbacks
 
 
-    private static String startScan(final RobotType robotType) {
-        final List deviceFilter = generateDeviceFilter(robotType);
-        // TODO: Handle error in this case
-        if (robotType == null) {
-            return "";
-        }
-        if (BluetoothHelper.currentlyScanning && lastScanType.equals(robotType.toString().toLowerCase())) {
+    private static String startScan() {
+        final List deviceFilter = generateDeviceFilter();
+
+        if (BluetoothHelper.currentlyScanning) {
             return "";
         }
         if (BluetoothHelper.currentlyScanning) {
@@ -214,7 +211,6 @@ public class RobotRequestHandler implements RequestHandler {
                 btHelper.scanDevices(deviceFilter);
             }
         }.start();
-        lastScanType = robotType.toString().toLowerCase();
         return "";
     }
 
@@ -238,11 +234,10 @@ public class RobotRequestHandler implements RequestHandler {
     /**
      * Creates a Bluetooth scan Robot filter that only matches the required 'type' of Robot.
      *
-     * @param robotType The 'type' of Robot to be scanned for (Hummingbird or Hummingbit or Microbit).
      * @return List of scan filters.
      */
-    private static List<ScanFilter> generateDeviceFilter(RobotType robotType) {
-        String ROBOT_UUID = (robotType == RobotType.Hummingbird || robotType == RobotType.Hummingbit || robotType == RobotType.Microbit) ? HB_ROBOT_UUID : "";
+    private static List<ScanFilter> generateDeviceFilter() {
+        String ROBOT_UUID = DEVICE_UUID;
         ScanFilter scanFilter = (new ScanFilter.Builder())
                 .setServiceUuid(ParcelUuid.fromString(ROBOT_UUID))
                 .build();
@@ -421,7 +416,7 @@ public class RobotRequestHandler implements RequestHandler {
                     connectedHummingbirds.remove(hummingbirdId);
                 }
                 while (hummingbirdsToConnect!=null && !hummingbirdsToConnect.isEmpty()) {
-                    startScan(RobotType.Hummingbird);
+                    startScan();
                     try {
                         Thread.sleep(2000);
                     } catch (InterruptedException e) {
@@ -448,7 +443,7 @@ public class RobotRequestHandler implements RequestHandler {
                     connectedHummingbits.remove(hummingbitId);
                 }
                 while (hummingbitsToConnect!=null && !hummingbitsToConnect.isEmpty()) {
-                    startScan(RobotType.Hummingbit);
+                    startScan();
                     try {
                         Thread.sleep(2000);
                     } catch (InterruptedException e) {
@@ -475,7 +470,7 @@ public class RobotRequestHandler implements RequestHandler {
                     connectedMicrobits.remove(microbitId);
                 }
                 while (microbitsToConnect!=null && !microbitsToConnect.isEmpty()) {
-                    startScan(RobotType.Hummingbit);
+                    startScan();
                     try {
                         Thread.sleep(2000);
                     } catch (InterruptedException e) {
@@ -578,7 +573,7 @@ public class RobotRequestHandler implements RequestHandler {
     private static String stopDiscover() {
         if (btHelper != null)
             btHelper.stopScan();
-        runJavascript("CallbackManager.robot.stopDiscover('" + lastScanType + "');");
+        runJavascript("CallbackManager.robot.stopDiscover();");
         return "Bluetooth discovery stopped.";
     }
 
