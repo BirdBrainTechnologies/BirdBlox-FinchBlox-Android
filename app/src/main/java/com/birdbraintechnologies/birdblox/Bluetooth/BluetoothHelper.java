@@ -56,7 +56,7 @@ public class BluetoothHelper {
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build();
     private AtomicLong last_sent = new AtomicLong(System.currentTimeMillis());
-    private static final int SEND_INTERVAL = 1000;
+    private static final int SEND_INTERVAL = 2000;
     /* Callback for populating the device list */
     private ScanCallback populateDevices = new ScanCallback() {
         @Override
@@ -149,6 +149,7 @@ public class BluetoothHelper {
                         robots.put(robot);
                     }
                     runJavascript("CallbackManager.robot.discovered('" + bbxEncode(robots.toString()) + "');");
+                    deviceList.clear();
                 }
             }
         }
