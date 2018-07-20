@@ -76,7 +76,8 @@ public class BluetoothHelper {
                             connectToRobot(RobotType.Hummingbird, result.getDevice().getAddress());
                         }
                     }
-                } else if (hummingbitsToConnect != null) {
+                }
+                if (hummingbitsToConnect != null) {
                     if (hummingbitsToConnect.contains(result.getDevice().getAddress())) {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             hummingbitsToConnect = new HashSet<>();
@@ -88,7 +89,8 @@ public class BluetoothHelper {
                             connectToRobot(RobotType.Hummingbit, result.getDevice().getAddress());
                         }
                     }
-                } else if (microbitsToConnect != null) {
+                }
+                if (microbitsToConnect != null) {
                     if (microbitsToConnect.contains(result.getDevice().getAddress())) {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             microbitsToConnect = new HashSet<>();
