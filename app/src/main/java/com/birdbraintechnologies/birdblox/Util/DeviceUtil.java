@@ -85,9 +85,9 @@ public class DeviceUtil {
     }
 
     public static double RawToMag(byte[] rawMag, String axisString) {
-        short mx = (short) (rawMag[1] | (rawMag[0] << 8)) ;
-        short my = (short) (rawMag[3] | (rawMag[2] << 8)) ;
-        short mz = (short) (rawMag[5] | (rawMag[4] << 8)) ;
+        short mx = (short) ((rawMag[1] & 0xFF) | (rawMag[0] << 8)) ;
+        short my = (short) ((rawMag[3] & 0xFF) | (rawMag[2] << 8)) ;
+        short mz = (short) ((rawMag[5] & 0xFF) | (rawMag[4] << 8)) ;
 
         switch (axisString) {
             case "x":
@@ -105,12 +105,11 @@ public class DeviceUtil {
         double ay = Complement(RawToInt(rawAccl[1])) * 1.0;
         double az = Complement(RawToInt(rawAccl[2])) * 1.0;
 
-        short mx = (short) (rawMag[1] | (rawMag[0] << 8)) ;
-        short my = (short) (rawMag[3] | (rawMag[2] << 8)) ;
-        short mz = (short) (rawMag[5] | (rawMag[4] << 8)) ;
+        short mx = (short) ((rawMag[1] & 0xFF) | (rawMag[0] << 8)) ;
+        short my = (short) ((rawMag[3] & 0xFF) | (rawMag[2] << 8)) ;
+        short mz = (short) ((rawMag[5] & 0xFF) | (rawMag[4] << 8)) ;
 
-        System.out.println("x:" + ax + "y" + ay + "z" + az);
-        System.out.println("mx:" + mx + "my" + my + "mz" + mz);
+
         double phi = Math.atan(-ay / az);
         double theta = Math.atan(ax / (ay * Math.sin(phi) + az * Math.cos(phi)));
 

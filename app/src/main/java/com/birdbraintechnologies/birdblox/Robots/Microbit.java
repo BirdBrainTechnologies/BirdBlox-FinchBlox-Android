@@ -50,9 +50,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
     private static byte[] CALIBRATECOMMAND = new byte[4];
     private static final byte latestHardwareVersion = 0x01;
     private static final byte latestMicroBitVersion = 0x01;
-    private static final byte latestSMDVersion = (byte) 0xFF;
     private static int microBitVersion = 0;
-    private static int SMDVersion = 0;
 
     private static final int SYMBOL = 0;
     private static final int FLASH = 1;
@@ -195,7 +193,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 }
                 if (!hasLatestFirmware()) {
                     cf.set(true);
-                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
+                    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "')");
                     disconnect(true);
                 }
             } else {
@@ -357,6 +355,8 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 return rawAccelerometerValue[1] < -51 ? "1" : "0";
             case "logoDown":
                 return rawAccelerometerValue[1] > 51 ? "1" : "0";
+            case "compass":
+                return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue));
             default:
                 return "";
         }
@@ -570,23 +570,14 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
         return Byte.toString(latestMicroBitVersion);
     }
 
-    public String getLatestSMDVersion() {
-        return Byte.toString(latestSMDVersion);
-    }
-
     public String getMicroBitVersion() {
         return Integer.toString(microBitVersion);
-    }
-
-    public String getSMDVersion() {
-        return Integer.toString(SMDVersion);
     }
 
     public boolean hasLatestFirmware() {
         try {
             microBitVersion = (int) cfresponse[1];
-            SMDVersion = (int) cfresponse[2];
-            if (microBitVersion == (int) latestMicroBitVersion && SMDVersion == (int) latestSMDVersion) {
+            if (microBitVersion >= (int) latestMicroBitVersion) {
                 return true;
             } else {
                 return false;

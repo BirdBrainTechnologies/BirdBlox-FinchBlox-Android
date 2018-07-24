@@ -653,7 +653,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         try {
             microBitVersion = (int) cfresponse[1];
             SMDVersion = (int) cfresponse[2];
-            if (microBitVersion == (int) latestMicroBitVersion && SMDVersion == (int) latestSMDVersion) {
+            if (microBitVersion >= (int) latestMicroBitVersion && SMDVersion >= (int) latestSMDVersion) {
                 return true;
             } else {
                 return false;

@@ -595,7 +595,7 @@ public class RobotRequestHandler implements RequestHandler {
             firmwareVersion = "microBit: " + ((Hummingbit) robot).getMicroBitVersion() + "SMD: " + ((Hummingbit) robot).getSMDVersion();
         } else if (robotType == RobotType.Microbit) {
             hardwareVersion = ((Microbit) robot).getHardwareVersion();
-            firmwareVersion = "microBit: " + ((Microbit) robot).getMicroBitVersion() + "SMD: " + ((Microbit) robot).getSMDVersion();
+            firmwareVersion = "microBit: " + ((Microbit) robot).getMicroBitVersion();
         }
 
 

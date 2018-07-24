@@ -114,29 +114,25 @@ public class BluetoothHelper {
                     for (BluetoothDevice device : BLEDeviceList) {
                         String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
                         String prefix = "";
-                        String identifier = "";
+
                         switch (device.getName().substring(0, 2)) {
                             case "HM":
                                 prefix = "Duo";
-                                identifier = "hummingbird";
                                 break;
                             case "HB":
                                 prefix = "Duo";
-                                identifier = "hummingbird";
                                 break;
                             case "FN":
                                 prefix = "Finch";
-                                identifier = "finch";
                                 break;
                             case "BB":
                                 prefix = "Bit";
-                                identifier = "hummingbirdbit";
                                 break;
                             case "MB":
                                 prefix = "micro:bit";
-                                identifier = "microbit";
                                 break;
                         }
+                        System.out.println("trying to get deviceName" + device.getName().substring(0, 2) + "," + prefix);
                         JSONObject robot = new JSONObject();
                         try {
                             robot.put("id", device.getAddress());
