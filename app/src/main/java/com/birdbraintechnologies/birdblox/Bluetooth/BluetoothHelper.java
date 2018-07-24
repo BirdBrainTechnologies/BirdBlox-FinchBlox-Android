@@ -132,7 +132,6 @@ public class BluetoothHelper {
                                 prefix = "micro:bit";
                                 break;
                         }
-                        System.out.println("trying to get deviceName" + device.getName().substring(0, 2) + "," + prefix);
                         JSONObject robot = new JSONObject();
                         try {
                             robot.put("id", device.getAddress());
