@@ -50,6 +50,7 @@ public class BluetoothHelper {
     private boolean btScanning;
     private Context context;
     public static HashMap<String, BluetoothDevice> deviceList;
+    private static HashMap<String, BluetoothDevice> discoveredList;
     private BluetoothLeScanner scanner;
     private static HashMap<String, Integer> deviceRSSI = new HashMap<>();
     private static ScanSettings scanSettings = (new ScanSettings.Builder())
@@ -57,12 +58,20 @@ public class BluetoothHelper {
             .build();
     private AtomicLong last_sent = new AtomicLong(System.currentTimeMillis());
     private static final int SEND_INTERVAL = 2000;
-    /* Callback for populating the device list */
+    private static final int MAX_RETRY = 20;
+    /* Callback for populating the device list and discoveredList
+       The discoveredList keeps track of all the devices found after a startDiscover request is issued,
+       it ensure that the user can connect to the device that can be found in the connection interface.
+       The deviceList is cleared for every SEND_INTERVAL to ensure that the user cannot find a device
+       that is connected by other users.
+    */
     private ScanCallback populateDevices = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             synchronized (deviceList) {
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
+                discoveredList.put(result.getDevice().getAddress(), result.getDevice());
+
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
                 if (hummingbirdsToConnect != null) {
                     if (hummingbirdsToConnect.contains(result.getDevice().getAddress())) {
@@ -142,9 +151,10 @@ public class BluetoothHelper {
                             Log.e("JSON", "JSONException while discovering devices");
                         }
                         robots.put(robot);
+                        deviceList.clear();
                     }
                     runJavascript("CallbackManager.robot.discovered('" + bbxEncode(robots.toString()) + "');");
-                    deviceList.clear();
+
                 }
             }
         }
@@ -160,6 +170,7 @@ public class BluetoothHelper {
         this.btScanning = false;
         this.handler = new Handler();
         deviceList = new HashMap<>();
+        discoveredList = new HashMap<>();
         // Acquire Bluetooth service
         final BluetoothManager btManager =
                 (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
@@ -220,16 +231,17 @@ public class BluetoothHelper {
      * @return Result connection, null if the given MAC Address doesn't match any scanned device
      */
     public UARTConnection connectToDeviceUART(String addr, UARTSettings settings) {
-        BluetoothDevice device;
-        synchronized (deviceList) {
-            device = deviceList.get(addr);
+
+        BluetoothDevice device = null;
+        int retryCnt = 0;
+        synchronized (discoveredList) {
+            device = discoveredList.get(addr);
         }
 
         if (device == null) {
             Log.e(TAG, "Unable to connect to device: " + addr);
             return null;
         }
-
         UARTConnection conn = new UARTConnection(context, device, settings);
         while (!conn.isConnected()) {
             conn = new UARTConnection(context, device, settings);
@@ -245,6 +257,9 @@ public class BluetoothHelper {
         }
         if (deviceList != null) {
             deviceList.clear();
+        }
+        if (discoveredList != null) {
+            discoveredList.clear();
         }
         currentlyScanning = false;
     }
