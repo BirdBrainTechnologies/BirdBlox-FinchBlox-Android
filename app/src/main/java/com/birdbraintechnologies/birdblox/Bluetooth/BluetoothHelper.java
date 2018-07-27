@@ -58,6 +58,7 @@ public class BluetoothHelper {
             .build();
     private AtomicLong last_sent = new AtomicLong(System.currentTimeMillis());
     private static final int SEND_INTERVAL = 2000;
+    private static final int MAXRETRY = 5;
     /* Callback for populating the device list and discoveredList
        The discoveredList keeps track of all the devices found after a startDiscover request is issued,
        it ensure that the user can connect to the device that can be found in the connection interface.
@@ -231,17 +232,21 @@ public class BluetoothHelper {
      */
     public UARTConnection connectToDeviceUART(String addr, UARTSettings settings) {
         BluetoothDevice device;
+        int retryCnt = 0;
         synchronized (discoveredList) {
             device = discoveredList.get(addr);
         }
-
         if (device == null) {
             Log.e(TAG, "Unable to connect to device: " + addr);
             return null;
         }
         UARTConnection conn = new UARTConnection(context, device, settings);
-        while (!conn.isConnected()) {
+        while (!conn.isConnected() && retryCnt < MAXRETRY) {
             conn = new UARTConnection(context, device, settings);
+            retryCnt = retryCnt + 1;
+        }
+        if (!conn.isConnected()) {
+            runJavascript("CallbackManager.robot.connectionFailure('" + bbxEncode(addr)  + "')");
         }
         return conn;
     }

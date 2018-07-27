@@ -157,6 +157,11 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                                 super.run();
                                 String macAddr = getMacAddress();
                                 RobotRequestHandler.disconnectFromHummingbit(macAddr);
+                                synchronized (hummingbitsToConnect) {
+                                    if (!hummingbitsToConnect.contains(macAddr)) {
+                                        hummingbitsToConnect.add(macAddr);
+                                    }
+                                }
                                 if (DISCONNECTED) {
                                     return;
                                 }
@@ -201,7 +206,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 if (!hasLatestFirmware()) {
                     cf.set(true);
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
-                    disconnect(true);
+                    disconnect();
                 }
 
             } else {
@@ -507,9 +512,8 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     /**
      * Disconnects the device
      */
-    public void disconnect(boolean autoConnect) {
+    public void disconnect() {
         if (!DISCONNECTED) {
-            String macAddr = getMacAddress();
             if (ATTEMPTED) {
                 forceDisconnect();
                 return;
@@ -531,8 +535,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 monitorDisposable.dispose();
             monitorThread.interrupt();
             monitorThread.quit();
-
-
+            
             if (conn != null) {
                 conn.removeRxDataListener(this);
                 stopPollingSensors();
@@ -542,14 +545,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 }
                 conn.disconnect();
             }
-            if (autoConnect) {
-                synchronized (hummingbitsToConnect) {
-                    if (!hummingbitsToConnect.contains(macAddr)) {
-                        hummingbitsToConnect.add(macAddr);
-                    }
-                }
-            }
-
             ATTEMPTED = false;
             DISCONNECTED = true;
         }
@@ -561,7 +556,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
 
     public void forceDisconnect() {
         if (!DISCONNECTED) {
-            String macAddr = getMacAddress();
             ATTEMPTED = false;
             AndroidSchedulers.from(sendThread.getLooper()).shutdown();
             sendThread.getLooper().quit();
@@ -580,11 +574,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             if (conn != null) {
                 conn.removeRxDataListener(this);
                 conn.forceDisconnect();
-            }
-            synchronized (hummingbitsToConnect) {
-                if (!hummingbitsToConnect.contains(macAddr)) {
-                    hummingbitsToConnect.add(macAddr);
-                }
             }
             DISCONNECTED = true;
         }

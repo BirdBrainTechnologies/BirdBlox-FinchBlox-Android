@@ -158,6 +158,11 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                                 super.run();
                                 String macAddr = getMacAddress();
                                 RobotRequestHandler.disconnectFromHummingbird(macAddr);
+                                synchronized (hummingbirdsToConnect) {
+                                    if (!hummingbirdsToConnect.contains(macAddr)) {
+                                        hummingbirdsToConnect.add(macAddr);
+                                    }
+                                }
                                 if (DISCONNECTED) {
                                     return;
                                 }
@@ -200,7 +205,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 if (!hasMinFirmware()) {
                     g4.set(true);
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareVersion()) + "', '" + bbxEncode(getMinFirmwareVersion()) + "')");
-                    disconnect(true);
+                    disconnect();
                 } else if (!hasLatestFirmware()) {
                     runJavascript("CallbackManager.robot.updateFirmwareStatus('" + bbxEncode(getMacAddress()) + "', 'old')");
                 }
@@ -392,9 +397,8 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     /**
      * Disconnects the device
      */
-    public void disconnect(boolean autoConnect) {
+    public void disconnect() {
         if (!DISCONNECTED) {
-            String macAddr = getMacAddress();
             if (ATTEMPTED) {
                 forceDisconnect();
                 return;
@@ -426,13 +430,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 }
                 conn.disconnect();
             }
-            if (autoConnect) {
-                synchronized (hummingbirdsToConnect) {
-                    if (!hummingbirdsToConnect.contains(macAddr)) {
-                        hummingbirdsToConnect.add(macAddr);
-                    }
-                }
-            }
             ATTEMPTED = false;
             DISCONNECTED = true;
         }
@@ -444,7 +441,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
     public void forceDisconnect() {
         if (!DISCONNECTED) {
-            String macAddr = getMacAddress();
             ATTEMPTED = false;
             AndroidSchedulers.from(sendThread.getLooper()).shutdown();
             sendThread.getLooper().quit();
@@ -463,11 +459,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             if (conn != null) {
                 conn.removeRxDataListener(this);
                 conn.forceDisconnect();
-            }
-            synchronized (hummingbirdsToConnect) {
-                if (!hummingbirdsToConnect.contains(macAddr)) {
-                    hummingbirdsToConnect.add(macAddr);
-                }
             }
             DISCONNECTED = true;
         }
