@@ -411,7 +411,7 @@ public class RobotRequestHandler implements RequestHandler {
             Hummingbird hummingbird = (Hummingbird) getRobotFromId(RobotType.Hummingbird, hummingbirdId);
             if (hummingbird != null) {
 
-                hummingbird.disconnect(false);
+                hummingbird.disconnect();
                 if (hummingbird.getDisconnected()) {
                     connectedHummingbirds.remove(hummingbirdId);
                 }
@@ -438,7 +438,7 @@ public class RobotRequestHandler implements RequestHandler {
         try {
             Hummingbit hummingbit = (Hummingbit) getRobotFromId(RobotType.Hummingbit, hummingbitId);
             if (hummingbit != null) {
-                hummingbit.disconnect(false);
+                hummingbit.disconnect();
                 if (hummingbit.getDisconnected()) {
                     connectedHummingbits.remove(hummingbitId);
                 }
@@ -465,7 +465,7 @@ public class RobotRequestHandler implements RequestHandler {
             Microbit microbit = (Microbit) getRobotFromId(RobotType.Microbit, microbitId);
             if (microbit != null) {
 
-                microbit.disconnect(false);
+                microbit.disconnect();
                 if (microbit.getDisconnected()) {
                     connectedMicrobits.remove(microbitId);
                 }

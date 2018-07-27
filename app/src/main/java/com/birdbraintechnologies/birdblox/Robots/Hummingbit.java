@@ -535,7 +535,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 monitorDisposable.dispose();
             monitorThread.interrupt();
             monitorThread.quit();
-            
+
             if (conn != null) {
                 conn.removeRxDataListener(this);
                 stopPollingSensors();
