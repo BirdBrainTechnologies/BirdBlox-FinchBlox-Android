@@ -58,7 +58,7 @@ public class BluetoothHelper {
             .build();
     private AtomicLong last_sent = new AtomicLong(System.currentTimeMillis());
     private static final int SEND_INTERVAL = 4000;
-    private static final int MAXRETRY = 1;
+    private static final int MAXRETRY = 2;
     /* Callback for populating the device list and discoveredList
        The discoveredList keeps track of all the devices found after a startDiscover request is issued,
        it ensure that the user can connect to the device that can be found in the connection interface.

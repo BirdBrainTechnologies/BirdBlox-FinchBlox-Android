@@ -59,7 +59,10 @@ public class UARTConnection extends BluetoothGattCallback {
 
         this.bluetoothDevice = device;
 
-        establishUARTConnection(context, device);
+        if (!establishUARTConnection(context, device)) {
+            this.btGatt.disconnect();
+            this.btGatt.close();
+        }
         // TODO: Handle failure to establish UART connection
     }
 
