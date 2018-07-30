@@ -57,8 +57,8 @@ public class BluetoothHelper {
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build();
     private AtomicLong last_sent = new AtomicLong(System.currentTimeMillis());
-    private static final int SEND_INTERVAL = 2000;
-    private static final int MAXRETRY = 5;
+    private static final int SEND_INTERVAL = 4000;
+    private static final int MAXRETRY = 1;
     /* Callback for populating the device list and discoveredList
        The discoveredList keeps track of all the devices found after a startDiscover request is issued,
        it ensure that the user can connect to the device that can be found in the connection interface.
@@ -71,7 +71,6 @@ public class BluetoothHelper {
             synchronized (deviceList) {
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
                 discoveredList.put(result.getDevice().getAddress(), result.getDevice());
-
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
                 if (hummingbirdsToConnect != null) {
                     if (hummingbirdsToConnect.contains(result.getDevice().getAddress())) {
