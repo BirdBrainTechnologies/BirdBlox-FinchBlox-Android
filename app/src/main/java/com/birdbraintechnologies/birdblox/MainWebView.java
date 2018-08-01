@@ -35,6 +35,7 @@ import android.webkit.ConsoleMessage;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
@@ -65,6 +66,7 @@ import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -209,9 +211,6 @@ public class MainWebView extends AppCompatActivity {
 
         mainWebViewContext = MainWebView.this;
 
-
-
-
         verifyStoragePermissions(this);
         // Hide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
@@ -252,8 +251,6 @@ public class MainWebView extends AppCompatActivity {
 
         // Create webview
         webView = (WebView) findViewById(R.id.main_webview);
-
-
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
@@ -263,6 +260,7 @@ public class MainWebView extends AppCompatActivity {
         });
 //        webView.loadUrl("file:///" + lFile.getAbsolutePath());
         webView.loadUrl(PAGE_URL);
+
         webView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
@@ -273,6 +271,7 @@ public class MainWebView extends AppCompatActivity {
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webView.resumeTimers();
+
 
         // Broadcast receiver
         bManager = LocalBroadcastManager.getInstance(this);
@@ -294,6 +293,12 @@ public class MainWebView extends AppCompatActivity {
             dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
             dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
         }
+
+        webView.setWebViewClient(new WebViewClient() {
+            public void onPageFinished(WebView view, String url) {
+                runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(Locale.getDefault().getCountry()) + "');");
+            }
+        });
     }
 
     @Override
@@ -314,6 +319,8 @@ public class MainWebView extends AppCompatActivity {
         super.onStart();
         mainWebViewContext = MainWebView.this;
     }
+
+
 
     @Override
     protected void onResume() {
@@ -668,6 +675,7 @@ public class MainWebView extends AppCompatActivity {
      * @param script The required js, with all user inputs PERCENT-ENCODED using bbxEncode.
      */
     public static void runJavascript(final String script) {
+        System.out.println("good" + script);
         // TODO: Send JavaScript commands as broadcasts instead of making webview static
         Handler mainHandler = new Handler(mainWebViewContext.getMainLooper());
         Runnable myRunnable = new Runnable() {
