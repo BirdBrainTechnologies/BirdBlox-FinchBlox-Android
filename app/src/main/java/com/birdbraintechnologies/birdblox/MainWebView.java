@@ -60,7 +60,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
@@ -139,7 +138,6 @@ public class MainWebView extends AppCompatActivity {
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.ACCESS_COARSE_LOCATION
     };
-
 
 
     public static void verifyStoragePermissions(Activity activity) {
@@ -319,7 +317,6 @@ public class MainWebView extends AppCompatActivity {
         super.onStart();
         mainWebViewContext = MainWebView.this;
     }
-
 
 
     @Override
@@ -675,7 +672,6 @@ public class MainWebView extends AppCompatActivity {
      * @param script The required js, with all user inputs PERCENT-ENCODED using bbxEncode.
      */
     public static void runJavascript(final String script) {
-        System.out.println("good" + script);
         // TODO: Send JavaScript commands as broadcasts instead of making webview static
         Handler mainHandler = new Handler(mainWebViewContext.getMainLooper());
         Runnable myRunnable = new Runnable() {
