@@ -15,6 +15,8 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.deviceGatt;
+
 /**
  * Represents a UART connection established via Bluetooth Low Energy. Communicates using the RX and
  * TX lines.
@@ -35,7 +37,6 @@ public class UARTConnection extends BluetoothGattCallback {
     private UUID uartUUID, txUUID, rxUUID, rxConfigUUID;
 
     private List<RXDataListener> rxListeners = new ArrayList<>();
-
     private int connectionState;
     private BluetoothGatt btGatt;
     private BluetoothGattCharacteristic tx;
@@ -60,8 +61,7 @@ public class UARTConnection extends BluetoothGattCallback {
         this.bluetoothDevice = device;
 
         if (!establishUARTConnection(context, device)) {
-            this.btGatt.disconnect();
-            this.btGatt.close();
+            disconnect();
         }
         // TODO: Handle failure to establish UART connection
     }
@@ -154,30 +154,37 @@ public class UARTConnection extends BluetoothGattCallback {
      */
     private boolean establishUARTConnection(Context context, final BluetoothDevice device) {
         // Connect to device
-        this.btGatt = device.connectGatt(context, false, this);
-        // Initialize serialization
-        startLatch.countDown();
-        try {
-            if (!doneLatch.await(CONNECTION_TIMEOUT_IN_SECS, TimeUnit.SECONDS)) {
-                return false;
+        synchronized (deviceGatt) {
+            if (deviceGatt.get(device.getAddress()) == null) {
+                this.btGatt = device.connectGatt(context, false, this);
+                deviceGatt.put(device.getAddress(), this.btGatt);
+                // Initialize serialization
+                startLatch.countDown();
+                try {
+                    if (!doneLatch.await(CONNECTION_TIMEOUT_IN_SECS, TimeUnit.SECONDS)) {
+                        return false;
+                    }
+                } catch (InterruptedException e) {
+                    // TODO: Handle error
+                    return false;
+                }
+                // Enable RX notification
+                if (!btGatt.setCharacteristicNotification(rx, true)) {
+                    Log.e(TAG, "Unable to set characteristic notification");
+                    return false;
+                }
+                BluetoothGattDescriptor descriptor = rx.getDescriptor(rxConfigUUID);
+                descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                if (!btGatt.writeDescriptor(descriptor)) {
+                    Log.e(TAG, "Unable to set descriptor");
+                    return false;
+                }
+                Log.d(TAG, "Successfully established connection to " + device);
+                return true;
+            } else {
+                return true;
             }
-        } catch (InterruptedException e) {
-            // TODO: Handle error
-            return false;
         }
-        // Enable RX notification
-        if (!btGatt.setCharacteristicNotification(rx, true)) {
-            Log.e(TAG, "Unable to set characteristic notification");
-            return false;
-        }
-        BluetoothGattDescriptor descriptor = rx.getDescriptor(rxConfigUUID);
-        descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-        if (!btGatt.writeDescriptor(descriptor)) {
-            Log.e(TAG, "Unable to set descriptor");
-            return false;
-        }
-        Log.d(TAG, "Successfully established connection to " + device);
-        return true;
     }
 
     @Override

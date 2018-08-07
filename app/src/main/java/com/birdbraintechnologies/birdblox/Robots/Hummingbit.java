@@ -160,6 +160,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                                 super.run();
                                 String macAddr = getMacAddress();
                                 RobotRequestHandler.disconnectFromHummingbit(macAddr);
+                                runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(macAddr) + "', '" + bbxEncode("3") + "');");
                                 synchronized (hummingbitsToConnect) {
                                     if (!hummingbitsToConnect.contains(macAddr)) {
                                         hummingbitsToConnect.add(macAddr);

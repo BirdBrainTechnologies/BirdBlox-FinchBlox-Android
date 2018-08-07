@@ -1,6 +1,7 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
 import android.app.AlertDialog;
+import android.bluetooth.BluetoothGatt;
 import android.bluetooth.le.ScanFilter;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -75,6 +76,9 @@ public class RobotRequestHandler implements RequestHandler {
     private AlertDialog.Builder builder;
     private AlertDialog robotInfoDialog;
 
+
+    public static HashMap<String, BluetoothGatt> deviceGatt;
+
     public RobotRequestHandler(HttpService service) {
         this.service = service;
         btHelper = service.getBluetoothHelper();
@@ -83,7 +87,7 @@ public class RobotRequestHandler implements RequestHandler {
         connectedHummingbirds = new HashMap<>();
         connectedHummingbits = new HashMap<>();
         connectedMicrobits = new HashMap<>();
-
+        deviceGatt = new HashMap<>();
         // Build Hummingbird UART settings
         HBUARTSettings = (new UARTSettings.Builder())
                 .setUARTServiceUUID(HB_UART_UUID)
@@ -262,11 +266,7 @@ public class RobotRequestHandler implements RequestHandler {
         return "";
     }
 
-    //    /**
-//     *
-//     * @param hummingbirdId
-//     * @return
-//     */
+
     private static void connectToHummingbird(final String hummingbirdId) {
         if (connectedHummingbirds.containsKey(hummingbirdId) == false) {
             final UARTSettings HBUART = HBUARTSettings;
@@ -385,7 +385,6 @@ public class RobotRequestHandler implements RequestHandler {
                 if (connThread != null) connThread.interrupt();
             }
         }.start();
-
         if (robotType == RobotType.Hummingbird) {
             disconnectFromHummingbird(robotId);
         } else if (robotType == RobotType.Hummingbit) {
@@ -410,7 +409,6 @@ public class RobotRequestHandler implements RequestHandler {
         try {
             Hummingbird hummingbird = (Hummingbird) getRobotFromId(RobotType.Hummingbird, hummingbirdId);
             if (hummingbird != null) {
-
                 hummingbird.disconnect();
                 if (hummingbird.getDisconnected()) {
                     connectedHummingbirds.remove(hummingbirdId);
@@ -422,9 +420,14 @@ public class RobotRequestHandler implements RequestHandler {
                     } catch (InterruptedException e) {
                     }
                 }
-
                 Log.d("TotStat", "Removing hummingbird: " + hummingbirdId);
-
+            } else {
+                BluetoothGatt curDeviceGatt = deviceGatt.get(hummingbirdId);
+                if (curDeviceGatt != null) {
+                    curDeviceGatt.disconnect();
+                    curDeviceGatt.close();
+                    deviceGatt.put(hummingbirdId, null);
+                }
             }
         } catch (Exception e) {
             Log.e("ConnectHB", " Error while disconnecting from HB " + e.getMessage());
@@ -436,6 +439,7 @@ public class RobotRequestHandler implements RequestHandler {
      */
     public static void disconnectFromHummingbit(String hummingbitId) {
         try {
+
             Hummingbit hummingbit = (Hummingbit) getRobotFromId(RobotType.Hummingbit, hummingbitId);
             if (hummingbit != null) {
                 hummingbit.disconnect();
@@ -451,6 +455,13 @@ public class RobotRequestHandler implements RequestHandler {
                 }
 
                 Log.d("TotStat", "Removing hummingbit: " + hummingbitId);
+            } else {
+                BluetoothGatt curDeviceGatt = deviceGatt.get(hummingbitId);
+                if (curDeviceGatt != null) {
+                    curDeviceGatt.disconnect();
+                    curDeviceGatt.close();
+                    deviceGatt.put(hummingbitId, null);
+                }
             }
         } catch (Exception e) {
             Log.e("ConnectHB", " Error while disconnecting from HB " + e.getMessage());
@@ -478,6 +489,13 @@ public class RobotRequestHandler implements RequestHandler {
                 }
 
                 Log.d("TotStat", "Removing microbit: " + microbitId);
+            } else {
+                BluetoothGatt curDeviceGatt = deviceGatt.get(microbitId);
+                if (curDeviceGatt != null) {
+                    curDeviceGatt.disconnect();
+                    curDeviceGatt.close();
+                    deviceGatt.put(microbitId, null);
+                }
             }
         } catch (Exception e) {
             Log.e("ConnectHB", " Error while disconnecting from MB " + e.getMessage());

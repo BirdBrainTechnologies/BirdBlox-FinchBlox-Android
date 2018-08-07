@@ -30,6 +30,7 @@ import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.connectToRobot;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.deviceGatt;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbirdsToConnect;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbitsToConnect;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.microbitsToConnect;
@@ -240,12 +241,18 @@ public class BluetoothHelper {
             return null;
         }
         UARTConnection conn = new UARTConnection(context, device, settings);
-        while (!conn.isConnected() && retryCnt < MAXRETRY) {
+        while (!conn.isConnected() && retryCnt < MAXRETRY && deviceGatt.get(addr) != null) {
             conn = new UARTConnection(context, device, settings);
             retryCnt = retryCnt + 1;
         }
-        if (!conn.isConnected()) {
+
+        if (!conn.isConnected() && deviceGatt.get(addr) != null) {
             runJavascript("CallbackManager.robot.connectionFailure('" + bbxEncode(addr)  + "')");
+        }
+        synchronized (deviceGatt) {
+            if (deviceGatt.containsKey(addr)) {
+                deviceGatt.remove(addr);
+            }
         }
         return conn;
     }
