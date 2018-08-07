@@ -62,6 +62,9 @@ public class UARTConnection extends BluetoothGattCallback {
 
         if (!establishUARTConnection(context, device)) {
             disconnect();
+            synchronized (deviceGatt) {
+                deviceGatt.put(device.getAddress(), null);
+            }
         }
         // TODO: Handle failure to establish UART connection
     }
