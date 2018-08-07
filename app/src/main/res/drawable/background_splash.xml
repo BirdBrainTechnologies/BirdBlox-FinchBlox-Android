@@ -6,7 +6,7 @@
         <bitmap
             android:antialias="true"
             android:gravity="center"
-            android:src="@mipmap/splash_screen"
+            android:src="@drawable/splash_screen"
             android:tileMode="disabled" />
     </item>
 </layer-list>
