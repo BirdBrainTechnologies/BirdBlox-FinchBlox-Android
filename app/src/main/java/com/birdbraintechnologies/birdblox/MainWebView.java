@@ -202,6 +202,7 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         /* If the bluetooth service is already running, stop it. */
         stopService(new Intent(this, BluetoothHelper.class));
         /* If the HTTP service is already running, stop it. */
@@ -295,6 +296,9 @@ public class MainWebView extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             public void onPageFinished(WebView view, String url) {
                 runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(Locale.getDefault().getCountry()) + "');");
+                if (getIntent().getData() != null) {
+                    runJavascript("CallbackManager.tablet.getFile('" + bbxEncode(getIntent().getData().toString()) + "');");
+                }
             }
         });
     }

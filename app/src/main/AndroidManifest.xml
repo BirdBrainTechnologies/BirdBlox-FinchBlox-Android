@@ -34,6 +34,9 @@
 
             <intent-filter>
                 <data android:scheme="db-fgml2igl5ka67lr"/>
+                <data android:scheme="file" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.xml" />
                 <action android:name="android.intent.action.VIEW"/>
 
                 <category android:name="android.intent.category.BROWSABLE"/>

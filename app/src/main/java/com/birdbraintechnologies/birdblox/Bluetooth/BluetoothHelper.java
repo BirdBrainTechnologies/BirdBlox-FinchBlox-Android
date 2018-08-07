@@ -249,11 +249,10 @@ public class BluetoothHelper {
         if (!conn.isConnected() && deviceGatt.containsKey(addr)) {
             runJavascript("CallbackManager.robot.connectionFailure('" + bbxEncode(addr)  + "')");
         }
-        synchronized (deviceGatt) {
-            if (deviceGatt.containsKey(addr)) {
-                deviceGatt.remove(addr);
-            }
+        if (deviceGatt.containsKey(addr)) {
+            deviceGatt.remove(addr);
         }
+
         return conn;
     }
 

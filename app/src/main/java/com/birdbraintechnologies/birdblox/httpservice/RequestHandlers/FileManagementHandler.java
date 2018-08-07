@@ -24,6 +24,8 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,11 +111,22 @@ public class FileManagementHandler implements RequestHandler {
      * and an 'ERROR' response otherwise.
      */
     private NanoHTTPD.Response openProject(String name) {
-        if (!isNameSanitized(name)) {
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, name + " is not a valid project name!");
+        File program = null;
+        if (name.startsWith("file:///")) {
+            try {
+                program = new File(new URI(name));
+                name = name.substring(name.lastIndexOf('/'), name.length() - 4);
+            } catch (URISyntaxException e) {
+                Log.e(TAG, "openProject: " + e.toString());
+            }
+
+        } else {
+            if (!isNameSanitized(name)) {
+                return NanoHTTPD.newFixedLengthResponse(
+                        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, name + " is not a valid project name!");
+            }
+            program = new File(getBirdbloxDir(), name + "/program.xml");
         }
-        File program = new File(getBirdbloxDir(), name + "/program.xml");
         if (!program.exists()) {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " was not found!");
@@ -124,12 +137,14 @@ public class FileManagementHandler implements RequestHandler {
             if (encodedXML != null) {
                 runJavascript("CallbackManager.data.open('" + encodedName + "', \"" + encodedXML + "\");");
                 filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
+                runJavascript("SaveManager.autoSave();");
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, name + " successfully opened.");
             }
         } catch (SecurityException | IOException e) {
             Log.e(TAG, "Open: " + e.getMessage());
         }
+
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while opening " + name);
     }

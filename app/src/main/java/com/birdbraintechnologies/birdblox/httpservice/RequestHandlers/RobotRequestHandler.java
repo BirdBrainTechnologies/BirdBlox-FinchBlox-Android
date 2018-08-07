@@ -426,10 +426,8 @@ public class RobotRequestHandler implements RequestHandler {
                 if (curDeviceGatt != null) {
                     curDeviceGatt.disconnect();
                     curDeviceGatt.close();
-                    synchronized (deviceGatt) {
-                        if (deviceGatt.containsKey(hummingbirdId)) {
-                            deviceGatt.remove(hummingbirdId);
-                        }
+                    if (deviceGatt.containsKey(hummingbirdId)) {
+                        deviceGatt.remove(hummingbirdId);
                     }
                 }
             }

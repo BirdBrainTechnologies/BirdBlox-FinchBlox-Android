@@ -2,11 +2,11 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/white" />
 
-    <item android:id="@+id/sdasd">
-        <bitmap
-            android:antialias="true"
-            android:gravity="center"
-            android:src="@mipmap/splash_screen"
-            android:tileMode="disabled" />
-    </item>
+    <!--<item android:id="@+id/sdasd">-->
+        <!--<bitmap-->
+            <!--android:antialias="true"-->
+            <!--android:gravity="center"-->
+            <!--android:src="@mipmap/splash_screen"-->
+            <!--android:tileMode="disabled" />-->
+    <!--</item>-->
 </layer-list>
