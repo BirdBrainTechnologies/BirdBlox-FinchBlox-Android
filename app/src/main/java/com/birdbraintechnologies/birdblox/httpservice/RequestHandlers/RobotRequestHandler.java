@@ -426,7 +426,11 @@ public class RobotRequestHandler implements RequestHandler {
                 if (curDeviceGatt != null) {
                     curDeviceGatt.disconnect();
                     curDeviceGatt.close();
-                    deviceGatt.put(hummingbirdId, null);
+                    synchronized (deviceGatt) {
+                        if (deviceGatt.containsKey(hummingbirdId)) {
+                            deviceGatt.remove(hummingbirdId);
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
@@ -460,7 +464,11 @@ public class RobotRequestHandler implements RequestHandler {
                 if (curDeviceGatt != null) {
                     curDeviceGatt.disconnect();
                     curDeviceGatt.close();
-                    deviceGatt.put(hummingbitId, null);
+                    synchronized (deviceGatt) {
+                        if (deviceGatt.containsKey(hummingbitId)) {
+                            deviceGatt.remove(hummingbitId);
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
@@ -494,7 +502,11 @@ public class RobotRequestHandler implements RequestHandler {
                 if (curDeviceGatt != null) {
                     curDeviceGatt.disconnect();
                     curDeviceGatt.close();
-                    deviceGatt.put(microbitId, null);
+                    synchronized (deviceGatt) {
+                        if (deviceGatt.containsKey(microbitId)) {
+                            deviceGatt.remove(microbitId);
+                        }
+                    }
                 }
             }
         } catch (Exception e) {

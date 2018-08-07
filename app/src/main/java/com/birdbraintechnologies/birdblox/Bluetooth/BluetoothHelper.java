@@ -241,12 +241,12 @@ public class BluetoothHelper {
             return null;
         }
         UARTConnection conn = new UARTConnection(context, device, settings);
-        while (!conn.isConnected() && retryCnt < MAXRETRY && deviceGatt.get(addr) != null) {
+        while (!conn.isConnected() && retryCnt < MAXRETRY && deviceGatt.containsKey(addr)) {
             conn = new UARTConnection(context, device, settings);
             retryCnt = retryCnt + 1;
         }
 
-        if (!conn.isConnected() && deviceGatt.get(addr) != null) {
+        if (!conn.isConnected() && deviceGatt.containsKey(addr)) {
             runJavascript("CallbackManager.robot.connectionFailure('" + bbxEncode(addr)  + "')");
         }
         synchronized (deviceGatt) {
