@@ -115,7 +115,7 @@ public class FileManagementHandler implements RequestHandler {
         if (name.startsWith("file:///")) {
             try {
                 program = new File(new URI(name));
-                name = name.substring(name.lastIndexOf('/'), name.length() - 4);
+                name = name.substring(name.lastIndexOf('/') + 1, name.length() - 4);
             } catch (URISyntaxException e) {
                 Log.e(TAG, "openProject: " + e.toString());
             }

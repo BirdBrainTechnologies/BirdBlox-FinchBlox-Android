@@ -202,7 +202,6 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         /* If the bluetooth service is already running, stop it. */
         stopService(new Intent(this, BluetoothHelper.class));
         /* If the HTTP service is already running, stop it. */
@@ -297,7 +296,7 @@ public class MainWebView extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(Locale.getDefault().getCountry()) + "');");
                 if (getIntent().getData() != null) {
-                    runJavascript("CallbackManager.tablet.getFile('" + bbxEncode(getIntent().getData().toString()) + "');");
+                    runJavascript("CallbackManager.tablet.setFile('" + bbxEncode(getIntent().getData().toString()) + "');");
                 }
             }
         });
@@ -325,6 +324,7 @@ public class MainWebView extends AppCompatActivity {
 
     @Override
     protected void onResume() {
+
         super.onResume();
         mainWebViewContext = MainWebView.this;
         webView.onResume();
@@ -339,6 +339,10 @@ public class MainWebView extends AppCompatActivity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        setIntent(intent);
+        if (getIntent().getData() != null) {
+            runJavascript("CallbackManager.tablet.runFile('" + bbxEncode(getIntent().getData().toString()) + "');");
+        }
         mainWebViewContext = MainWebView.this;
         dropboxWebOAuth(intent);
         importFromIntent(intent);
