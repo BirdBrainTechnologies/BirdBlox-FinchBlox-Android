@@ -339,16 +339,15 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             case "printBlock":
                 FORCESEND.set(true);
                 String printString = args.get("printString").get(0);
-                printString = printString.replaceAll("[^a-zA-Z]", "");
-                printString = printString.toUpperCase();
-                byte[] tmpAscii = printString.getBytes(StandardCharsets.US_ASCII);
-                int[] charsInInts = new int[tmpAscii.length + 1];
-
-                for (int i = 0; i < tmpAscii.length; i++) {
-                    charsInInts[i] = (int) tmpAscii[i];
+                if (printString.matches("\\A\\p{ASCII}*\\z")) {
+                    byte[] tmpAscii = printString.getBytes(StandardCharsets.US_ASCII);
+                    int[] charsInInts = new int[tmpAscii.length + 1];
+                    for (int i = 0; i < tmpAscii.length; i++) {
+                        charsInInts[i] = (int) tmpAscii[i];
+                    }
+                    charsInInts[charsInInts.length - 1] = FLASH;
+                    return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), charsInInts);
                 }
-                charsInInts[charsInInts.length - 1] = FLASH;
-                return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), charsInInts);
             case "compassCalibrate":
                 CALIBRATE.set(true);
                 return true;

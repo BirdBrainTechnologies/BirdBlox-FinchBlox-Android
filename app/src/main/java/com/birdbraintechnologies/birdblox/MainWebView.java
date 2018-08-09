@@ -298,6 +298,8 @@ public class MainWebView extends AppCompatActivity {
                 if (getIntent().getData() != null) {
                     runJavascript("CallbackManager.tablet.setFile('" + bbxEncode(getIntent().getData().toString()) + "');");
                 }
+                runJavascript(" CallbackManager.tablet.changeDeviceLimit('" + bbxEncode("2") + "');");
+
             }
         });
     }
