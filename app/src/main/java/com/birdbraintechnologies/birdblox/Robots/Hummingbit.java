@@ -11,10 +11,7 @@ import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
-import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -582,9 +579,9 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             String curBatteryStatus = "";
             double batteryVoltage = (newData[3] & 0xFF) * 0.037;
             if (batteryVoltage > 4.7) {
-                curBatteryStatus =  "2";
+                curBatteryStatus = "2";
             } else if (batteryVoltage > 3.3) {
-                curBatteryStatus =  "1";
+                curBatteryStatus = "1";
             } else {
                 curBatteryStatus = "0";
             }

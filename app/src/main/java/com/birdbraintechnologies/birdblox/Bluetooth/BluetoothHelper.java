@@ -62,9 +62,6 @@ public class BluetoothHelper {
     private static final int SEND_INTERVAL = 4000;
     private static final int MAXRETRY = 2;
 
-
-//    private asyncTask void check
-
     /* Callback for populating the device list and discoveredList
        The discoveredList keeps track of all the devices found after a startDiscover request is issued,
        it ensure that the user can connect to the device that can be found in the connection interface.
@@ -83,6 +80,7 @@ public class BluetoothHelper {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             hummingbirdsToConnect = new HashSet<>();
                         } else {
+                            Toast.makeText(mainWebViewContext, "trying reconnecting", Toast.LENGTH_LONG).show();
                             try {
                                 Thread.sleep(2000);
                             } catch (InterruptedException e) {
@@ -96,11 +94,12 @@ public class BluetoothHelper {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             hummingbitsToConnect = new HashSet<>();
                         } else {
+                            Toast.makeText(mainWebViewContext, "trying reconnecting", Toast.LENGTH_LONG).show();
                             try {
                                 Thread.sleep(2000);
                             } catch (InterruptedException e) {
                             }
-                            Toast.makeText(mainWebViewContext, "trying reconnecting", Toast.LENGTH_LONG).show();
+
                             connectToRobot(RobotType.Hummingbit, result.getDevice().getAddress());
                         }
                     }
@@ -110,6 +109,7 @@ public class BluetoothHelper {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             microbitsToConnect = new HashSet<>();
                         } else {
+                            Toast.makeText(mainWebViewContext, "trying reconnecting", Toast.LENGTH_LONG).show();
                             try {
                                 Thread.sleep(2000);
                             } catch (InterruptedException e) {
