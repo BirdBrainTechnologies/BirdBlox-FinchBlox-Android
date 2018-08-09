@@ -271,6 +271,9 @@ public class RobotRequestHandler implements RequestHandler {
     private static void connectToHummingbird(final String hummingbirdId) {
         if (connectedHummingbirds.containsKey(hummingbirdId) == false) {
             final UARTSettings HBUART = HBUARTSettings;
+            if (hummingbirdsToConnect.contains(hummingbirdId)) {
+                hummingbirdsToConnect.remove(hummingbirdId);
+            }
             try {
                 Thread hbConnectionThread = new Thread() {
                     @Override
@@ -279,9 +282,6 @@ public class RobotRequestHandler implements RequestHandler {
                         if (hbConn != null && hbConn.isConnected() && connectedHummingbirds != null) {
                             Hummingbird hummingbird = new Hummingbird(hbConn);
                             connectedHummingbirds.put(hummingbirdId, hummingbird);
-                            if (hummingbirdsToConnect.contains(hummingbirdId)) {
-                                hummingbirdsToConnect.remove(hummingbirdId);
-                            }
                             hummingbird.setConnected();
                         }
                     }
@@ -305,6 +305,9 @@ public class RobotRequestHandler implements RequestHandler {
     private static void connectToHummingbit(final String hummingbitId) {
         if (connectedHummingbits.containsKey(hummingbitId) == false) {
             final UARTSettings HBitUART = HBitUARTSettings;
+            if (hummingbitsToConnect.contains(hummingbitId)) {
+                hummingbitsToConnect.remove(hummingbitId);
+            }
             try {
                 Thread hbitConnectionThread = new Thread() {
                     @Override
@@ -313,9 +316,6 @@ public class RobotRequestHandler implements RequestHandler {
                         if (hbitConn != null && hbitConn.isConnected() && connectedHummingbits != null) {
                             Hummingbit hummingbit = new Hummingbit(hbitConn);
                             connectedHummingbits.put(hummingbitId, hummingbit);
-                            if (hummingbitsToConnect.contains(hummingbitId)) {
-                                hummingbitsToConnect.remove(hummingbitId);
-                            }
                             hummingbit.setConnected();
                         }
                     }
@@ -340,6 +340,9 @@ public class RobotRequestHandler implements RequestHandler {
     private static void connectToMicrobit(final String microbitId) {
         if (connectedMicrobits.containsKey(microbitId) == false) {
             final UARTSettings MBitUART = MBitUARTSettings;
+            if (microbitsToConnect.contains(microbitId)) {
+                microbitsToConnect.remove(microbitId);
+            }
             try {
                 Thread mbitConnectionThread = new Thread() {
                     @Override
@@ -348,9 +351,6 @@ public class RobotRequestHandler implements RequestHandler {
                         if (mbitConn != null && mbitConn.isConnected() && connectedMicrobits != null) {
                             Microbit microbit = new Microbit(mbitConn);
                             connectedMicrobits.put(microbitId, microbit);
-                            if (microbitsToConnect.contains(microbitId)) {
-                                microbitsToConnect.remove(microbitId);
-                            }
                             microbit.setConnected();
                         }
                     }

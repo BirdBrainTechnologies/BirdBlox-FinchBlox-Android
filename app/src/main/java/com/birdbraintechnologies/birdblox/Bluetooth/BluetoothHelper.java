@@ -80,9 +80,8 @@ public class BluetoothHelper {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             hummingbirdsToConnect = new HashSet<>();
                         } else {
-                            Toast.makeText(mainWebViewContext, "trying reconnecting", Toast.LENGTH_LONG).show();
                             try {
-                                Thread.sleep(2000);
+                                Thread.sleep(5000);
                             } catch (InterruptedException e) {
                             }
                             connectToRobot(RobotType.Hummingbird, result.getDevice().getAddress());
@@ -94,9 +93,8 @@ public class BluetoothHelper {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             hummingbitsToConnect = new HashSet<>();
                         } else {
-                            Toast.makeText(mainWebViewContext, "trying reconnecting", Toast.LENGTH_LONG).show();
                             try {
-                                Thread.sleep(2000);
+                                Thread.sleep(5000);
                             } catch (InterruptedException e) {
                             }
 
@@ -109,9 +107,8 @@ public class BluetoothHelper {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             microbitsToConnect = new HashSet<>();
                         } else {
-                            Toast.makeText(mainWebViewContext, "trying reconnecting", Toast.LENGTH_LONG).show();
                             try {
-                                Thread.sleep(2000);
+                                Thread.sleep(5000);
                             } catch (InterruptedException e) {
                             }
                             connectToRobot(RobotType.Microbit, result.getDevice().getAddress());
