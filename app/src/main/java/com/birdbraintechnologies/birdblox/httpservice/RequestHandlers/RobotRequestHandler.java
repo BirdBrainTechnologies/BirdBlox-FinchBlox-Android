@@ -448,7 +448,6 @@ public class RobotRequestHandler implements RequestHandler {
                 Log.d("TotStat", "Removing hummingbit: " + hummingbitId);
             } else {
                 BluetoothGatt curDeviceGatt = deviceGatt.get(hummingbitId);
-                System.out.println("trying getting removed");
                 if (curDeviceGatt != null) {
                     curDeviceGatt.disconnect();
                     curDeviceGatt.close();
