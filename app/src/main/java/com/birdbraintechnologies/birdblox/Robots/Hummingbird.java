@@ -152,6 +152,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                 if (passedTime >= timeOut) {
                     try {
                         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
+                        runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode("3") + "');");
                         new Thread() {
                             @Override
                             public void run() {

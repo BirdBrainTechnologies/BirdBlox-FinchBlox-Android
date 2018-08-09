@@ -11,7 +11,9 @@ import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
+import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +47,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private static final int SETALL_INTERVAL_IN_MILLIS = 32;
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 50;
-    private static final int CHECK_BATTERY_INTERVAL_IN_MILLIS = 5000;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
     private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
     private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 15000;
@@ -54,7 +55,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private static final int POSITION = 0;
     private static byte[] FIRMWARECOMMAND = new byte[1];
     private static byte[] CALIBRATECOMMAND = new byte[4];
-    private static final byte latestHardwareVersion = 0x01;
     private static final byte latestMicroBitVersion = 0x01;
     private static final byte latestSMDVersion = 0x01;
     private static int microBitVersion = 0;
@@ -63,7 +63,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private AtomicBoolean cf;
     private AtomicLong last_sent;
     private AtomicLong last_successfully_sent;
-    private AtomicLong last_battery_checked;
+
 
     private UARTConnection conn;
     private byte[] rawSensorValues;
@@ -84,9 +84,11 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
 
     private boolean ATTEMPTED = false;
     private boolean DISCONNECTED = false;
+    private String last_battery_status;
 
     private AtomicBoolean FORCESEND = new AtomicBoolean(false);
     private AtomicBoolean CALIBRATE = new AtomicBoolean(false);
+
 
     /**
      * Initializes a Hummingbit device
@@ -100,7 +102,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         oldState = new HBitState();
         newState = new HBitState();
 
-
         FIRMWARECOMMAND[0] = (byte) 0xCF;
         CALIBRATECOMMAND[0] = (byte) 0xCE;
         CALIBRATECOMMAND[1] = (byte) 0xCE;
@@ -110,7 +111,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         cf = new AtomicBoolean(true);
         last_sent = new AtomicLong(System.currentTimeMillis());
         last_successfully_sent = new AtomicLong(System.currentTimeMillis());
-        last_battery_checked = new AtomicLong(System.currentTimeMillis());
+        last_battery_status = "";
 
         lock = new ReentrantLock();
         doneSending = lock.newCondition();
@@ -154,13 +155,13 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 if (passedTime >= timeOut) {
                     try {
                         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
+                        runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode("3") + "');");
                         new Thread() {
                             @Override
                             public void run() {
                                 super.run();
                                 String macAddr = getMacAddress();
                                 RobotRequestHandler.disconnectFromHummingbit(macAddr);
-                                runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(macAddr) + "', '" + bbxEncode("3") + "');");
                                 synchronized (hummingbitsToConnect) {
                                     if (!hummingbitsToConnect.contains(macAddr)) {
                                         hummingbitsToConnect.add(macAddr);
@@ -293,12 +294,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 last_sent.set(currentTime);
             }
         }
-
-        if (currentTime - last_battery_checked.get() >= CHECK_BATTERY_INTERVAL_IN_MILLIS) {
-            String batteryStatus = readSensor("battery", null, null);
-            runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(batteryStatus) + "');");
-            last_battery_checked.set(currentTime);
-        }
     }
 
     /**
@@ -378,9 +373,9 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         byte[] rawMagnetometerValue = new byte[6];
         byte[] rawAccelerometerValue = new byte[3];
         byte[] rawButtonShakeValue = new byte[1];
-        int rawBatteryValue = 0;
+
         synchronized (rawSensorValuesLock) {
-            rawBatteryValue = rawSensorValues[3] & 0xFF;
+
             if (portString != null) {
                 int port = Integer.parseInt(portString) - 1;
                 rawSensorValue = (rawSensorValues[port] & 0xFF);
@@ -429,15 +424,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return rawAccelerometerValue[1] < -51 ? "1" : "0";
             case "logoDown":
                 return rawAccelerometerValue[1] > 51 ? "1" : "0";
-            case "battery":
-                double batteryVoltage = rawBatteryValue * 0.037;
-                if (batteryVoltage > 4.7) {
-                    return "2";
-                } else if (batteryVoltage > 3.3) {
-                    return "1";
-                } else {
-                    return "0";
-                }
             default:
                 return Double.toString(DeviceUtil.RawToKnob(rawSensorValue));
         }
@@ -593,6 +579,19 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     public void onRXData(byte[] newData) {
         synchronized (rawSensorValuesLock) {
             this.rawSensorValues = newData;
+            String curBatteryStatus = "";
+            double batteryVoltage = (newData[3] & 0xFF) * 0.037;
+            if (batteryVoltage > 4.7) {
+                curBatteryStatus =  "2";
+            } else if (batteryVoltage > 3.3) {
+                curBatteryStatus =  "1";
+            } else {
+                curBatteryStatus = "0";
+            }
+            if (!curBatteryStatus.equals(last_battery_status)) {
+                last_battery_status = curBatteryStatus;
+                runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(curBatteryStatus) + "');");
+            }
         }
     }
 

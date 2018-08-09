@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.ParcelUuid;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
@@ -392,6 +393,9 @@ public class RobotRequestHandler implements RequestHandler {
         } else {
             disconnectFromMicrobit(robotId);
         }
+        hummingbirdsToConnect = new HashSet<>();
+        hummingbitsToConnect = new HashSet<>();
+        microbitsToConnect = new HashSet<>();
         btHelper.stopScan();
 
         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(robotId) + "', false);");
@@ -412,13 +416,6 @@ public class RobotRequestHandler implements RequestHandler {
                 hummingbird.disconnect();
                 if (hummingbird.getDisconnected()) {
                     connectedHummingbirds.remove(hummingbirdId);
-                }
-                while (hummingbirdsToConnect!=null && !hummingbirdsToConnect.isEmpty()) {
-                    startScan();
-                    try {
-                        Thread.sleep(2000);
-                    } catch (InterruptedException e) {
-                    }
                 }
                 Log.d("TotStat", "Removing hummingbird: " + hummingbirdId);
             } else {
@@ -448,14 +445,6 @@ public class RobotRequestHandler implements RequestHandler {
                 if (hummingbit.getDisconnected()) {
                     connectedHummingbits.remove(hummingbitId);
                 }
-                while (hummingbitsToConnect!=null && !hummingbitsToConnect.isEmpty()) {
-                    startScan();
-                    try {
-                        Thread.sleep(2000);
-                    } catch (InterruptedException e) {
-                    }
-                }
-
                 Log.d("TotStat", "Removing hummingbit: " + hummingbitId);
             } else {
                 BluetoothGatt curDeviceGatt = deviceGatt.get(hummingbitId);
@@ -481,19 +470,10 @@ public class RobotRequestHandler implements RequestHandler {
         try {
             Microbit microbit = (Microbit) getRobotFromId(RobotType.Microbit, microbitId);
             if (microbit != null) {
-
                 microbit.disconnect();
                 if (microbit.getDisconnected()) {
                     connectedMicrobits.remove(microbitId);
                 }
-                while (microbitsToConnect!=null && !microbitsToConnect.isEmpty()) {
-                    startScan();
-                    try {
-                        Thread.sleep(2000);
-                    } catch (InterruptedException e) {
-                    }
-                }
-
                 Log.d("TotStat", "Removing microbit: " + microbitId);
             } else {
                 BluetoothGatt curDeviceGatt = deviceGatt.get(microbitId);

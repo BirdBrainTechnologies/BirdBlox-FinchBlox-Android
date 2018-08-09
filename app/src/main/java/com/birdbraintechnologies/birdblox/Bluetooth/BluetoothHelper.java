@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Robots.RobotType;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
@@ -60,6 +61,10 @@ public class BluetoothHelper {
     private AtomicLong last_sent = new AtomicLong(System.currentTimeMillis());
     private static final int SEND_INTERVAL = 4000;
     private static final int MAXRETRY = 2;
+
+
+//    private asyncTask void check
+
     /* Callback for populating the device list and discoveredList
        The discoveredList keeps track of all the devices found after a startDiscover request is issued,
        it ensure that the user can connect to the device that can be found in the connection interface.
@@ -79,7 +84,7 @@ public class BluetoothHelper {
                             hummingbirdsToConnect = new HashSet<>();
                         } else {
                             try {
-                                Thread.sleep(5000);
+                                Thread.sleep(2000);
                             } catch (InterruptedException e) {
                             }
                             connectToRobot(RobotType.Hummingbird, result.getDevice().getAddress());
@@ -92,9 +97,10 @@ public class BluetoothHelper {
                             hummingbitsToConnect = new HashSet<>();
                         } else {
                             try {
-                                Thread.sleep(5000);
+                                Thread.sleep(2000);
                             } catch (InterruptedException e) {
                             }
+                            Toast.makeText(mainWebViewContext, "trying reconnecting", Toast.LENGTH_LONG).show();
                             connectToRobot(RobotType.Hummingbit, result.getDevice().getAddress());
                         }
                     }
@@ -105,7 +111,7 @@ public class BluetoothHelper {
                             microbitsToConnect = new HashSet<>();
                         } else {
                             try {
-                                Thread.sleep(5000);
+                                Thread.sleep(2000);
                             } catch (InterruptedException e) {
                             }
                             connectToRobot(RobotType.Microbit, result.getDevice().getAddress());
@@ -202,7 +208,6 @@ public class BluetoothHelper {
             btScanning = true;
             // Build scan settings (scan as fast as possible)
             currentlyScanning = true;
-
             scanner.startScan(scanFilters, scanSettings, populateDevices);
             // Schedule thread to stop scanning after SCAN_DURATION
             handler.postDelayed(new Runnable() {
