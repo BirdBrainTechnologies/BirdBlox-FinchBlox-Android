@@ -451,10 +451,8 @@ public class RobotRequestHandler implements RequestHandler {
                 if (curDeviceGatt != null) {
                     curDeviceGatt.disconnect();
                     curDeviceGatt.close();
-                    synchronized (deviceGatt) {
-                        if (deviceGatt.containsKey(hummingbitId)) {
-                            deviceGatt.remove(hummingbitId);
-                        }
+                    if (deviceGatt.containsKey(hummingbitId)) {
+                        deviceGatt.remove(hummingbitId);
                     }
                 }
             }
@@ -480,10 +478,8 @@ public class RobotRequestHandler implements RequestHandler {
                 if (curDeviceGatt != null) {
                     curDeviceGatt.disconnect();
                     curDeviceGatt.close();
-                    synchronized (deviceGatt) {
-                        if (deviceGatt.containsKey(microbitId)) {
-                            deviceGatt.remove(microbitId);
-                        }
+                    if (deviceGatt.containsKey(microbitId)) {
+                        deviceGatt.remove(microbitId);
                     }
                 }
             }
