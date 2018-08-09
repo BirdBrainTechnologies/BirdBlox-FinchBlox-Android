@@ -423,6 +423,7 @@ public class RobotRequestHandler implements RequestHandler {
                 if (curDeviceGatt != null) {
                     curDeviceGatt.disconnect();
                     curDeviceGatt.close();
+                    curDeviceGatt = null;
                     if (deviceGatt.containsKey(hummingbirdId)) {
                         deviceGatt.remove(hummingbirdId);
                     }
@@ -438,7 +439,6 @@ public class RobotRequestHandler implements RequestHandler {
      */
     public static void disconnectFromHummingbit(String hummingbitId) {
         try {
-
             Hummingbit hummingbit = (Hummingbit) getRobotFromId(RobotType.Hummingbit, hummingbitId);
             if (hummingbit != null) {
                 hummingbit.disconnect();
@@ -448,9 +448,11 @@ public class RobotRequestHandler implements RequestHandler {
                 Log.d("TotStat", "Removing hummingbit: " + hummingbitId);
             } else {
                 BluetoothGatt curDeviceGatt = deviceGatt.get(hummingbitId);
+                System.out.println("trying getting removed");
                 if (curDeviceGatt != null) {
                     curDeviceGatt.disconnect();
                     curDeviceGatt.close();
+                    curDeviceGatt = null;
                     if (deviceGatt.containsKey(hummingbitId)) {
                         deviceGatt.remove(hummingbitId);
                     }
@@ -478,6 +480,7 @@ public class RobotRequestHandler implements RequestHandler {
                 if (curDeviceGatt != null) {
                     curDeviceGatt.disconnect();
                     curDeviceGatt.close();
+                    curDeviceGatt = null;
                     if (deviceGatt.containsKey(microbitId)) {
                         deviceGatt.remove(microbitId);
                     }
