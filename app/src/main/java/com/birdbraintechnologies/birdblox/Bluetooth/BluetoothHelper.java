@@ -62,6 +62,9 @@ public class BluetoothHelper {
     private AtomicLong last_sent = new AtomicLong(System.currentTimeMillis());
     private static final int SEND_INTERVAL = 2000; /* Interval that scan results will be sent to frontend, in milliseconds */
 
+    private AtomicLong last_clear = new AtomicLong(System.currentTimeMillis());
+    private static final int CLEAR_INTERVAL = 10000; /* Interval that scan results will be sent to frontend, in milliseconds */
+
     /* Callback for populating the device list and discoveredList
        The discoveredList keeps track of all the devices found after a startDiscover request is issued,
        it ensure that the user can connect to the device that can be found in the connection interface.
@@ -154,6 +157,11 @@ public class BluetoothHelper {
                             Log.e("JSON", "JSONException while discovering devices");
                         }
                         robots.put(robot);
+                    }
+
+                    if (System.currentTimeMillis() - last_clear.get() >= CLEAR_INTERVAL) {
+                        last_clear.set(System.currentTimeMillis());
+                        deviceList.clear();
                     }
                     runJavascript("CallbackManager.robot.discovered('" + bbxEncode(robots.toString()) + "');");
 
