@@ -139,8 +139,8 @@ public class DeviceUtil {
      * @param raw Raw reading from sensor
      * @return Sensor reading as voltage
      */
-    public static double RawToVoltage(byte raw) {
-        return (100.0 * RawToInt(raw) / 51.0) / 100;
+    public static double RawToVoltage(int raw) {
+        return (100.0 * raw / 51.0) / 100;
     }
 
     /**

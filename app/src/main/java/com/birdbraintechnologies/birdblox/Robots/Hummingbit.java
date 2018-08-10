@@ -366,7 +366,6 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         byte[] rawButtonShakeValue = new byte[1];
 
         synchronized (rawSensorValuesLock) {
-
             if (portString != null) {
                 int port = Integer.parseInt(portString) - 1;
                 rawSensorValue = (rawSensorValues[port] & 0xFF);
@@ -415,8 +414,10 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return rawAccelerometerValue[1] < -51 ? "1" : "0";
             case "logoDown":
                 return rawAccelerometerValue[1] > 51 ? "1" : "0";
-            default:
+            case "dial":
                 return Double.toString(DeviceUtil.RawToKnob(rawSensorValue));
+            default:
+                return Double.toString(DeviceUtil.RawToVoltage(rawSensorValue));
         }
     }
 
