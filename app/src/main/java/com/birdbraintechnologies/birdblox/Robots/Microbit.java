@@ -30,11 +30,15 @@ import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.microbitsToConnect;
 import static io.reactivex.android.schedulers.AndroidSchedulers.from;
 
+
+/**
+ * Represents a Microbit device and all of its functionality: Setting outputs, reading sensors
+ * @author Zhendong Yuan (yzd1998111)
+ */
 public class Microbit extends Robot<MBState> implements UARTConnection.RXDataListener {
     /*
      * Command prefixes for the Microbit according to spec
      */
-
     private static final byte READ_ALL_CMD = 'b';
     private static final byte TERMINATE_CMD = (byte) 0xCB;
     private static final byte STOP_PERIPH_CMD = 'X';

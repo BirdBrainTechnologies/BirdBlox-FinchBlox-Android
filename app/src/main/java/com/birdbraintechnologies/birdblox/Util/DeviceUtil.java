@@ -72,6 +72,12 @@ public class DeviceUtil {
         }
     }
 
+    /**
+     * Converts raw readings from sensors [0,255] into accelerometer values.
+     * @param rawAccl the byte array of raw accelerometer values in 3 directions
+     * @param axisString the axis of acceleration
+     * @return the acceleration in a specific axis based on the raw value.
+     */
     public static double RawToAccl(byte[] rawAccl, String axisString) {
         switch (axisString) {
             case "x":
@@ -84,6 +90,12 @@ public class DeviceUtil {
         return 0.0;
     }
 
+    /**
+     * Converts raw readings from sensors [0,255] into magnetometer values.
+     * @param rawMag the byte array of raw magnetometer values in 3 directions
+     * @param axisString the axis of magnetometer.
+     * @return the magnetometer value in a specific axis based on the raw value.
+     */
     public static double RawToMag(byte[] rawMag, String axisString) {
         short mx = (short) ((rawMag[1] & 0xFF) | (rawMag[0] << 8)) ;
         short my = (short) ((rawMag[3] & 0xFF) | (rawMag[2] << 8)) ;
@@ -100,6 +112,12 @@ public class DeviceUtil {
         return 0.0;
     }
 
+    /**
+     * Converts raw readings from sensors [0,255] into angle in degrees.
+     * @param rawMag the byte array of raw magnetometer values in 3 directions
+     * @param rawAccl the byte array of raw accelerometer values in 3 directions
+     * @return the anglge in degrees based on the raw magnetometer values and raw accelerometer values.
+     */
     public static double RawToCompass(byte[] rawAccl, byte[] rawMag) {
         double ax = Complement(RawToInt(rawAccl[0])) * 1.0;
         double ay = Complement(RawToInt(rawAccl[1])) * 1.0;
@@ -124,10 +142,22 @@ public class DeviceUtil {
         return angle;
     }
 
+    /**
+     * Converts raw readings from sensors [0,255] into sound value
+     *
+     * @param raw Raw reading from sensor
+     * @return Sensor reading as sound
+     */
     public static double RawToSound(int raw) {
         return (raw * 200.0) / 255.0;
     }
 
+    /**
+     * Converts raw readings from sensors [0,255] into light value
+     *
+     * @param raw Raw reading from sensor
+     * @return Sensor reading as light
+     */
     public static double RawToLight(int raw) {
         return (raw * 100.0) / 255.0;
     }
@@ -152,6 +182,12 @@ public class DeviceUtil {
     public static int RawToInt(byte raw) {
         return raw & 0xff;
     }
+
+    /**
+     * Take 2s complement of a given int
+     * @param prev the number that 2s complement will be taken on
+     * @return 2s complement of input
+     */
     public static int Complement(int prev) {
         if (prev > 127) {
             prev = prev - 256;

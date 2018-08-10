@@ -31,6 +31,11 @@ import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbitsToConnect;
 import static io.reactivex.android.schedulers.AndroidSchedulers.from;
 
+
+/**
+ * Represents a Hummingbit device and all of its functionality: Setting outputs, reading sensors
+ * @author Zhendong Yuan (yzd1998111)
+ */
 public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDataListener {
     /*
      * Command prefixes for the Hummingbit according to spec
