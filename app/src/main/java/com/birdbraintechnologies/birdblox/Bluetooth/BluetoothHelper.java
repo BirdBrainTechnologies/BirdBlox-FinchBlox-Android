@@ -158,13 +158,12 @@ public class BluetoothHelper {
                         }
                         robots.put(robot);
                     }
-
-                    if (System.currentTimeMillis() - last_clear.get() >= CLEAR_INTERVAL) {
-                        last_clear.set(System.currentTimeMillis());
-                        deviceList.clear();
-                    }
                     runJavascript("CallbackManager.robot.discovered('" + bbxEncode(robots.toString()) + "');");
+                }
 
+                if (System.currentTimeMillis() - last_clear.get() >= CLEAR_INTERVAL) {
+                    last_clear.set(System.currentTimeMillis());
+                    deviceList.clear();
                 }
             }
         }

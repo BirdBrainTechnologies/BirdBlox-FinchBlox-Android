@@ -73,6 +73,8 @@ public class RobotRequestHandler implements RequestHandler {
     private static UARTSettings MBitUARTSettings;
     private static HashMap<String, Microbit> connectedMicrobits;
 
+    public static String lastScanType;
+
     private AlertDialog.Builder builder;
     private AlertDialog robotInfoDialog;
 
