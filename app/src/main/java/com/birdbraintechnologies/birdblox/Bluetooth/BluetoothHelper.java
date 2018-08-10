@@ -154,7 +154,6 @@ public class BluetoothHelper {
                             Log.e("JSON", "JSONException while discovering devices");
                         }
                         robots.put(robot);
-                        deviceList.clear();
                     }
                     runJavascript("CallbackManager.robot.discovered('" + bbxEncode(robots.toString()) + "');");
 
