@@ -583,10 +583,10 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
         synchronized (rawSensorValuesLock) {
             this.rawSensorValues = newData;
             String curBatteryStatus = "";
-            double batteryVoltage = (newData[3] & 0xFF) * 0.037;
-            if (batteryVoltage > 4.7) {
+            double batteryVoltage = (newData[3] & 0xFF) * 0.0406;
+            if (batteryVoltage > 4.75) {
                 curBatteryStatus = "2";
-            } else if (batteryVoltage > 3.3) {
+            } else if (batteryVoltage > 4.63) {
                 curBatteryStatus = "1";
             } else {
                 curBatteryStatus = "0";
