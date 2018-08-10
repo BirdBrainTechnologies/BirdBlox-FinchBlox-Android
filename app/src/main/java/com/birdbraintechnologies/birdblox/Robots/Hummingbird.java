@@ -76,6 +76,8 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private AtomicLong last_sent;
     private AtomicLong last_successfully_sent;
 
+    private String last_battery_status;
+
     private UARTConnection conn;
     private byte[] rawSensorValues;
     private Object rawSensorValuesLock = new Object();
@@ -109,6 +111,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         g4 = new AtomicBoolean(true);
         last_sent = new AtomicLong(System.currentTimeMillis());
         last_successfully_sent = new AtomicLong(System.currentTimeMillis());
+        last_battery_status = "";
 
         lock = new ReentrantLock();
         doneSending = lock.newCondition();
@@ -471,6 +474,19 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     public void onRXData(byte[] newData) {
         synchronized (rawSensorValuesLock) {
             this.rawSensorValues = newData;
+            String curBatteryStatus = "";
+            double batteryVoltage = (newData[4] & 0xFF) * 0.0406;
+            if (batteryVoltage > 4.75) {
+                curBatteryStatus = "2";
+            } else if (batteryVoltage > 4.63) {
+                curBatteryStatus = "1";
+            } else {
+                curBatteryStatus = "0";
+            }
+            if (!curBatteryStatus.equals(last_battery_status)) {
+                last_battery_status = curBatteryStatus;
+                runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(curBatteryStatus) + "');");
+            }
         }
     }
 
