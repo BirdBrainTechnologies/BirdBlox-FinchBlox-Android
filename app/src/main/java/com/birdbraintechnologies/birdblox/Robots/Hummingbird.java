@@ -35,6 +35,7 @@ import static io.reactivex.android.schedulers.AndroidSchedulers.from;
  *
  * @author Terence Sun (tsun1215)
  * @author Shreyan Bakshi (AppyFizz)
+ * @author Zhendong Yuan (yzd1998111)
  */
 public class Hummingbird extends Robot<HBState> implements UARTConnection.RXDataListener {
     /*

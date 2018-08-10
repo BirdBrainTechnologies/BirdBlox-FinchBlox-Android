@@ -40,6 +40,7 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
  * @author AppyFizz (Shreyan Bakshi)
+ * @author Zhendong Yuan (yzd1998111)
  */
 
 public class RobotRequestHandler implements RequestHandler {

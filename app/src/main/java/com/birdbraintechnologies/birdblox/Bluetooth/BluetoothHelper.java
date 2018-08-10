@@ -40,6 +40,7 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Rob
  * Helper class for basic Bluetooth connectivity
  *
  * @author Terence Sun (tsun1215)
+ * @author Zhendong Yuan (yzd1998111)
  */
 public class BluetoothHelper {
     private static final int THRESHOLD = 20;
@@ -59,8 +60,7 @@ public class BluetoothHelper {
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build();
     private AtomicLong last_sent = new AtomicLong(System.currentTimeMillis());
-    private static final int SEND_INTERVAL = 4000;
-    private static final int MAXRETRY = 2;
+    private static final int SEND_INTERVAL = 2000; /* Interval that scan results will be sent to frontend, in milliseconds */
 
     /* Callback for populating the device list and discoveredList
        The discoveredList keeps track of all the devices found after a startDiscover request is issued,
@@ -253,6 +253,9 @@ public class BluetoothHelper {
         return conn;
     }
 
+    /**
+     * stopScan stops the scan and clears the cache of the discovered devices.
+     */
     public void stopScan() {
         if (scanner != null) {
             scanner.stopScan(populateDevices);

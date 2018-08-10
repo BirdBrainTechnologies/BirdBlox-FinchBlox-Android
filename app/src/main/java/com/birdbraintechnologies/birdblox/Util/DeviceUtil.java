@@ -6,6 +6,7 @@ package com.birdbraintechnologies.birdblox.Util;
  *
  * @author Brandon Price
  * @author Terence Sun (tsun1215)
+ * @author Zhendong Yuan (yzd1998111)
  */
 public class DeviceUtil {
 
