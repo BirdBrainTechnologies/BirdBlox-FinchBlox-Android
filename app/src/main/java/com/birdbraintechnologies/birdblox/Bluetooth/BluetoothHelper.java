@@ -240,7 +240,6 @@ public class BluetoothHelper {
      */
     public UARTConnection connectToDeviceUART(String addr, UARTSettings settings) {
         BluetoothDevice device;
-        int retryCnt = 0;
         synchronized (discoveredList) {
             device = discoveredList.get(addr);
         }
