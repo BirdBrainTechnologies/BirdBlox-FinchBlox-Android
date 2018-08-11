@@ -81,8 +81,8 @@ public class HttpService extends Service {
         @Override
         public Response serve(IHTTPSession session) {
             String requestPath = session.getUri();
-            Log.d("mesSessionURI", session.getUri());
-            Log.d("mesSessionParameters", session.getParameters().toString());
+            Log.d("SessionURI", session.getUri());
+            Log.d("SessionParameters", session.getParameters().toString());
 
 
             Method requestMethod = session.getMethod();
