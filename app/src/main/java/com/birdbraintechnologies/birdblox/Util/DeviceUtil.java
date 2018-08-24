@@ -6,6 +6,7 @@ package com.birdbraintechnologies.birdblox.Util;
  *
  * @author Brandon Price
  * @author Terence Sun (tsun1215)
+ * @author Zhendong Yuan (yzd1998111)
  */
 public class DeviceUtil {
 
@@ -15,14 +16,24 @@ public class DeviceUtil {
      * @param raw Raw reading from sensor
      * @return Sensor reading as a percentage
      */
+    public static double RawToKnob(int raw) {
+        return (raw * 100.0 / 230.0) > 100.0 ? 100.0 : (raw * 100.0 / 230.0);
+    }
+
     public static double RawToPercent(byte raw) {
         return RawToInt(raw) / 2.55;
+    }
+
+    public static double RawToDistance(int raw) {
+        return raw * 117.0 / 100.0;
     }
 
     /**
      * Converts percent readings [0,100] to raw [0,255]
      */
-    public static byte PercentToRaw(double percent) { return (byte) (percent * 2.55); }
+    public static byte PercentToRaw(double percent) {
+        return (byte) (percent * 2.55);
+    }
 
     /**
      * Converts raw readings from sensors [0,255] into temperature
@@ -63,13 +74,104 @@ public class DeviceUtil {
     }
 
     /**
+     * Converts raw readings from sensors [0,255] into accelerometer values.
+     * @param rawAccl the byte array of raw accelerometer values in 3 directions
+     * @param axisString the axis of acceleration
+     * @return the acceleration in a specific axis based on the raw value.
+     */
+    public static double RawToAccl(byte[] rawAccl, String axisString) {
+        switch (axisString) {
+            case "x":
+                return Complement(RawToInt(rawAccl[0])) * 196.0 / 1280.0;
+            case "y":
+                return Complement(RawToInt(rawAccl[1])) * 196.0 / 1280.0;
+            case "z":
+                return Complement(RawToInt(rawAccl[2])) * 196.0 / 1280.0;
+        }
+        return 0.0;
+    }
+
+    /**
+     * Converts raw readings from sensors [0,255] into magnetometer values.
+     * @param rawMag the byte array of raw magnetometer values in 3 directions
+     * @param axisString the axis of magnetometer.
+     * @return the magnetometer value in a specific axis based on the raw value.
+     */
+    public static double RawToMag(byte[] rawMag, String axisString) {
+        short mx = (short) ((rawMag[1] & 0xFF) | (rawMag[0] << 8)) ;
+        short my = (short) ((rawMag[3] & 0xFF) | (rawMag[2] << 8)) ;
+        short mz = (short) ((rawMag[5] & 0xFF) | (rawMag[4] << 8)) ;
+
+        switch (axisString) {
+            case "x":
+                return mx;
+            case "y":
+                return my;
+            case "z":
+                return mz;
+        }
+        return 0.0;
+    }
+
+    /**
+     * Converts raw readings from sensors [0,255] into angle in degrees.
+     * @param rawMag the byte array of raw magnetometer values in 3 directions
+     * @param rawAccl the byte array of raw accelerometer values in 3 directions
+     * @return the anglge in degrees based on the raw magnetometer values and raw accelerometer values.
+     */
+    public static double RawToCompass(byte[] rawAccl, byte[] rawMag) {
+        double ax = Complement(RawToInt(rawAccl[0])) * 1.0;
+        double ay = Complement(RawToInt(rawAccl[1])) * 1.0;
+        double az = Complement(RawToInt(rawAccl[2])) * 1.0;
+
+        short mx = (short) ((rawMag[1] & 0xFF) | (rawMag[0] << 8)) ;
+        short my = (short) ((rawMag[3] & 0xFF) | (rawMag[2] << 8)) ;
+        short mz = (short) ((rawMag[5] & 0xFF) | (rawMag[4] << 8)) ;
+
+
+        double phi = Math.atan(-ay / az);
+        double theta = Math.atan(ax / (ay * Math.sin(phi) + az * Math.cos(phi)));
+
+        double xp = mx;
+        double yp = my * Math.cos(phi) - mz * Math.sin(phi);
+        double zp = my * Math.sin(phi) + mz * Math.cos(phi);
+
+        double xpp = xp * Math.cos(theta) + zp * Math.sin(theta);
+        double ypp = yp;
+
+        double angle = 180.0 + Math.toDegrees(Math.atan2(xpp, ypp));
+        return angle;
+    }
+
+    /**
+     * Converts raw readings from sensors [0,255] into sound value
+     *
+     * @param raw Raw reading from sensor
+     * @return Sensor reading as sound
+     */
+    public static double RawToSound(int raw) {
+        return (raw * 200.0) / 255.0;
+    }
+
+    /**
+     * Converts raw readings from sensors [0,255] into light value
+     *
+     * @param raw Raw reading from sensor
+     * @return Sensor reading as light
+     */
+    public static double RawToLight(int raw) {
+        return (raw * 100.0) / 255.0;
+    }
+
+
+    /**
      * Converts raw readings from sensors [0,255] into voltage
      *
      * @param raw Raw reading from sensor
      * @return Sensor reading as voltage
      */
-    public static double RawToVoltage(byte raw) {
-        return (100.0 * RawToInt(raw) / 51.0) / 100;
+    public static double RawToVoltage(int raw) {
+        return (raw * 3.3) / 255.0;
     }
 
     /**
@@ -80,5 +182,17 @@ public class DeviceUtil {
      */
     public static int RawToInt(byte raw) {
         return raw & 0xff;
+    }
+
+    /**
+     * Take 2s complement of a given int
+     * @param prev the number that 2s complement will be taken on
+     * @return 2s complement of input
+     */
+    public static int Complement(int prev) {
+        if (prev > 127) {
+            prev = prev - 256;
+        }
+        return prev;
     }
 }

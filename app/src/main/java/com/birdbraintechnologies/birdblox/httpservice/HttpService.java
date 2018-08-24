@@ -6,6 +6,7 @@ import android.os.IBinder;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
+import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
 import java.io.IOException;
 
@@ -80,7 +81,6 @@ public class HttpService extends Service {
         @Override
         public Response serve(IHTTPSession session) {
             String requestPath = session.getUri();
-
             Log.d("SessionURI", session.getUri());
             Log.d("SessionParameters", session.getParameters().toString());
 
@@ -90,14 +90,29 @@ public class HttpService extends Service {
 
             // Route request
             Response response = router.routeAndDispatch(session);
-
             if (response == null) {
                 response = newFixedLengthResponse(Response.Status.NOT_IMPLEMENTED,
                         NanoHTTPD.MIME_PLAINTEXT, "");
             }
 
             response.addHeader("Access-Control-Allow-Origin", "*");
+
+            response.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
+
+            // Request headers you wish to allow
+            response.addHeader("Access-Control-Allow-Headers", "X-Requested-With,content-type");
+
+            // Set to true if you need the website to include cookies in the requests sent
+            // to the API (e.g. in case you use sessions)
+            response.addHeader("Access-Control-Allow-Credentials", "true");
             return response;
         }
     }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        RobotRequestHandler.disconnectAll();
+        stopSelf();
+    }
+
 }

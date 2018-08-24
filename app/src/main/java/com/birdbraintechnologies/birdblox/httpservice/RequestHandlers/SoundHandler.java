@@ -91,7 +91,9 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                 }
                 break;
             case "note":
-                playNote(Integer.valueOf(m.get("note").get(0)), Integer.valueOf(m.get("duration").get(0)));
+                if (Integer.valueOf(m.get("note").get(0)) != 0 && Integer.valueOf(m.get("duration").get(0)) != 0) {
+                    playNote(Integer.valueOf(m.get("note").get(0)), Integer.valueOf(m.get("duration").get(0)));
+                }
                 break;
             case "stop":
                 stopSound();

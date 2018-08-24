@@ -1,15 +1,14 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
-import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
+import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
 import java.io.UnsupportedEncodingException;
 import java.util.List;
@@ -36,6 +35,7 @@ import static io.reactivex.android.schedulers.AndroidSchedulers.from;
  *
  * @author Terence Sun (tsun1215)
  * @author Shreyan Bakshi (AppyFizz)
+ * @author Zhendong Yuan (yzd1998111)
  */
 public class Hummingbird extends Robot<HBState> implements UARTConnection.RXDataListener {
     /*
@@ -56,11 +56,11 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
 
     private static final int SETALL_INTERVAL_IN_MILLIS = 32;
     private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
-    private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 4000;
+    private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 50;
     private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
     private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
-    private static final int MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 10000;
-    private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 5000;
+    private static final int MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 15000;
+    private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 3000;
 
 
     // This represents the firmware version 2.2a
@@ -77,6 +77,8 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private AtomicLong last_sent;
     private AtomicLong last_successfully_sent;
 
+    private String last_battery_status;
+
     private UARTConnection conn;
     private byte[] rawSensorValues;
     private Object rawSensorValuesLock = new Object();
@@ -91,6 +93,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
     private Disposable monitorDisposable;
 
     private byte[] g4response;
+
+    private boolean ATTEMPTED = false;
+    private boolean DISCONNECTED = false;
 
     /**
      * Initializes a Hummingbird device
@@ -107,6 +112,7 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         g4 = new AtomicBoolean(true);
         last_sent = new AtomicLong(System.currentTimeMillis());
         last_successfully_sent = new AtomicLong(System.currentTimeMillis());
+        last_battery_status = "";
 
         lock = new ReentrantLock();
         doneSending = lock.newCondition();
@@ -122,6 +128,9 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
                     sendToRobot();
                     doneSending.signal();
+                    if (DISCONNECTED) {
+                        return;
+                    }
                 } catch (NullPointerException | InterruptedException | IllegalMonitorStateException e) {
                     Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
                 } finally {
@@ -140,28 +149,23 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         Runnable monitorRunnable = new Runnable() {
             @Override
             public void run() {
-                if (last_successfully_sent == null) {
-                    last_successfully_sent = new AtomicLong(System.currentTimeMillis());
-                }
                 long timeOut = g4.get() ? MAX_NO_G4_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
-                if (System.currentTimeMillis() - last_successfully_sent.get() >= timeOut) {
+                final long curSysTime = System.currentTimeMillis();
+                final long prevTime = last_successfully_sent.get();
+                long passedTime = curSysTime - prevTime;
+                if (passedTime >= timeOut) {
                     try {
-                        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-                            @Override
-                            public void run() {
-                                String HBName = NamingHandler.GenerateName(mainWebViewContext, getMacAddress());
-                                Toast.makeText(mainWebViewContext, "Connection to Hummingbird " + HBName + " timed out.", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                        synchronized (hummingbirdsToConnect) {
-                            hummingbirdsToConnect.add(getMacAddress());
-                        }
                         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
+                        runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode("3") + "');");
                         new Thread() {
                             @Override
                             public void run() {
                                 super.run();
-                                disconnect();
+                                String macAddr = getMacAddress();
+                                RobotRequestHandler.disconnectFromHummingbird(macAddr);
+                                if (DISCONNECTED) {
+                                    return;
+                                }
                             }
                         }.start();
                     } catch (Exception e) {
@@ -190,6 +194,14 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     last_successfully_sent.set(currentTime);
                 g4.set(false);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                try {
+                    if (rawSensorValues == null) {
+                        rawSensorValues = startPollingSensors();
+                        conn.addRxDataListener(this);
+                    }
+                } catch (RuntimeException e) {
+                    Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
+                }
                 if (!hasMinFirmware()) {
                     g4.set(true);
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareVersion()) + "', '" + bbxEncode(getMinFirmwareVersion()) + "')");
@@ -228,7 +240,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         } else {
             // Not currently sending, and oldState and newState are the same
             if (currentTime - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
-                // Send here
                 setSendingTrue();
                 if (conn.writeBytes(newState.setAll())) {
                     // Successfully sent Non-G4 command
@@ -289,22 +300,12 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
      * @param portString Port that the sensor is connected to
      * @return A string representing the value of the sensor
      */
-    public String readSensor(String sensorType, String portString) {
+    public String readSensor(String sensorType, String portString, String axisString) {
         byte rawSensorValue;
         synchronized (rawSensorValuesLock) {
-            try {
-                if (rawSensorValues == null) {
-                    rawSensorValues = startPollingSensors();
-                    conn.addRxDataListener(this);
-                }
-                int port = Integer.parseInt(portString) - 1;
-                rawSensorValue = rawSensorValues[port];
-            } catch (RuntimeException e) {
-                Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
-                return null;
-            }
+            int port = Integer.parseInt(portString) - 1;
+            rawSensorValue = rawSensorValues[port];
         }
-
         switch (sensorType) {
             case "distance":
                 return Double.toString(DeviceUtil.RawToDist(rawSensorValue));
@@ -380,123 +381,6 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         return false;
     }
 
-
-    /**
-     * Sets the angle of the servo connected to the given port
-     *
-     * @param port  Port number that the servo is connected to
-     * @param angle Percentage [0,100] to set the intensity to
-     * @return True if the command succeeded, false otherwise
-     */
-    public boolean setServo(int port, int angle) {
-        // Compute servo angle [0,225] from angle [0,180]
-        byte angleByte = clampToBounds(Math.round(angle * 1.25), 0, 225);
-        return conn.writeBytes(new byte[]{SERVO_CMD, computePort(port), angleByte});
-    }
-
-    /**
-     * Sets the intensity of the vibration motor connected to the given port
-     *
-     * @param port             Port number that the motor is connected to
-     * @param intensityPercent
-     * @return True if the command succeeded, false otherwise
-     */
-    public boolean setVibrationMotor(int port, int intensityPercent) {
-        // Compute vibration intensity [0,255] from intensityPercentage
-        byte intensity = clampToBounds(Math.round(intensityPercent * 2.55), 0, 255);
-        return conn.writeBytes(new byte[]{VIB_MOTOR_CMD, computePort(port), intensity});
-    }
-
-    /**
-     * Sets the speed of the motor connected to the given port
-     *
-     * @param port         Port number that the motor is connected to
-     * @param speedPercent Percentage [-100,100] to set the speed to (a negative value means that
-     *                     the motor spins backwards, a positive value means that the motor spins
-     *                     forwards)
-     * @return True if the command succeeded, false otherwise
-     */
-    public boolean setMotor(int port, int speedPercent) {
-        // Compute direction from speedPercent parity ('0' is forward, '1' is backwards)
-        byte direction = (byte) ((speedPercent >= 0) ? '0' : '1');
-
-        // Compute absolute speed [0,255] from speedPercent [-100,100]
-        byte speed = clampToBounds(Math.round(Math.abs(speedPercent) * 2.55), 0, 255);
-        return conn.writeBytes(new byte[]{MOTOR_CMD, computePort(port), direction, speed});
-    }
-
-    /**
-     * Sets the intensity of a LED connected to the given port
-     *
-     * @param port             Port number that the LED is connected to
-     * @param intensityPercent Percentage [0,100] to set the intensity to
-     * @return True if the command succeeded, false otherwise
-     */
-    public boolean setLED(int port, int intensityPercent) {
-        // Compute intensity [0,255] from percentage
-        byte intensity = clampToBounds(Math.round(intensityPercent * 2.55), 0, 255);
-        return conn.writeBytes(new byte[]{LED_CMD, computePort(port), intensity});
-    }
-
-    /**
-     * Sets the RGB values of a tri-color LED connected to the given port
-     *
-     * @param port     Port number that the LED is connected to
-     * @param rPercent Percentage [0,100] to set R to
-     * @param gPercent Percentage [0,100] to set G to
-     * @param bPercent Percentage [0,100] to set B to
-     * @return True if the command succeeded, false otherwise
-     */
-    public boolean setTriLED(int port, int rPercent, int gPercent, int bPercent) {
-        // Compute rgb values [0,255] from the percentages
-        byte r = clampToBounds(Math.round(rPercent * 2.55), 0, 255);
-        byte g = clampToBounds(Math.round(gPercent * 2.55), 0, 255);
-        byte b = clampToBounds(Math.round(bPercent * 2.55), 0, 255);
-        return conn.writeBytes(new byte[]{TRI_LED_CMD, computePort(port), r, g, b});
-    }
-
-    /**
-     * Turns off all LEDs and motors
-     * <p>
-     * This is the version of the stopAll command suited for
-     * legacy firmware
-     *
-     * @return True if the command succeeded, false otherwise
-     */
-    public boolean stopAllLegacy() {
-        return conn.writeBytes(new byte[]{STOP_PERIPH_CMD});
-    }
-
-    /**
-     * Computes the ascii byte of the port number
-     *
-     * @param port Integer port to convert
-     * @return Ascii representation of the port
-     */
-    private byte computePort(int port) {
-        // TODO: Error handling for invalid ports
-        // Adding 48 to a number 0-9 makes it ascii
-        return (byte) ((port - 1) + 48);
-    }
-
-    /**
-     * Returns a value that is bounded by min and max
-     *
-     * @param value Value to be clamped
-     * @param min   Minimum that this value can be
-     * @param max   Maximum that this value can be
-     * @return Clamped value
-     */
-    private byte clampToBounds(long value, int min, int max) {
-        if (value > max) {
-            return (byte) max;
-        } else if (value < min) {
-            return (byte) min;
-        } else {
-            return (byte) value;
-        }
-    }
-
     /**
      * Returns whether or not this device is connected
      *
@@ -506,55 +390,104 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
         return conn.isConnected();
     }
 
-//    public void rename(String newName) {
-//        String cmd = "+++" + "\r" + "\n";
-//        Log.d("RENAME", "Request: " + Arrays.toString(cmd.getBytes()));
-//        byte[] response = conn.writeBytesWithResponse(cmd.getBytes());
-//        Log.d("RENAME", "Response: " + new String(response));
-//        try {
-//            Thread.sleep(500);
-//        } catch (InterruptedException e) {
-//            Log.e("RENAME", e.toString());
-//        }
-//        cmd = RENAME_CMD + "=";
-//        conn.writeBytes(cmd.getBytes());
-//        cmd = newName + "\r\n";
-//        conn.writeBytes(cmd.getBytes());
-//        try {
-//            Thread.sleep(500);
-//        } catch (InterruptedException e) {
-//            Log.e("RENAME", e.toString());
-//        }
-//        cmd = "ATZ\r\n";
-//        conn.writeBytes(cmd.getBytes());
-//    }
+    public void setConnected() {
+        DISCONNECTED = false;
+    }
 
     /**
      * Disconnects the device
      */
     public void disconnect() {
-        AndroidSchedulers.from(sendThread.getLooper()).shutdown();
-        sendThread.getLooper().quit();
-        if (sendDisposable != null && !sendDisposable.isDisposed())
-            sendDisposable.dispose();
-        sendThread.quitSafely();
-        AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
-        monitorThread.getLooper().quit();
-        if (monitorDisposable != null && !monitorDisposable.isDisposed())
-            monitorDisposable.dispose();
-        monitorThread.quitSafely();
-        if (conn != null) {
-            conn.removeRxDataListener(this);
-            stopPollingSensors();
+        if (!DISCONNECTED) {
+            if (ATTEMPTED) {
+                forceDisconnect();
+                return;
+            }
+            ATTEMPTED = true;
             conn.writeBytes(new byte[]{TERMINATE_CMD});
-            conn.disconnect();
+
+            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
+            sendThread.getLooper().quit();
+            if (sendDisposable != null && !sendDisposable.isDisposed())
+                sendDisposable.dispose();
+            sendThread.interrupt();
+            sendThread.quit();
+
+            AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
+            monitorThread.getLooper().quit();
+            if (monitorDisposable != null && !monitorDisposable.isDisposed())
+                monitorDisposable.dispose();
+            monitorThread.interrupt();
+            monitorThread.quit();
+
+
+            if (conn != null) {
+                conn.removeRxDataListener(this);
+                stopPollingSensors();
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                }
+                conn.disconnect();
+            }
+            ATTEMPTED = false;
+            DISCONNECTED = true;
         }
     }
+
+    public boolean getDisconnected() {
+        return DISCONNECTED;
+    }
+
+    public void forceDisconnect() {
+        String macAddr = getMacAddress();
+        if (!DISCONNECTED) {
+            ATTEMPTED = false;
+            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
+            sendThread.getLooper().quit();
+            if (sendDisposable != null && !sendDisposable.isDisposed())
+                sendDisposable.dispose();
+            sendThread.interrupt();
+            sendThread.quit();
+
+            AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
+            monitorThread.getLooper().quit();
+            if (monitorDisposable != null && !monitorDisposable.isDisposed())
+                monitorDisposable.dispose();
+            monitorThread.interrupt();
+            monitorThread.quit();
+
+            if (conn != null) {
+                conn.removeRxDataListener(this);
+                conn.forceDisconnect();
+            }
+            synchronized (hummingbirdsToConnect) {
+                if (!hummingbirdsToConnect.contains(macAddr)) {
+                    hummingbirdsToConnect.add(macAddr);
+                }
+            }
+            DISCONNECTED = true;
+        }
+    }
+
 
     @Override
     public void onRXData(byte[] newData) {
         synchronized (rawSensorValuesLock) {
             this.rawSensorValues = newData;
+            String curBatteryStatus = "";
+            double batteryVoltage = (newData[4] & 0xFF) * 0.0406;
+            if (batteryVoltage > 4.75) {
+                curBatteryStatus = "2";
+            } else if (batteryVoltage > 4.63) {
+                curBatteryStatus = "1";
+            } else {
+                curBatteryStatus = "0";
+            }
+            if (!curBatteryStatus.equals(last_battery_status)) {
+                last_battery_status = curBatteryStatus;
+                runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(curBatteryStatus) + "');");
+            }
         }
     }
 
@@ -616,7 +549,13 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             int fw1 = (int) g4response[2];
             int fw2 = (int) g4response[3];
             String fw3 = new String(new byte[]{g4response[4]}, "utf-8");
-            return (fw1 >= minFirmwareVersion1) && (fw2 >= minFirmwareVersion2) && (fw3.compareTo(minFirmwareVersion3) >= 0);
+            if (fw1 >= minFirmwareVersion1) {
+                if (fw1 > minFirmwareVersion1) return true;
+                if (fw2 >= minFirmwareVersion2) {
+                    return ((fw2 > minFirmwareVersion2) || (fw3.compareTo(minFirmwareVersion3) >= 0));
+                }
+            }
+            return false;
         } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException | NullPointerException e) {
             Log.e(TAG, "Hummingbird firmware version: " + e.getMessage());
             return false;
@@ -628,7 +567,13 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             int fw1 = (int) g4response[2];
             int fw2 = (int) g4response[3];
             String fw3 = new String(new byte[]{g4response[4]}, "utf-8");
-            return (fw1 >= latestFirmwareVersion1) && (fw2 >= latestFirmwareVersion2) && (fw3.compareTo(latestFirmwareVersion3) >= 0);
+            if (fw1 >= latestFirmwareVersion1) {
+                if (fw1 > latestFirmwareVersion1) return true;
+                if (fw2 >= latestFirmwareVersion2) {
+                    return ((fw2 > latestFirmwareVersion2) || (fw3.compareTo(latestFirmwareVersion3) >= 0));
+                }
+            }
+            return false;
         } catch (UnsupportedEncodingException | ArrayIndexOutOfBoundsException | NullPointerException e) {
             Log.e(TAG, "Hummingbird firmware version: " + e.getMessage());
             return false;

@@ -1,5 +1,4 @@
 apply plugin: 'com.android.application'
-
 android {
     compileSdkVersion 25
     buildToolsVersion "25.0.2"
@@ -19,11 +18,8 @@ android {
     }
 }
 
-repositories {
-}
-
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile fileTree(include: ['*.jar'], dir: 'libs')
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
@@ -34,6 +30,6 @@ dependencies {
     compile 'com.dropbox.core:dropbox-core-sdk:2.1.1'
     compile 'com.squareup.okhttp3:okhttp:3.5.0'
     compile 'io.reactivex.rxjava2:rxandroid:2.0.1'
-    compile group: 'commons-io', name: 'commons-io', version: '2.5'
+    compile 'commons-io:commons-io:2.5'
     testCompile 'junit:junit:4.12'
 }

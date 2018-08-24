@@ -1,8 +1,14 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
+import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
@@ -18,6 +24,8 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +44,7 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
  *
  * @author Terence Sun (tsun1215)
  * @author Shreyan Bakshi (AppyFizz)
+ * @author Zhendong Yuan (yzd1998111)
  */
 public class FileManagementHandler implements RequestHandler {
     private static final String TAG = FileManagementHandler.class.getName();
@@ -103,11 +112,22 @@ public class FileManagementHandler implements RequestHandler {
      * and an 'ERROR' response otherwise.
      */
     private NanoHTTPD.Response openProject(String name) {
-        if (!isNameSanitized(name)) {
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, name + " is not a valid project name!");
+        File program = null;
+        if (name.startsWith("file:///")) {
+            try {
+                program = new File(new URI(name));
+                name = name.substring(name.lastIndexOf('/') + 1, name.length() - 4);
+            } catch (URISyntaxException e) {
+                Log.e(TAG, "openProject: " + e.toString());
+            }
+
+        } else {
+            if (!isNameSanitized(name)) {
+                return NanoHTTPD.newFixedLengthResponse(
+                        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, name + " is not a valid project name!");
+            }
+            program = new File(getBirdbloxDir(), name + "/program.xml");
         }
-        File program = new File(getBirdbloxDir(), name + "/program.xml");
         if (!program.exists()) {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " was not found!");
@@ -118,12 +138,14 @@ public class FileManagementHandler implements RequestHandler {
             if (encodedXML != null) {
                 runJavascript("CallbackManager.data.open('" + encodedName + "', \"" + encodedXML + "\");");
                 filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
+                runJavascript("SaveManager.autoSave();");
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, name + " successfully opened.");
             }
         } catch (SecurityException | IOException e) {
             Log.e(TAG, "Open: " + e.getMessage());
         }
+
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while opening " + name);
     }
@@ -314,12 +336,13 @@ public class FileManagementHandler implements RequestHandler {
         }
         try {
             File dir = new File(getBirdbloxDir(), name);
-            File zip = new File(getBirdbloxDir(), name + ".bbx");
+            String zipName = name + ".zip";
+            File zip = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), zipName);
             ZipUtility.zipDirectory(dir, zip);
             if (zip.exists()) {
                 Intent showDialog = new Intent(MainWebView.SHARE_FILE);
-                showDialog.putExtra("file_path", zip.getAbsolutePath());
-                LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+                showDialog.putExtra("file_name", zipName);
+                    LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully exported project " + name);
             }
@@ -413,7 +436,7 @@ public class FileManagementHandler implements RequestHandler {
     /**
      * Creates a new project, with the name provided.
      *
-     * @param name The name of the new project to be created.
+     * @param name    The name of the new project to be created.
      * @param session HttpRequest to get the POST body of.
      * @return A 'OK' response if creating new project was successful,
      * and an 'ERROR' response otherwise.

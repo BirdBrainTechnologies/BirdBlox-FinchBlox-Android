@@ -2,6 +2,7 @@ package com.birdbraintechnologies.birdblox;
 
 import android.Manifest;
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
@@ -19,6 +20,7 @@ import android.media.AudioTrack;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.NetworkOnMainThreadException;
 import android.provider.MediaStore;
@@ -29,8 +31,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
+import android.webkit.ConsoleMessage;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
@@ -55,12 +60,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -125,6 +130,33 @@ public class MainWebView extends AppCompatActivity {
     LocalBroadcastManager bManager;
     private static WebView webView;
     private long back_pressed;
+
+    private static final int REQUEST_PERMISSIONS = 1;
+    private static String[] APP_PERMISSIONS = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+    };
+
+
+    public static void verifyStoragePermissions(Activity activity) {
+        // Check if we have write permission
+        int permission = ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        int permission2 = ActivityCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO);
+        int permission3 = ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION);
+        if (permission != PackageManager.PERMISSION_GRANTED || permission2 != PackageManager.PERMISSION_GRANTED
+                || permission3 != PackageManager.PERMISSION_GRANTED) {
+            // We don't have permission so prompt the user
+            ActivityCompat.requestPermissions(
+                    activity,
+                    APP_PERMISSIONS,
+                    REQUEST_PERMISSIONS
+            );
+        }
+    }
+
+
     private BroadcastReceiver bReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -177,6 +209,7 @@ public class MainWebView extends AppCompatActivity {
 
         mainWebViewContext = MainWebView.this;
 
+        verifyStoragePermissions(this);
         // Hide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
         // We should never show the action bar if the status bar
@@ -216,8 +249,16 @@ public class MainWebView extends AppCompatActivity {
 
         // Create webview
         webView = (WebView) findViewById(R.id.main_webview);
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                Log.d("MyApplication", "Message:" + consoleMessage.message() + ", Line:" + consoleMessage.lineNumber());
+                return super.onConsoleMessage(consoleMessage);
+            }
+        });
 //        webView.loadUrl("file:///" + lFile.getAbsolutePath());
         webView.loadUrl(PAGE_URL);
+
         webView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
@@ -228,6 +269,7 @@ public class MainWebView extends AppCompatActivity {
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webView.resumeTimers();
+
 
         // Broadcast receiver
         bManager = LocalBroadcastManager.getInstance(this);
@@ -249,6 +291,17 @@ public class MainWebView extends AppCompatActivity {
             dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
             dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
         }
+
+        webView.setWebViewClient(new WebViewClient() {
+            public void onPageFinished(WebView view, String url) {
+                runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(Locale.getDefault().getLanguage().toUpperCase()) + "');");
+                if (getIntent().getData() != null) {
+                    runJavascript("CallbackManager.tablet.setFile('" + bbxEncode(getIntent().getData().toString()) + "');");
+                }
+                runJavascript(" CallbackManager.tablet.changeDeviceLimit('" + bbxEncode("2") + "');");
+
+            }
+        });
     }
 
     @Override
@@ -270,8 +323,10 @@ public class MainWebView extends AppCompatActivity {
         mainWebViewContext = MainWebView.this;
     }
 
+
     @Override
     protected void onResume() {
+
         super.onResume();
         mainWebViewContext = MainWebView.this;
         webView.onResume();
@@ -286,6 +341,10 @@ public class MainWebView extends AppCompatActivity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        setIntent(intent);
+        if (getIntent().getData() != null) {
+            runJavascript("CallbackManager.tablet.runFile('" + bbxEncode(getIntent().getData().toString()) + "');");
+        }
         mainWebViewContext = MainWebView.this;
         dropboxWebOAuth(intent);
         importFromIntent(intent);
@@ -577,21 +636,15 @@ public class MainWebView extends AppCompatActivity {
      */
     private void showShareDialog(Bundle b) {
         try {
-            // create new intent
+            String filename = b.getString("file_name");
+            File filelocation = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), filename);
+            Uri path = Uri.fromFile(filelocation);
             Intent sendIntent = new Intent(Intent.ACTION_SEND);
-            // set flag to give temporary permission to external app to use your FileProvider
             sendIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            // generate URI, with authority defined as the application ID
-            // in the Manifest, the last param is file I want to open
-            Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID,
-                    new File((String) b.get("file_path")));
-            sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
-            // We are sharing zip files, so we give it a valid MIME type
+            sendIntent.putExtra(Intent.EXTRA_STREAM, path);
             sendIntent.setType("application/zip");
-            // Validate that the device can open the File
-            if (sendIntent.resolveActivity(MainWebView.this.getPackageManager()) != null) {
-                startActivity(Intent.createChooser(sendIntent, getResources().getText(R.string.share_with)));
-            }
+            startActivity(Intent.createChooser(sendIntent, "Send email..."));
+
         } catch (Exception e) {
             Log.e("FileProvider", e.getMessage());
         }
@@ -622,37 +675,6 @@ public class MainWebView extends AppCompatActivity {
         this.stopService(getIntent());
         this.finishAndRemoveTask();
     }
-
-    /**
-     * Determines availability of given port.
-     *
-     * @param port Port number of the required port
-     * @return Returns true if given is available (not in use), and false otherwise.
-     * // @throws RuntimeException
-     */
-    private static boolean port_available(int port) {
-        System.out.println("--------------Testing port " + port);
-        Socket s = null;
-        try {
-            s = new Socket("localhost", port);
-            // If the code makes it this far without an exception it means
-            // something is using the port and has responded.
-            System.out.println("--------------Port " + port + " is not available");
-            return false;
-        } catch (IOException e) {
-            System.out.println("--------------Port " + port + " is available");
-            return true;
-        } finally {
-            if (s != null) {
-                try {
-                    s.close();
-                } catch (IOException e) {
-                    // throw new RuntimeException("You should handle this error.", e);
-                }
-            }
-        }
-    }
-
 
     /**
      * Runs the given javascript within the main webview.

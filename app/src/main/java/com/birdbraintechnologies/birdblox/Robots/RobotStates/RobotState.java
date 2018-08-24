@@ -9,7 +9,7 @@ package com.birdbraintechnologies.birdblox.Robots.RobotStates;
  * Terminology -
  *
  * State Object: A peripheral device such as the LEDs, TriLEDs, Servos,
- *               Motors, Vibrators, the Flutter's Buzzers, the Finch's Beak,
+ *               Motors, Vibrators, the Finch's Beak,
  *               etc.
  */
 

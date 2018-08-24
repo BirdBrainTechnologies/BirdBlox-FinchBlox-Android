@@ -14,6 +14,7 @@ public class Buzzer extends RobotStateObject {
     private short frequency;
 
     public Buzzer() {
+        //has to be chanc
         volume = 0;
         frequency = 0;
     }

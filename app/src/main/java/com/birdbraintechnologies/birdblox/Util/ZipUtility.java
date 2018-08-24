@@ -6,6 +6,13 @@ package com.birdbraintechnologies.birdblox.Util;
  * SOURCE: https://stackoverflow.com/questions/20774525/is-it-possible-to-convert-a-folder-into-a-file
  */
 
+import android.Manifest;
+import android.app.Activity;
+import android.content.pm.PackageManager;
+import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
+import android.util.Log;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,18 +25,30 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
+
+
 public class ZipUtility {
 
+    private static final String TAG = "ZipUtility";
     public static final void zipDirectory(File directory, File zip) throws IOException {
         if (!zip.exists()) {
             zip.getParentFile().mkdirs();
-            zip.createNewFile();
+            try {
+                zip.createNewFile();
+            } catch (IOException e) {
+                Log.e(TAG, "zipDirectory: " + e.getMessage());
+            }
         }
-        ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip));
-        // Set compression level to uncompressed.
-        zos.setLevel(Deflater.NO_COMPRESSION);
-        zip(directory, directory, zos);
-        zos.close();
+        try {
+            ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip));
+            // Set compression level to uncompressed.
+            zos.setLevel(Deflater.NO_COMPRESSION);
+            zip(directory, directory, zos);
+            zos.close();
+        } catch (IOException e) {
+            Log.e(TAG, "zipDirectory: " + e.getMessage());
+        }
+
     }
 
     private static final void zip(File directory, File base,

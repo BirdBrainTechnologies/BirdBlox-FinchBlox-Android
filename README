@@ -1,0 +1,11 @@
+SETUP
+-----
+
+To set up the dev environment for BirdBlox:
+
+- Clone into the dev branch of the BirdBlox-Android-Support repository
+- Within the 'assets' directory, clone the HummingbirdDragAndDrop repository into a directory titled 'frontend'
+- Checkout the dev branch of HummingbirdDragAndDrop as well
+
+This sets up the most recent version of BirdBlox.
+
