@@ -257,22 +257,6 @@
         <item>Wonderful</item>
         <item>Young</item>
         <item>Zealous</item>
-        <item>Adorable</item>
-        <item>Adventurous</item>
-        <item>Agile</item>
-        <item>Amazing</item>
-        <item>Ancient</item>
-        <item>Artistic</item>
-        <item>Astounding</item>
-        <item>Athletic</item>
-        <item>Awesome</item>
-        <item>Beautiful</item>
-        <item>Benevolent</item>
-        <item>Big</item>
-        <item>Blazing</item>
-        <item>Blissful</item>
-        <item>Blushing</item>
-        <item>Bold</item>
     </string-array>
 
 
@@ -341,22 +325,6 @@
         <item>Topaz</item>
         <item>Violet</item>
         <item>Yellow</item>
-        <item>Amber</item>
-        <item>Amethyst</item>
-        <item>Apricot</item>
-        <item>Arboreal</item>
-        <item>Arctic</item>
-        <item>Banana</item>
-        <item>Blue</item>
-        <item>Brass</item>
-        <item>Cave</item>
-        <item>Celestial</item>
-        <item>Citrine</item>
-        <item>Cloud</item>
-        <item>Cobalt</item>
-        <item>Copper</item>
-        <item>Crystal</item>
-        <item>Desert</item>
     </string-array>
 
 
@@ -426,22 +394,6 @@
         <item>Whale</item>
         <item>Wolf</item>
         <item>Zebra</item>
-        <item>Beaver</item>
-        <item>Bee</item>
-        <item>Canary</item>
-        <item>Cat</item>
-        <item>Catfish</item>
-        <item>Centaur</item>
-        <item>Chicken</item>
-        <item>Coyote</item>
-        <item>Cricket</item>
-        <item>Dinosaur</item>
-        <item>Dog</item>
-        <item>Dolphin</item>
-        <item>Dragon</item>
-        <item>Dragonfly</item>
-        <item>Eagle</item>
-        <item>Elephant</item>
     </string-array>
 
     <string-array name="bad_names">

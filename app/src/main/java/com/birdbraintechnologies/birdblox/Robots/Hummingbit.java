@@ -5,7 +5,7 @@ import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBitState;
-import com.birdbraintechnologies.birdblox.Robots.RobotStates.MBState;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.LedArrayState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
@@ -81,8 +81,8 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private Disposable monitorDisposable;
 
     private byte[] cfresponse;
-    private MBState oldMBState = new MBState();
-    private MBState newMBState = new MBState();
+    private LedArrayState oldLedArrayState = new LedArrayState();
+    private LedArrayState newLedArrayState = new LedArrayState();
 
     private boolean ATTEMPTED = false;
     private boolean DISCONNECTED = false;
@@ -238,14 +238,14 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             last_sent.set(currentTime);
         }
 
-        if (!newMBState.equals(oldMBState) || FORCESEND.get()) {
+        if (!newLedArrayState.equals(oldLedArrayState) || FORCESEND.get()) {
             setSendingTrue();
 
-            if (conn.writeBytes(newMBState.setAll())) {
+            if (conn.writeBytes(newLedArrayState.setAll())) {
                 // Successfully sent Non-CF command
                 if (last_successfully_sent != null)
                     last_successfully_sent.set(currentTime);
-                oldMBState.copy(newMBState);
+                oldLedArrayState.copy(newLedArrayState);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
             } else {
                 // Sending Non-CF command failed
@@ -335,7 +335,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     bitsInInt[i] = Integer.parseInt(charactersInInts.charAt(i) + "");
                 }
                 bitsInInt[bitsInInt.length - 1] = SYMBOL;
-                return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), bitsInInt);
+                return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), bitsInInt);
             case "printBlock":
                 FORCESEND.set(true);
                 String printString = args.get("printString").get(0);
@@ -346,7 +346,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                         charsInInts[i] = (int) tmpAscii[i];
                     }
                     charsInInts[charsInInts.length - 1] = FLASH;
-                    return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), charsInInts);
+                    return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), charsInInts);
                 }
             case "compassCalibrate":
                 CALIBRATE.set(true);
@@ -474,7 +474,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             }
             if (statesEqual()) {
                 newState.resetAll();
-                newMBState.resetAll();
+                newLedArrayState.resetAll();
                 if (lock.isHeldByCurrentThread()) {
                     doneSending.signal();
                     lock.unlock();
@@ -513,7 +513,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             }
             ATTEMPTED = true;
             conn.writeBytes(new byte[]{TERMINATE_CMD});
-            newMBState.resetAll();
+            newLedArrayState.resetAll();
 
             AndroidSchedulers.from(sendThread.getLooper()).shutdown();
             sendThread.getLooper().quit();
