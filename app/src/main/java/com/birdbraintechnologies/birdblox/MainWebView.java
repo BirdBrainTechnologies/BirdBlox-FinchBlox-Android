@@ -294,7 +294,7 @@ public class MainWebView extends AppCompatActivity {
 
         webView.setWebViewClient(new WebViewClient() {
             public void onPageFinished(WebView view, String url) {
-                runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(Locale.getDefault().getLanguage().toUpperCase()) + "');");
+                runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(Locale.getDefault().getLanguage()) + "');");
                 if (getIntent().getData() != null) {
                     runJavascript("CallbackManager.tablet.setFile('" + bbxEncode(getIntent().getData().toString()) + "');");
                 }
