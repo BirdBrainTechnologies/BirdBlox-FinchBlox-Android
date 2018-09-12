@@ -11,6 +11,7 @@ import android.text.InputType;
 import android.util.Log;
 import android.widget.EditText;
 
+import com.birdbraintechnologies.birdblox.R;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.HostDeviceHandler;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
@@ -30,7 +31,7 @@ public class BirdBloxDialog extends DialogFragment {
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         // TODO: Extract strings
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity(), R.style.AlertDialogCustom);
         DialogType type = DialogType.fromString(getArguments().getString("type"));
         String title = getArguments().getString("title");
         String msg = getArguments().getString("message");
@@ -41,6 +42,8 @@ public class BirdBloxDialog extends DialogFragment {
             // Build input dialog
             String hint = getArguments().getString("hint");
             String defaultText = getArguments().getString("default");
+            String okText = getArguments().getString("okText");
+            String cancelText = getArguments().getString("cancelText");
             boolean select = getArguments().getBoolean("select");
             final EditText input = new EditText(getActivity());
             input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_NORMAL);
@@ -50,7 +53,12 @@ public class BirdBloxDialog extends DialogFragment {
             if (select) input.setSelectAllOnFocus(true);
             lastOpened = DialogType.INPUT;
             builder.setView(input)
-                    .setPositiveButton("Done", new DialogInterface.OnClickListener() {
+                    .setNegativeButton(cancelText, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            runJavascript("CallbackManager.dialog.promptResponded(true)");
+                        }
+                    }).setPositiveButton(okText, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             sendResponseBroadcast("'" + input.getText().toString() + "'");

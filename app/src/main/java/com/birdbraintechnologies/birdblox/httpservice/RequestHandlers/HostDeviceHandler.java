@@ -165,7 +165,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                 String placeholder = (m.get("placeholder") == null ? "" : m.get("placeholder").get(0));
                 String prefill = (m.get("prefill") == null ? "" : m.get("prefill").get(0));
                 String selectAll = (m.get("selectAll") == null ? "" : m.get("selectAll").get(0));
-                showDialog(title, question, placeholder, prefill, selectAll);
+                String okText = (m.get("okText") == null ? "" : m.get("okText").get(0));
+                String cancelText = (m.get("cancelText") == null ? "" : m.get("cancelText").get(0));
+                showDialog(title, question, placeholder, prefill, selectAll, okText, cancelText);
                 break;
             case "choice":
                 showChoice(m.get("title").get(0), m.get("question").get(0), m.get("button1").get(0), m.get("button2").get(0));
@@ -327,7 +329,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @param selectAll   If this is 'true' (or any variation of the word 'true'),
      *                    the default text in the input box should be pre-selected.
      */
-    private void showDialog(String title, String question, String hint, String defaultText, String selectAll) {
+    private void showDialog(String title, String question, String hint, String defaultText,
+                            String selectAll, String okText, String cancelText) {
         dialogResponse = null;
         // Send broadcast to MainWebView
         Intent showDialog = new Intent(MainWebView.SHOW_DIALOG);
@@ -337,6 +340,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         showDialog.putExtra("hint", hint);
         showDialog.putExtra("default", defaultText);
         showDialog.putExtra("select", selectAll.toLowerCase().equals("true"));
+        showDialog.putExtra("okText", okText);
+        showDialog.putExtra("cancelText", cancelText);
         LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
     }
 
