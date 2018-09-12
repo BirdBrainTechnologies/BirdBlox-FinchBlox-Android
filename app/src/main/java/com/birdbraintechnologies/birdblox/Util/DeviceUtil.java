@@ -195,4 +195,17 @@ public class DeviceUtil {
         }
         return prev;
     }
+
+    /**
+     * Converts raw readings from bytes (always signed), into String representation
+     * of an unsigned, scaled value
+     *
+     * @param raw Reading from sensor
+     * @return Sensor value represented as a String [0,255]
+     */
+    public static String RawToPad(byte raw){
+        int val = raw & 0xFF;
+        val = val * 100 / 255;
+        return Integer.toString(val);
+    }
 }

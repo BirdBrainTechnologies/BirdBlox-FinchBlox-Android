@@ -408,17 +408,16 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                     //if not, set to read mode, wait for readings to start, and then read a new value.
                     if (setReadMode(padNum)){
                         SystemClock.sleep(200);
-                        int val;
+                        byte raw;
                         synchronized (rawSensorValuesLock) {
-                            val = rawSensorValues[padNum] & 0xFF;
+                            raw = rawSensorValues[padNum];
                         }
-                        return Integer.toString(val);
+                        return DeviceUtil.RawToPad(raw);
                     } else {
                         return "";
                     }
                 } else {
-                    int val = rawPadValue[padNum] & 0xFF;
-                    return Integer.toString(val);
+                    return DeviceUtil.RawToPad(rawPadValue[padNum]);
                 }
             default:
                 return "";
