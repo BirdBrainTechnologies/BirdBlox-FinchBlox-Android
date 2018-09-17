@@ -205,7 +205,7 @@ public class DeviceUtil {
      */
     public static String RawToPad(byte raw){
         int val = raw & 0xFF;
-        val = val * 100 / 255;
+        val = val * 114 / 255;
         return Integer.toString(val);
     }
 }
