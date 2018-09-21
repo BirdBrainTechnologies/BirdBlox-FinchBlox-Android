@@ -1,6 +1,7 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
 import android.os.HandlerThread;
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
@@ -24,7 +25,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 
-import static android.content.ContentValues.TAG;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
@@ -37,6 +37,8 @@ import static io.reactivex.android.schedulers.AndroidSchedulers.from;
  * @author Zhendong Yuan (yzd1998111)
  */
 public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDataListener {
+
+    private final String TAG = this.getClass().getName();
     /*
      * Command prefixes for the Hummingbit according to spec
      */
@@ -87,6 +89,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private boolean ATTEMPTED = false;
     private boolean DISCONNECTED = false;
     private String last_battery_status;
+    private boolean isCalibratingCompass = false;
 
     private AtomicBoolean FORCESEND = new AtomicBoolean(false);
     private AtomicBoolean CALIBRATE = new AtomicBoolean(false);
@@ -231,6 +234,8 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 if (last_successfully_sent != null)
                     last_successfully_sent.set(currentTime);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                SystemClock.sleep(200);
+                isCalibratingCompass = true;
             } else {
                 // Sending Non-CF command failed
             }
@@ -594,6 +599,21 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             if (!curBatteryStatus.equals(last_battery_status)) {
                 last_battery_status = curBatteryStatus;
                 runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(curBatteryStatus) + "');");
+            }
+            if (isCalibratingCompass) {
+                boolean success = ((newData[7] >> 2) & 0x1) == 0x1;
+                boolean failure = ((newData[7] >> 3) & 0x1) == 0x1;
+                if (success){
+                    Log.v(TAG, "Calibration success!");
+                    isCalibratingCompass = false;
+                    runJavascript("CallbackManager.robot.compassCalibrationResult('" + getMacAddress() + "', 'true');");
+                } else if (failure){
+                    Log.v(TAG, "Calibration failure");
+                    isCalibratingCompass = false;
+                    runJavascript("CallbackManager.robot.compassCalibrationResult('" + getMacAddress() + "', 'false');");
+                } else {
+                    Log.v(TAG, "Calibration unknown");
+                }
             }
         }
     }

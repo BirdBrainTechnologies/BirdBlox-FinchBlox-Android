@@ -27,7 +27,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 
-import static android.content.ContentValues.TAG;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
@@ -87,6 +86,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
 
     private boolean ATTEMPTED = false;
     private boolean DISCONNECTED = false;
+    private boolean isCalibratingCompass = false;
 
     private AtomicBoolean FORCESEND = new AtomicBoolean(false);
     private AtomicBoolean CALIBRATE = new AtomicBoolean(false);
@@ -234,6 +234,8 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 if (last_successfully_sent != null)
                     last_successfully_sent.set(currentTime);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                SystemClock.sleep(200);
+                isCalibratingCompass = true;
             } else {
                 // Sending Non-CF command failed
             }
@@ -624,6 +626,21 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
     public void onRXData(byte[] newData) {
         synchronized (rawSensorValuesLock) {
             this.rawSensorValues = newData;
+            if (isCalibratingCompass) {
+                boolean success = ((newData[7] >> 2) & 0x1) == 0x1;
+                boolean failure = ((newData[7] >> 3) & 0x1) == 0x1;
+                if (success){
+                    Log.v(TAG, "Calibration success!");
+                    isCalibratingCompass = false;
+                    runJavascript("CallbackManager.robot.compassCalibrationResult('" + getMacAddress() + "', 'true');");
+                } else if (failure){
+                    Log.v(TAG, "Calibration failure");
+                    isCalibratingCompass = false;
+                    runJavascript("CallbackManager.robot.compassCalibrationResult('" + getMacAddress() + "', 'false');");
+                } else {
+                    Log.v(TAG, "Calibration unknown");
+                }
+            }
         }
     }
 
