@@ -22,9 +22,6 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.Display;
-import android.view.Surface;
-import android.view.WindowManager;
 import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Dialogs.DialogType;
@@ -41,6 +38,7 @@ import fi.iki.elonen.NanoHTTPD;
 import static android.content.Context.SENSOR_SERVICE;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
+import static java.lang.Math.abs;
 
 /**
  * Handler for getting sensor data from the host device and showing Dialogs
@@ -48,7 +46,8 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
  * @author Terence Sun (tsun1215)
  */
 public class HostDeviceHandler implements RequestHandler, LocationListener, SensorEventListener {
-    private static final String TAG = HostDeviceHandler.class.getName();
+    
+    private final String TAG = this.getClass().getName();
 
     /* Constants for location */
     private static final int LOCATION_UPDATE_MILLIS = 100;
@@ -405,23 +404,30 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @return String representing the orientation of the device
      */
     private String getDeviceOrientation() {
-        // TODO: Make this behavior identical to iPad
-        Display display = ((WindowManager) service
-                .getSystemService(Context.WINDOW_SERVICE))
-                .getDefaultDisplay();
-        int rotation = display.getRotation();
-        switch (rotation) {
-            case Surface.ROTATION_0:
-                return "Portrait: camera on top";
-            case Surface.ROTATION_90:
-                return "Landscape: camera on left";
-            case Surface.ROTATION_180:
-                return "Portrait: camera on bottom";
-            case Surface.ROTATION_270:
-                return "Landscape: camera on right";
-            default:
-                return "In Between";
+        PackageManager packageManager = service.getPackageManager();
+        boolean accelerometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_ACCELEROMETER);
+        String orientation = "other";
+        if (accelerometer) {
+            if(abs(-deviceAccelX/9.81 + 1) < 0.1){
+                //Landscape: camera on left
+                orientation = "landscape_left";
+            } else if(abs(-deviceAccelX/9.81 - 1) < 0.15){
+                //Landscape: camera on right
+                orientation = "landscape_right";
+            } else if(abs(-deviceAccelY/9.81 + 1) < 0.15){
+                //Portrait: camera on top
+                orientation = "portrait_top";
+            } else if(abs(-deviceAccelY/9.81 - 1) < 0.15){
+                //Portrait: camera on bottom
+                orientation = "portrait_bottom";
+            } else if(abs(-deviceAccelZ/9.81 + 1) < 0.15){
+                orientation = "faceup";
+            } else if(abs(-deviceAccelZ/9.81 - 1) < 0.15){
+                orientation = "facedown";
+            }
+            Log.v(TAG, (-deviceAccelX) + " " + (-deviceAccelY) + " " + (-deviceAccelZ));
         }
+        return orientation;
     }
 
     /**
@@ -469,7 +475,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             // See if this movement was enough to be a shake
             if ((now - lastSampleTime) > SAMPLE_THRESHOLD) {
                 long diff = now - lastSampleTime;
-                float speed = Math.abs(event.values[0] + event.values[1] + event.values[2] - lastAccelX - lastAccelY - lastAccelZ) / diff * 10000;
+                float speed = abs(event.values[0] + event.values[1] + event.values[2] - lastAccelX - lastAccelY - lastAccelZ) / diff * 10000;
                 if (speed > FORCE_THRESHOLD) {
                     if ((++shakeCount >= SHAKE_COUNT) && (now - lastShake > SHAKE_DURATION)) {
                         lastShake = now;
