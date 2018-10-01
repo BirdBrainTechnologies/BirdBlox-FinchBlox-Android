@@ -330,8 +330,12 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return setRbSOOutput(oldState.getTriLED(port), newState.getTriLED(port), Integer.parseInt(args.get("red").get(0)),
                         Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));
             case "buzzer":
-                if (Integer.parseInt(args.get("duration").get(0)) != 0 && Integer.parseInt(args.get("note").get(0)) != 0) {
-                    return setRbSOOutput(oldState.getHBBuzzer(port), newState.getHBBuzzer(port), Integer.parseInt(args.get("note").get(0)), Integer.parseInt(args.get("duration").get(0)));
+                int duration = Integer.parseInt(args.get("duration").get(0));
+                int note = Integer.parseInt(args.get("note").get(0));
+                if (duration != 0 && note != 0) {
+                    return setRbSOOutput(oldState.getHBBuzzer(port), newState.getHBBuzzer(port), note, duration);
+                } else {
+                    return true;
                 }
             case "ledArray":
                 String charactersInInts = args.get("ledArrayStatus").get(0);
@@ -353,6 +357,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     charsInInts[charsInInts.length - 1] = FLASH;
                     return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), charsInInts);
                 }
+                break;
             case "compassCalibrate":
                 CALIBRATE.set(true);
                 return true;

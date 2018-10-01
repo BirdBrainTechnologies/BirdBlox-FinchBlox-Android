@@ -46,7 +46,7 @@ import static java.lang.Math.abs;
  * @author Terence Sun (tsun1215)
  */
 public class HostDeviceHandler implements RequestHandler, LocationListener, SensorEventListener {
-    
+
     private final String TAG = this.getClass().getName();
 
     /* Constants for location */

@@ -333,6 +333,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                     charsInInts[charsInInts.length - 1] = FLASH;
                     return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), charsInInts);
                 }
+                break;
             case "compassCalibrate":
                 CALIBRATE.set(true);
                 return true;
@@ -340,8 +341,12 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 port = Integer.parseInt(args.get("port").get(0));
                 return setRbSOOutput(oldState.getPad(port), newState.getPad(port), Integer.parseInt(args.get("percent").get(0)));
             case "buzzer":
-                if (Integer.parseInt(args.get("duration").get(0)) != 0 && Integer.parseInt(args.get("note").get(0)) != 0) {
-                    return setRbSOOutput(oldState.getHBBuzzer(), newState.getHBBuzzer(), Integer.parseInt(args.get("note").get(0)), Integer.parseInt(args.get("duration").get(0)));
+                int duration = Integer.parseInt(args.get("duration").get(0));
+                int note = Integer.parseInt(args.get("note").get(0));
+                if (duration != 0 && note != 0) {
+                    return setRbSOOutput(oldState.getHBBuzzer(), newState.getHBBuzzer(), note, duration);
+                } else {
+                    return true;
                 }
         }
 
