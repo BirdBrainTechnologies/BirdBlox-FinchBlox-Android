@@ -324,6 +324,17 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             case "printBlock":
                 FORCESEND.set(true);
                 String printString = args.get("printString").get(0);
+                char[] chars = printString.toCharArray();
+                int [] ints = new int[chars.length + 1];
+                for (int i = 0; i < chars.length; i++){
+                    ints[i] = (int)chars[i];
+                    if (ints[i] > 255) {
+                        ints[i] = 254;
+                    }
+                }
+                ints[ints.length-1] = FLASH;
+                return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), ints);
+                /*
                 if (printString.matches("\\A\\p{ASCII}*\\z")) {
                     byte[] tmpAscii = printString.getBytes(StandardCharsets.US_ASCII);
                     int[] charsInInts = new int[tmpAscii.length + 1];
@@ -332,8 +343,9 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                     }
                     charsInInts[charsInInts.length - 1] = FLASH;
                     return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), charsInInts);
-                }
-                break;
+                } else {
+                    return true;
+                }*/
             case "compassCalibrate":
                 CALIBRATE.set(true);
                 return true;

@@ -294,7 +294,10 @@ public class MainWebView extends AppCompatActivity {
 
         webView.setWebViewClient(new WebViewClient() {
             public void onPageFinished(WebView view, String url) {
-                runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(Locale.getDefault().getLanguage()) + "');");
+                String defaultLang = Locale.getDefault().toString();
+                Log.d(TAG, "setting language to " + defaultLang);
+                //runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(Locale.getDefault().getLanguage()) + "');");
+                runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(defaultLang) + "');");
                 if (getIntent().getData() != null) {
                     runJavascript("CallbackManager.tablet.setFile('" + bbxEncode(getIntent().getData().toString()) + "');");
                 }
