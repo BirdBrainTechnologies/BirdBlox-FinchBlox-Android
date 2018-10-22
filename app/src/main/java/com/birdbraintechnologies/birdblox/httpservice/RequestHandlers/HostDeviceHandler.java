@@ -194,6 +194,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @return Longitude and latitude separated by a space
      */
     private NanoHTTPD.Response getDeviceLocation() {
+        /*
         if (ActivityCompat.checkSelfPermission(service,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Intent showDialog = new Intent(MainWebView.LOCATION_PERMISSION);
@@ -230,11 +231,14 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                     }
                 });
                 return NanoHTTPD.newFixedLengthResponse(
-                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(longitude) + " " + Double.toString(latitude));
+                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(latitude) + " " + Double.toString(longitude));
             }
         }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
+                */
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(latitude) + " " + Double.toString(longitude));
     }
 
 
@@ -244,6 +248,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @return Altitute of device from gps
      */
     private NanoHTTPD.Response getDeviceAltitude() {
+        /*
         PackageManager packageManager = service.getPackageManager();
         boolean gps = packageManager.hasSystemFeature(PackageManager.FEATURE_LOCATION);
         if (gps) {
@@ -252,7 +257,10 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         } else {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
-        }
+        }*/
+        Log.d(TAG, "altitude is " + altitude);
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(altitude));
     }
 
     /**
@@ -276,6 +284,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @return Atmospheric pressure (mPa or mbar, depending on device)
      */
     private NanoHTTPD.Response getPressure() {
+        /*
         PackageManager packageManager = service.getPackageManager();
         boolean barometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_BAROMETER);
         if (barometer) {
@@ -284,7 +293,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         } else {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Barometer not detected");
-        }
+        }*/
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(pressure));
     }
 
     /**
@@ -293,6 +304,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @return Each axis' acceleration separated by spaces
      */
     private NanoHTTPD.Response getDeviceAcceleration() {
+        /*
         PackageManager packageManager = service.getPackageManager();
         boolean accelerometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_ACCELEROMETER);
         if (accelerometer) {
@@ -301,7 +313,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         } else {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Accelerometer not detected");
-        }
+        }*/
+        return NanoHTTPD.newFixedLengthResponse(
+                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, (-deviceAccelX) + " " + (-deviceAccelY) + " " + (-deviceAccelZ));
     }
 
     /**
