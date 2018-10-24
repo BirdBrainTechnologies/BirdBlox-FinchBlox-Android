@@ -608,7 +608,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             double batteryVoltage = (newData[3] & 0xFF) * 0.0406;
             if (batteryVoltage > 4.75) {
                 curBatteryStatus = "2";
-            } else if (batteryVoltage > 4.63) {
+            } else if (batteryVoltage > 4.4) {
                 curBatteryStatus = "1";
             } else {
                 curBatteryStatus = "0";
