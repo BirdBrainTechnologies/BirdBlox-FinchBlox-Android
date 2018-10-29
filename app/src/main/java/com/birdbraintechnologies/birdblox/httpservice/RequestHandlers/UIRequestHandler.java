@@ -38,6 +38,11 @@ public class UIRequestHandler implements RequestHandler {
         String[] path = args.get(0).split("/");
         switch (path[0]) {
             case "contentLoaded":
+
+                String defaultFile = filesPrefs.getString(CURRENT_PREFS_KEY, "");
+                Log.d(TAG, "default filename " + defaultFile);
+                runJavascript("CallbackManager.setFilePreference('" + defaultFile + "');");
+
 //                return loadContent();
                 break;
         }
