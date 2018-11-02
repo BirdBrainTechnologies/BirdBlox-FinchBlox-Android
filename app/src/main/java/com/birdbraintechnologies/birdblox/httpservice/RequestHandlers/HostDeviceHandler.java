@@ -420,7 +420,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private String getDeviceOrientation() {
         PackageManager packageManager = service.getPackageManager();
         boolean accelerometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_ACCELEROMETER);
-        String orientation = "other";
+        String orientation = "Other";
         if (accelerometer) {
             if(abs(-deviceAccelX/9.81 + 1) < 0.1){
                 //Landscape: camera on left
