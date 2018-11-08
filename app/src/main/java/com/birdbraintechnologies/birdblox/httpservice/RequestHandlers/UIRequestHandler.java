@@ -17,6 +17,7 @@ import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.HttpService.TAG;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.CURRENT_PREFS_KEY;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.LAST_PROJECT_KEY;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.filesPrefs;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.getBirdbloxDir;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
@@ -39,9 +40,15 @@ public class UIRequestHandler implements RequestHandler {
         switch (path[0]) {
             case "contentLoaded":
 
-                String defaultFile = filesPrefs.getString(CURRENT_PREFS_KEY, "");
-                Log.d(TAG, "default filename " + defaultFile);
-                runJavascript("CallbackManager.setFilePreference('" + defaultFile + "');");
+                String currentFile = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+                String lastFile = filesPrefs.getString(LAST_PROJECT_KEY, null);
+                if (currentFile != null) {
+                    Log.d(TAG, "default filename " + currentFile);
+                    runJavascript("CallbackManager.setFilePreference('" + currentFile + "');");
+                } else if (lastFile != null) {
+                    Log.d(TAG, "last filename " + lastFile);
+                    runJavascript("CallbackManager.setFilePreference('" + lastFile + "');");
+                }
 
 //                return loadContent();
                 break;
