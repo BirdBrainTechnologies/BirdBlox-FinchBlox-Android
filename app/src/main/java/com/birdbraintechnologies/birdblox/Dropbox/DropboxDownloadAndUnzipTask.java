@@ -73,6 +73,7 @@ public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Integer, Stri
                 progressBar.setVisibility(View.VISIBLE);
                 progressBar.setProgress(0);
                 cancelButton = (Button) dialogView.findViewById(R.id.determinate_btn);
+                cancelButton.setText(MainWebView.cancel_text);
                 cancelButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {

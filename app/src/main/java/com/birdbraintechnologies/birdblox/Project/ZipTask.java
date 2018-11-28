@@ -9,6 +9,7 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.birdbraintechnologies.birdblox.MainWebView;
 import com.birdbraintechnologies.birdblox.R;
 import com.birdbraintechnologies.birdblox.Util.ZipUtility;
 
@@ -50,6 +51,7 @@ public class ZipTask extends AsyncTask<File, Long, String> {
                 progressBar = (ProgressBar) dialogView.findViewById(R.id.indeterminate_pb);
                 progressBar.setVisibility(View.VISIBLE);
                 cancelButton = (Button) dialogView.findViewById(R.id.indeterminate_btn);
+                cancelButton.setText(MainWebView.cancel_text);
                 cancelButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
@@ -58,7 +60,8 @@ public class ZipTask extends AsyncTask<File, Long, String> {
                     }
                 });
                 showText = (TextView) dialogView.findViewById(R.id.indeterminate_tv);
-                showText.setText("Processing...");
+                //showText.setText("Processing...");
+                showText.setText("...");
                 zipDialog = builder.create();
                 zipDialog.show();
             }

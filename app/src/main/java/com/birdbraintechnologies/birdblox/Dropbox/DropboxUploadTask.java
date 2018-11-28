@@ -70,6 +70,7 @@ class DropboxUploadTask extends AsyncTask<String, Long, String> {
                 progressBar = (ProgressBar) dialogView.findViewById(R.id.indeterminate_pb);
                 progressBar.setVisibility(View.VISIBLE);
                 cancelButton = (Button) dialogView.findViewById(R.id.indeterminate_btn);
+                cancelButton.setText(MainWebView.cancel_text);
                 cancelButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
