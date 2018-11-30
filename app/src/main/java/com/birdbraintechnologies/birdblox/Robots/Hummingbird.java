@@ -203,9 +203,11 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                     Log.e(TAG, "Error getting HB sensor values: " + e.getMessage());
                 }
                 if (!hasMinFirmware()) {
+                    Log.d(TAG, "HB disconnecting incompatible...");
                     g4.set(true);
                     runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getFirmwareVersion()) + "', '" + bbxEncode(getMinFirmwareVersion()) + "')");
                     disconnect();
+                    Log.d(TAG, "HB disconnected incompatible.");
                 } else if (!hasLatestFirmware()) {
                     runJavascript("CallbackManager.robot.updateFirmwareStatus('" + bbxEncode(getMacAddress()) + "', 'old')");
                 }
@@ -312,6 +314,8 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
             case "temperature":
                 return Double.toString(DeviceUtil.RawToTemp(rawSensorValue));
             case "sound":
+                //The duo sound sensor returns raw values already in the range of 0 to 100.
+                return Byte.toString(rawSensorValue);
             case "light":
             case "sensor":
             default:
