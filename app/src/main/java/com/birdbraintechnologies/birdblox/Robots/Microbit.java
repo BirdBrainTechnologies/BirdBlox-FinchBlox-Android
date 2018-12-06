@@ -535,6 +535,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             }
             if (statesEqual()) {
                 newState.resetAll();
+                newLedArrayState.resetAll();
                 if (lock.isHeldByCurrentThread()) {
                     doneSending.signal();
                     lock.unlock();
