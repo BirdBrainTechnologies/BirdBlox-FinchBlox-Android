@@ -1,30 +1,20 @@
 package com.birdbraintechnologies.birdblox.Dropbox;
 
-import android.app.AlertDialog;
-import android.os.AsyncTask;
-import android.os.Handler;
-import android.util.Log;
-import android.view.View;
-import android.widget.Button;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.widget.Toast;
 
-import com.birdbraintechnologies.birdblox.MainWebView;
+import android.util.Log;
+
 import com.birdbraintechnologies.birdblox.Project.UnzipTask;
-import com.birdbraintechnologies.birdblox.R;
 import com.birdbraintechnologies.birdblox.Util.ProgressOutputStream;
 import com.dropbox.core.DbxDownloader;
-import com.dropbox.core.DbxException;
 import com.dropbox.core.v2.DbxClientV2;
 import com.dropbox.core.v2.files.FileMetadata;
 import com.dropbox.core.v2.files.GetMetadataErrorException;
 
+import org.apache.commons.io.FilenameUtils;
 import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
@@ -32,188 +22,139 @@ import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.DBX_DOWN_DIR;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxAppFolderContents;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.getBirdbloxDir;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.sanitizeName;
+
 
 /**
+ * Subclass of UnzipTask that will first download a file from Dropbox
  * @author Shreyan Bakshi (AppyFizz)
+ * @author krissie
  */
 
-public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Integer, String> {
-    private final String TAG = this.getClass().getName();
+public class DropboxDownloadAndUnzipTask extends UnzipTask {
+    private final String TAG = this.getClass().getSimpleName();
 
     private DbxClientV2 dropboxClient;
-
-    private AlertDialog.Builder builder;
-    private AlertDialog downloadDialog;
-    private ProgressBar progressBar;
-    private Button cancelButton;
-    private TextView showText;
-
     private String localName;
 
     public DropboxDownloadAndUnzipTask(DbxClientV2 dropboxClient) {
         super();
         this.dropboxClient = dropboxClient;
-
-        builder = new AlertDialog.Builder(mainWebViewContext);
+        this.progressIsDeterminate = true;
     }
 
-    @Override
-    protected void onPreExecute() {
-        super.onPreExecute();
-        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                builder.setCancelable(false);
-                downloadDialog = builder.create();
-                final View dialogView = downloadDialog.getLayoutInflater().inflate(R.layout.progress_determinate, null);
-                builder.setView(dialogView);
-                progressBar = (ProgressBar) dialogView.findViewById(R.id.determinate_pb);
-                progressBar.setMax(100);
-                progressBar.setVisibility(View.VISIBLE);
-                progressBar.setProgress(0);
-                cancelButton = (Button) dialogView.findViewById(R.id.determinate_btn);
-                cancelButton.setText(MainWebView.cancel_text);
-                cancelButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        DropboxDownloadAndUnzipTask.this.cancel(true);
-                        downloadDialog.cancel();
-                    }
-                });
-                showText = (TextView) dialogView.findViewById(R.id.determinate_tv);
-                //showText.setText("Downloading...");
-                showText.setText(MainWebView.loading_text);
-                downloadDialog = builder.create();
-                downloadDialog.show();
-            }
-        });
-    }
 
+    /**
+     * The work of the task. In this case, we must first download the file from Dropbox before it
+     * can be unzipped.
+     * @param files - array of files. Should be 2: file to download and unzip, and download destination.
+     * @return - The String filename if operation is successful, null otherwise.
+     */
     @Override
-    protected String doInBackground(String... names) {
+    protected String doInBackground(File... files) {
         /**
          * Implemented own {@link ProgressOutputStream}, since Dropbox API V2 has no built-in download progress.
          */
+        File dbxDown; //Local destination for the DropBox download
+        File dbxName; //DropBox filename
+
+        if (files[0] == null || files[1] == null){
+            Log.e(TAG, "Error: files not specified correctly.");
+            return null;
+        } else {
+            dbxName = files[0];
+            dbxDown = files[1];
+            localName = FilenameUtils.getBaseName(files[1].getName());
+        }
+
+        Log.d(TAG, "doInBackground " + dbxName + " " + dbxDown + " " + localName);
         try {
-            if (names[0] != null && names[1] != null) {
-                final String dbxName = names[0];
-                localName = sanitizeName(names[1]);
-                File dbxDownDir = new File(mainWebViewContext.getFilesDir(), DBX_DOWN_DIR);
-                if (!dbxDownDir.exists()) dbxDownDir.mkdirs();
-                File dbxDown = new File(dbxDownDir, localName + ".bbx");
-                try {
-                    dropboxClient.files().getMetadata("/" + dbxName + ".bbx");
-                } catch (GetMetadataErrorException e) {
-                    if (e.errorValue.isPath() && e.errorValue.getPathValue().isNotFound()) {
-                        Log.e(TAG, "Download: File " + dbxName + " not found.");
-                        downloadDialog.cancel();
-                        Toast.makeText(mainWebViewContext, "Sorry! The file \"" + dbxName + "\" could not be found on Dropbox.", Toast.LENGTH_SHORT).show();
-                        JSONObject obj = dropboxAppFolderContents();
-                        if (obj != null)
-                            runJavascript("CallbackManager.cloud.filesChanged('" + bbxEncode(obj.toString()) + "')");
-                    } else {
-                        throw e;
-                    }
+
+            //Start by retrieving metadata. If this cannot be done, the task should be cancelled.
+            try {
+                dropboxClient.files().getMetadata("/" + dbxName.getPath());
+            } catch (GetMetadataErrorException e) {
+                if (e.errorValue.isPath() && e.errorValue.getPathValue().isNotFound()) {
+                    Log.e(TAG, "Download: File " + dbxName + " not found.");
+                    JSONObject obj = dropboxAppFolderContents();
+                    if (obj != null)
+                        runJavascript("CallbackManager.cloud.filesChanged('" + bbxEncode(obj.toString()) + "')");
                 }
-                if (!dbxDown.exists()) {
-                    dbxDown.getParentFile().mkdirs();
-                    dbxDown.createNewFile();
-                }
-                FileOutputStream fout = new FileOutputStream(dbxDown);
-                FileMetadata downloadData = null;
-                try {
-                    DbxDownloader<FileMetadata> dbxDownloader = dropboxClient.files().download("/" + dbxName + ".bbx");
-                    long size = dbxDownloader.getResult().getSize();
-                    downloadData = dbxDownloader.download(new ProgressOutputStream(size, fout, new ProgressOutputStream.Listener() {
-                        @Override
-                        public void progress(long completed, long totalSize) {
-                            if (isCancelled()) return;
-                            publishProgress((int) ((completed / (double) totalSize) * 100));
-                        }
-                    }));
-                    return localName;
-                } finally {
-                    fout.close();
-                    if (downloadData != null)
-                        Log.d(TAG, "MetadataDownload: " + downloadData);
+                Log.e(TAG, "Metadata error: " + e.getMessage());
+                this.cancel(true);
+            }
+
+            //Make the destination folder if it doesn't exist
+            if (!dbxDown.exists()) {
+                boolean dirMade = dbxDown.getParentFile().mkdirs();
+                boolean fileCreated = dbxDown.createNewFile();
+                if (!dirMade || !fileCreated) {
+                    Log.v(TAG, "while creating download file " + dirMade + " " + fileCreated);
                 }
             }
-        } catch (DbxException | IOException | SecurityException | IllegalStateException | ArrayIndexOutOfBoundsException e) {
+
+            //Download the file from Dropbox to the destination folder
+            FileOutputStream fout = new FileOutputStream(dbxDown);
+            FileMetadata downloadData = null;
+            try {
+                Log.d(TAG, "About to download " + dbxName);
+                DbxDownloader<FileMetadata> dbxDownloader = dropboxClient.files().download("/" + dbxName);
+                long size = dbxDownloader.getResult().getSize();
+                downloadData = dbxDownloader.download(new ProgressOutputStream(size, fout, new ProgressOutputStream.Listener() {
+                    @Override
+                    public void progress(long completed, long totalSize) {
+                        if (isCancelled()) return;
+                        publishProgress(((completed / totalSize) * 100));
+                    }
+                }));
+            } finally {
+                fout.close();
+                if (downloadData != null)
+                    Log.d(TAG, "MetadataDownload: " + downloadData);
+            }
+        } catch (Exception e) {
             Log.e(TAG, "Unable to download file: " + e.getMessage());
-            downloadDialog.cancel();
+            this.cancel(true);
         }
-        return null;
-    }
 
-    @Override
-    protected void onProgressUpdate(Integer... progress) {
-        super.onProgressUpdate(progress);
-        // update download progress in the progress bar here ...
-        progressBar.setProgress(progress[0]);
-    }
-
-    @Override
-    protected void onPostExecute(String name) {
+        //If this task has been canceled, do some cleanup. Is this necessary?
         if (isCancelled()) {
             try {
-                if (localName != null)
-                    new File(mainWebViewContext.getFilesDir() + "/" + DBX_DOWN_DIR, localName + ".bbx").delete();
+                if (localName != null) {
+                    //new File(mainWebViewContext.getFilesDir() + "/" + DBX_DOWN_DIR, localName + ".bbx").delete();
+                    dbxDown.delete();
+                    localName = null;
+                }
             } catch (SecurityException | IllegalStateException e) {
                 Log.e(TAG, "Unable to delete file: " + e.getMessage());
-            } finally {
-                try {
-                    downloadDialog.cancel();
-                } catch (IllegalStateException e) {
-                    Log.e(TAG, "Unable to close download dialog: " + e.getMessage());
-                }
             }
-            return;
         }
+
+        //If we have made it this far, unzip the downloaded file
         if (localName != null) {
-            super.onPostExecute(name);
-            try {
-                downloadDialog.cancel();
-                File zip = new File(mainWebViewContext.getFilesDir() + "/" + DBX_DOWN_DIR, localName + ".bbx");
-                File to = new File(getBirdbloxDir(), name);
-                new UnzipTask().execute(zip, to);
-            } catch (SecurityException e) {
-                Log.e(TAG, "Error while unzipping project: " + name);
-            }
+            //File zip = new File(mainWebViewContext.getFilesDir() + "/" + DBX_DOWN_DIR, localName + ".bbx");
+            File to = new File(getBirdbloxDir(), localName);
+            String result = super.doInBackground(dbxDown, to);
         }
+
+        return localName;
     }
 
+    /**
+     * Method for display of progress on the UI. Invoked on the UI thread after a call to
+     * publishProgress(Progress...).
+     * Since we are using a determinate progress bar for the download task, we can
+     * update that bar with progress.
+     * @param progress - Long value of progress
+     */
     @Override
-    protected void onCancelled(String name) {
-        super.onCancelled(name);
-        try {
-            if (localName != null)
-                new File(mainWebViewContext.getFilesDir() + "/" + DBX_DOWN_DIR, localName + ".bbx").delete();
-        } catch (SecurityException | IllegalStateException e) {
-            Log.e(TAG, "Unable to delete file: " + e.getMessage());
-        } finally {
-            try {
-                downloadDialog.cancel();
-            } catch (IllegalStateException e) {
-                Log.e(TAG, "Unable to close download dialog: " + e.getMessage());
-            }
-        }
+    protected void onProgressUpdate(Long... progress) {
+        super.onProgressUpdate(progress);
+        // update download progress in the progress bar here ...
+        //progressBar.setProgress(progress[0]);
+        //progressBar.setProgress(Math.round(progress[0]));
+        unzipDialog.progressBar.setProgress(Math.round(progress[0]));
     }
 
-    @Override
-    protected void onCancelled() {
-        super.onCancelled();
-        try {
-            if (localName != null)
-                new File(mainWebViewContext.getFilesDir() + "/" + DBX_DOWN_DIR, localName + ".bbx").delete();
-        } catch (SecurityException | IllegalStateException e) {
-            Log.e(TAG, "Unable to delete file: " + e.getMessage());
-        } finally {
-            try {
-                downloadDialog.cancel();
-            } catch (IllegalStateException e) {
-                Log.e(TAG, "Unable to close download dialog: " + e.getMessage());
-            }
-        }
-    }
+
+
 }

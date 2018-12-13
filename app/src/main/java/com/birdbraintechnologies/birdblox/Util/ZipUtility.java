@@ -6,11 +6,6 @@ package com.birdbraintechnologies.birdblox.Util;
  * SOURCE: https://stackoverflow.com/questions/20774525/is-it-possible-to-convert-a-folder-into-a-file
  */
 
-import android.Manifest;
-import android.app.Activity;
-import android.content.pm.PackageManager;
-import android.os.Environment;
-import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
 import java.io.BufferedOutputStream;
@@ -30,27 +25,46 @@ import java.util.zip.ZipOutputStream;
 public class ZipUtility {
 
     private static final String TAG = "ZipUtility";
+
+    /**
+     * Zip up a directory
+     * @param directory - The directory to be zipped.
+     * @param zip - The destination file.
+     * @throws IOException
+     */
     public static final void zipDirectory(File directory, File zip) throws IOException {
+        Log.d(TAG, "zip directory " + directory + " to " + zip);
         if (!zip.exists()) {
-            zip.getParentFile().mkdirs();
-            try {
-                zip.createNewFile();
-            } catch (IOException e) {
-                Log.e(TAG, "zipDirectory: " + e.getMessage());
+            if(!zip.getParentFile().exists()){
+                boolean success = zip.getParentFile().mkdirs();
+                if (!success) {
+                    throw new IOException("Unable to make " + zip.getParent());
+                }
+            }
+            boolean success = zip.createNewFile();
+            if (!success) {
+                throw new IOException("Unable to make " + zip);
             }
         }
-        try {
+        //try {
             ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip));
             // Set compression level to uncompressed.
             zos.setLevel(Deflater.NO_COMPRESSION);
             zip(directory, directory, zos);
             zos.close();
-        } catch (IOException e) {
+        /*} catch (IOException e) {
             Log.e(TAG, "zipDirectory: " + e.getMessage());
-        }
+        }*/
 
     }
 
+    /**
+     * Recursive function to zip the contents of a directory
+     * @param directory - to be zipped
+     * @param base - top level directory
+     * @param zos - zip output stream destination
+     * @throws IOException
+     */
     private static final void zip(File directory, File base,
                                   ZipOutputStream zos) throws IOException {
         File[] files = directory.listFiles();
@@ -72,17 +86,28 @@ public class ZipUtility {
         }
     }
 
+    /**
+     * Unzip a zipped directory
+     * @param zip - the zip file to be extracted
+     * @param extractTo - the destination directory
+     * @throws IOException
+     */
     public static final void unzip(File zip, File extractTo) throws IOException {
         ZipFile archive = new ZipFile(zip);
         Enumeration e = archive.entries();
+        Log.d(TAG, "unzip " + zip.getName() + " " + extractTo.getName());
         while (e.hasMoreElements()) {
             ZipEntry entry = (ZipEntry) e.nextElement();
             File file = new File(extractTo, entry.getName());
             if (entry.isDirectory() && !file.exists()) {
-                file.mkdirs();
+                if(!file.mkdirs()){
+                    throw new IOException("Failed to make " + file.getName());
+                }
             } else {
                 if (!file.getParentFile().exists()) {
-                    file.getParentFile().mkdirs();
+                    if(!file.getParentFile().mkdirs()){
+                        throw new IOException("Failed to make parent " + file.getParent());
+                    }
                 }
                 InputStream in = archive.getInputStream(entry);
                 BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file));

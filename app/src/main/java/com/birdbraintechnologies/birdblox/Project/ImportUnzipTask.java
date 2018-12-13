@@ -16,27 +16,24 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Fil
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.filesPrefs;
 
 /**
+ * Class used for importing files from outside of BirdBlox. Used, for example, when opening a file
+ * from email or from within the local file system.
  * @author Shreyan Bakshi (AppyFizz)
+ * @author krissie
  */
 
 public class ImportUnzipTask extends UnzipTask {
-    private final String TAG = this.getClass().getName();
+    private final String TAG = this.getClass().getSimpleName();
 
+    /**
+     * In the this case, we want to open the file immediately upon unzipping.
+     * @param name - String result of the task. Should be the name of the file unzipped.
+     */
     @Override
     protected void onPostExecute(String name) {
-        try {
-            if (zipFile != null) {
-                zipFile.delete();
-                zipFile = null;
-            }
-            if (!new File(to, "program.xml").exists()) {
-                FileUtils.deleteDirectory(to);
-                Toast.makeText(mainWebViewContext, "Could not import file : Invalid file type", Toast.LENGTH_SHORT).show();
-            }
-            progressBar.setVisibility(View.INVISIBLE);
-        } catch (IOException | SecurityException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            Log.e(TAG, "DeleteAfterImport: " + e.getMessage());
-        }
+        Log.d(TAG, "on Post Execute " + name);
+
+        cleanUp();
         if (name != null) {
             try {
                 String contents = FileUtils.readFileToString(new File(to, "program.xml"), "utf-8");
@@ -46,10 +43,7 @@ public class ImportUnzipTask extends UnzipTask {
                 Log.e(TAG, "OpenAfterImport: " + e.getMessage());
             }
         }
-        try {
-            unzipDialog.cancel();
-        } catch (IllegalStateException e) {
-            Log.e(TAG, "Unable to close unzip dialog: " + e.getMessage());
-        }
+        //closeUnzipDialog();
+        unzipDialog.close();
     }
 }

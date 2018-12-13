@@ -61,7 +61,7 @@ public class DropboxRequestHandler implements RequestHandler {
 
     // TODO: Separate UNZIP Directory, and invalid file handling
 
-    private final String TAG = this.getClass().getName();
+    private final String TAG = this.getClass().getSimpleName();
 
     public static final String DBX_DOWN_DIR = "DbxDownload";
     public static final String DBX_ZIP_DIR = "DbxZip";
@@ -621,7 +621,15 @@ public class DropboxRequestHandler implements RequestHandler {
     }
 
     private static void dropboxDownload(final String oldName, final String newName) {
-        new DropboxDownloadAndUnzipTask(dropboxClient).execute(oldName, newName);
+        File file = new File(oldName + ".bbx");
+
+        String localName = sanitizeName(newName);
+        File dbxDownDir = new File(mainWebViewContext.getFilesDir(), DBX_DOWN_DIR);
+        if (!dbxDownDir.exists()) dbxDownDir.mkdirs();
+        File dbxDown = new File(dbxDownDir, localName + ".bbx");
+
+        //new DropboxDownloadAndUnzipTask(dropboxClient).execute(oldName, newName);
+        new DropboxDownloadAndUnzipTask(dropboxClient).execute(file, dbxDown);
     }
 
     private static void dropboxUpload(final String oldName, final String newName, WriteMode uploadMode) {

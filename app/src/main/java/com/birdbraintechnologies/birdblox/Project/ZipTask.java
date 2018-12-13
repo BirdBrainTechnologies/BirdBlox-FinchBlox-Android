@@ -74,7 +74,7 @@ public class ZipTask extends AsyncTask<File, Long, String> {
             if (files[0] != null && files[1] != null) {
                 File directory = files[0];
                 zipFile = files[1];
-                if (isCancelled()) return zipFile.getAbsolutePath();
+                if (isCancelled()) return null;
                 ZipUtility.zipDirectory(directory, zipFile);
                 return zipFile.getAbsolutePath();
             }

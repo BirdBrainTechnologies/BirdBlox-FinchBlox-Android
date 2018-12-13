@@ -13,9 +13,11 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
 
     <uses-feature android:name="android.hardware.location" android:required="false"/>
-    <uses-feature android:name="android.hardware.sensor.accelerometer"/>
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false"/>
     <uses-feature android:name="android.hardware.sensor.barometer" android:required="false"/>
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
     <uses-feature
         android:name="android.hardware.bluetooth_le"
         android:required="false"/>

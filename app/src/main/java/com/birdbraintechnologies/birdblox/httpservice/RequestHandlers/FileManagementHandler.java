@@ -47,7 +47,7 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
  * @author Zhendong Yuan (yzd1998111)
  */
 public class FileManagementHandler implements RequestHandler {
-    private static final String TAG = FileManagementHandler.class.getName();
+    private static final String TAG = FileManagementHandler.class.getSimpleName();
     private static final String BIRDBLOCKS_SAVE_DIR = "Saved";
 
     private static final String FILES_PREFS_KEY = "com.birdbraintechnologies.birdblox.FILE_MANAGEMENT";
@@ -113,12 +113,15 @@ public class FileManagementHandler implements RequestHandler {
      * and an 'ERROR' response otherwise.
      */
     private NanoHTTPD.Response openProject(String name) {
+        Log.d(TAG, "openProject " + name);
         File program = null;
         if (name.startsWith("file:///")) {
             try {
-                program = new File(new URI(name));
+                //program = new File(new URI(name));
+                program = new File(name);
                 name = name.substring(name.lastIndexOf('/') + 1, name.length() - 4);
-            } catch (URISyntaxException e) {
+                //} catch (URISyntaxException e) {
+            } catch (NullPointerException e) {
                 Log.e(TAG, "openProject: " + e.toString());
             }
 
@@ -129,7 +132,7 @@ public class FileManagementHandler implements RequestHandler {
             }
             program = new File(getBirdbloxDir(), name + "/program.xml");
         }
-        if (!program.exists()) {
+        if (program == null || !program.exists()) {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " was not found!");
         }
@@ -326,7 +329,7 @@ public class FileManagementHandler implements RequestHandler {
 
 
     /**
-     * Exports the given project.
+     * Exports the given project. Response to the data/export call from frontend.
      *
      * @param name The name of the project to be exported.
      * @return A 'OK' response if exporting was successful,
@@ -339,7 +342,8 @@ public class FileManagementHandler implements RequestHandler {
         }
         try {
             File dir = new File(getBirdbloxDir(), name);
-            String zipName = name + ".zip";
+            //String zipName = name + ".zip";
+            String zipName = name + ".bbx";
             File zip = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), zipName);
             ZipUtility.zipDirectory(dir, zip);
             if (zip.exists()) {
@@ -400,7 +404,7 @@ public class FileManagementHandler implements RequestHandler {
      * @param session HttpRequest to get the POST body of.
      * @return A 'OK' response if creating new project was successful,
      * and an 'ERROR' response otherwise.
-     */
+     *//*
     private NanoHTTPD.Response newProject(NanoHTTPD.IHTTPSession session) {
         if (session.getMethod() != NanoHTTPD.Method.POST) {
             Log.d(TAG, "New: Save must be done via POST request");
@@ -434,7 +438,7 @@ public class FileManagementHandler implements RequestHandler {
         }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while making new project");
-    }
+    }*/
 
     /**
      * Creates a new project, with the name provided.
@@ -711,11 +715,12 @@ public class FileManagementHandler implements RequestHandler {
         if (!file.exists()) {
             try {
                 file.mkdirs();
+                Log.d(TAG, "Created BirdBlocks save directory: " + file.getPath());
             } catch (SecurityException e) {
                 Log.e("Save Directory", "" + e);
             }
         }
-        Log.d(TAG, "Created BirdBlocks save directory: " + file.getPath());
+        Log.d(TAG, "returning save directory: " + file.getPath());
         return file;
     }
 
