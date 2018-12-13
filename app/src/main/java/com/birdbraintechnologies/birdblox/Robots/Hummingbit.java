@@ -38,7 +38,7 @@ import static io.reactivex.android.schedulers.AndroidSchedulers.from;
  */
 public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDataListener {
 
-    private final String TAG = this.getClass().getName();
+    private final String TAG = this.getClass().getSimpleName();
     /*
      * Command prefixes for the Hummingbit according to spec
      */

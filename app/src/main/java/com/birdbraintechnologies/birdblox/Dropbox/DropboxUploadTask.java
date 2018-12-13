@@ -36,7 +36,7 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Dro
  */
 
 class DropboxUploadTask extends AsyncTask<String, Long, String> {
-    private final String TAG = this.getClass().getName();
+    private final String TAG = this.getClass().getSimpleName();
 
     private DbxClientV2 dropboxClient;
     private WriteMode uploadMode;

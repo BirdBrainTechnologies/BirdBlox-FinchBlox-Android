@@ -47,7 +47,7 @@ import static java.lang.Math.abs;
  */
 public class HostDeviceHandler implements RequestHandler, LocationListener, SensorEventListener {
 
-    private final String TAG = this.getClass().getName();
+    private final String TAG = this.getClass().getSimpleName();
 
     /* Constants for location */
     private static final int LOCATION_UPDATE_MILLIS = 100;

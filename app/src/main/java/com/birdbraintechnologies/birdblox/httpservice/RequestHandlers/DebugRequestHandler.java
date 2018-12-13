@@ -28,7 +28,7 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
  */
 
 public class DebugRequestHandler implements RequestHandler {
-    private final String TAG = this.getClass().getName();
+    private final String TAG = this.getClass().getSimpleName();
 
     private final static String LOG_DIR = "LOG";
 

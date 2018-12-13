@@ -40,7 +40,7 @@ import static io.reactivex.android.schedulers.AndroidSchedulers.from;
  */
 public class Microbit extends Robot<MBState> implements UARTConnection.RXDataListener {
 
-    private final String TAG = this.getClass().getName();
+    private final String TAG = this.getClass().getSimpleName();
     /*
      * Command prefixes for the Microbit according to spec
      */

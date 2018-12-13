@@ -23,7 +23,7 @@ import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
  */
 
 public class ZipTask extends AsyncTask<File, Long, String> {
-    private final String TAG = this.getClass().getName();
+    private final String TAG = this.getClass().getSimpleName();
 
     private AlertDialog.Builder builder;
     private AlertDialog zipDialog;

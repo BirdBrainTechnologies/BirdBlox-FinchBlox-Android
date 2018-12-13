@@ -51,6 +51,8 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
  */
 
 public class RecordingHandler implements RequestHandler {
+    private final String TAG = this.getClass().getSimpleName();
+
     private static final long RECORD_MAX_IN_MILLIS = 300000;
     private static final long RECORD_EXTRA_IN_MILLIS = 500;
 
@@ -133,9 +135,11 @@ public class RecordingHandler implements RequestHandler {
                 Log.e("RecordingHandler", "Recordings' Directory: " + e.getMessage());
             }
         }
-
+        
         // create directory for final recordings
-        currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+        if (filesPrefs != null) {
+            currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+        }
         if (currProj != null) {
             recordedFilesDir = getBirdbloxDir() + "/" + currProj + "/recordings";
             recordDir = new File(recordedFilesDir);

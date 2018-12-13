@@ -10,7 +10,7 @@ import java.util.Arrays;
 
 public class MBState extends RobotState<MBState> {
 
-    private final String TAG = this.getClass().getName();
+    private final String TAG = this.getClass().getSimpleName();
     private Pad[] pads;
     private HBitBuzzer[] hbitbuzzers;
     public boolean[] mode;

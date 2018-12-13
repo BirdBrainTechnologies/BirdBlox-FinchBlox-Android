@@ -9,7 +9,7 @@ import com.dropbox.core.v2.files.WriteMode;
  */
 
 public class DropboxZipAndUploadTask extends ZipTask {
-    String TAG = this.getClass().getName();
+    String TAG = this.getClass().getSimpleName();
 
     private DbxClientV2 dropboxClient;
     private WriteMode uploadMode;

@@ -44,7 +44,7 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
  */
 
 public class RobotRequestHandler implements RequestHandler {
-    private final String TAG = this.getClass().getName();
+    private final String TAG = this.getClass().getSimpleName();
 
     private static final String FIRMWARE_UPDATE_URL = "http://www.hummingbirdkit.com/learning/installing-birdblox#BurnFirmware";
     /* UUIDs for different Hummingbird features */
