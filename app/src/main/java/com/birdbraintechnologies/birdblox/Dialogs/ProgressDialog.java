@@ -96,10 +96,12 @@ public class ProgressDialog {
     }
 
     public void close() {
+        dialog.cancel();
+        /*
         try {
             dialog.cancel();
         } catch (IllegalStateException e) {
-            Log.e(TAG, "Unable to close unzip dialog: " + e.getMessage());
-        }
+            Log.e(TAG, "Unable to close progress dialog: " + e.getMessage());
+        }*/
     }
 }

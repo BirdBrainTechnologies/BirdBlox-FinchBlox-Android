@@ -16,8 +16,8 @@ import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
+import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
-import static com.birdbraintechnologies.birdblox.httpservice.HttpService.TAG;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.CURRENT_PREFS_KEY;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.LAST_PROJECT_KEY;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.filesPrefs;
@@ -29,6 +29,7 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
  */
 
 public class UIRequestHandler implements RequestHandler {
+    private static final String TAG = "UIRequestHandler";
 
     HttpService service;
 

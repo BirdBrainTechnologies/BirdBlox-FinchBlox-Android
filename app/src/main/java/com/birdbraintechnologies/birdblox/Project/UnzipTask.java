@@ -1,17 +1,7 @@
 package com.birdbraintechnologies.birdblox.Project;
 
-import android.app.AlertDialog;
-import android.os.AsyncTask;
-import android.os.Handler;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 
-import com.birdbraintechnologies.birdblox.Dialogs.ProgressDialog;
-import com.birdbraintechnologies.birdblox.MainWebView;
-import com.birdbraintechnologies.birdblox.R;
 import com.birdbraintechnologies.birdblox.Util.ZipUtility;
 
 import org.apache.commons.io.FileUtils;
@@ -21,9 +11,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.zip.ZipException;
 
-import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
-import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
-import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 
 /**
  * Async Task used to unzip .bbx directories. Superclass of ImportUnzipTask which is used to unzip
@@ -33,91 +20,8 @@ import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
  * @author krissie
  */
 
-public class UnzipTask extends AsyncTask<File, Long, String> {
+public abstract class UnzipTask extends FileTask {
     private final String TAG = this.getClass().getSimpleName();
-/*
-    private AlertDialog.Builder builder;
-    AlertDialog unzipDialog;
-    protected ProgressBar progressBar;
-    private Button cancelButton;
-    private TextView showText;*/
-    protected ProgressDialog unzipDialog;
-
-    File zipFile;
-    File to;
-
-    //Is there a way to check the progress of this task?
-    protected boolean progressIsDeterminate = false;
-
-    public UnzipTask() {
-        super();
-        //builder = new AlertDialog.Builder(mainWebViewContext);
-    }
-
-    /**
-     * First step in the task. Used to setup the work. Sets up and shows a progress dialog. On a
-     * kindle fire, the entire unzip task takes less than 200ms, so this dialog is not really ever
-     * shown. Will be shown for longer processes such as downloading from Dropbox.
-     */
-    @Override
-    protected void onPreExecute() {
-        super.onPreExecute();
-        Log.d(TAG, "onPreExecute");
-
-        unzipDialog = new ProgressDialog(this, progressIsDeterminate);
-        unzipDialog.show();
-        /*
-        new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                builder.setCancelable(false);
-                unzipDialog = builder.create();
-
-                //Set the layout to be used. If we will show progress with an updated progress bar,
-                // the process is determinate.
-                int dialogViewLayout;
-                int progressBarView;
-                int cancelBtnView;
-                int showTextView;
-                if (progressIsDeterminate){
-                    dialogViewLayout = R.layout.progress_determinate;
-                    progressBarView = R.id.determinate_pb;
-                    cancelBtnView = R.id.determinate_btn;
-                    showTextView = R.id.determinate_tv;
-                } else {
-                    dialogViewLayout = R.layout.progress_indeterminate;
-                    progressBarView = R.id.indeterminate_pb;
-                    cancelBtnView = R.id.indeterminate_btn;
-                    showTextView = R.id.indeterminate_tv;
-                }
-
-                final View dialogView = unzipDialog.getLayoutInflater().inflate(dialogViewLayout, null);
-                builder.setView(dialogView);
-
-                progressBar = (ProgressBar) dialogView.findViewById(progressBarView);
-                if (progressIsDeterminate) {
-                    progressBar.setMax(100);
-                    progressBar.setProgress(0);
-                }
-                progressBar.setVisibility(View.VISIBLE);
-
-                cancelButton = (Button) dialogView.findViewById(cancelBtnView);
-                cancelButton.setText(MainWebView.cancel_text);
-                cancelButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        UnzipTask.this.cancel(true);
-                        unzipDialog.cancel();
-                    }
-                });
-
-                showText = (TextView) dialogView.findViewById(showTextView);
-                showText.setText(MainWebView.loading_text);
-                unzipDialog = builder.create();
-                unzipDialog.show();
-            }
-        });*/
-    }
 
     /**
      * The work of the task.  Invoked on the background thread immediately after onPreExecute()
@@ -128,19 +32,21 @@ public class UnzipTask extends AsyncTask<File, Long, String> {
     @Override
     protected String doInBackground(File... files) {
         // TODO: Check downloaded file
-        Log.d(TAG, "doInBackground");
-        if (files[0] == null || files[1] == null){
-            Log.e(TAG, "Error: files not specified correctly.");
-            return null;
-        } else {
-            zipFile = files[0];
-            to = files[1];
-        }
+        //In an unzip task, the zipfile has been copied into a temp dir and should be deleted
+        // at the end of the task.
+        shouldDeleteZipFile = true;
+
+        super.doInBackground(files);
+
+        if (isCancelled()) return null;
+        zipFile = from;
+
+        Log.d(TAG, "unzipping from " + from.getAbsolutePath() + " to " + to.getAbsolutePath());
 
         try {
             try {
-                if (isCancelled()) return null;
-                ZipUtility.unzip(zipFile, to);
+                Log.d(TAG, "About to unzip " + from.getName() + " to " + to.getName());
+                ZipUtility.unzip(from, to);
                 return FilenameUtils.getBaseName(to.getName());
             } catch (ZipException e) {
                 // TODO: Legacy Support here
@@ -159,17 +65,6 @@ public class UnzipTask extends AsyncTask<File, Long, String> {
         }
     }
 
-    /**
-     * Method for display of progress on the UI. Invoked on the UI thread after a call to
-     * publishProgress(Progress...).
-     * This method could be implemented if we find a way to quantify the progress of unzipping.
-     * @param values - Long Progress values passed to publishProgress(Progress... )
-     */
-    @Override
-    protected void onProgressUpdate(Long... values) {
-        super.onProgressUpdate(values);
-        // update unzip progress in the progress bar here ...
-    }
 
     /**
      * Final step of the task. Invoked on the UI thread after the background computation finishes.
@@ -179,95 +74,22 @@ public class UnzipTask extends AsyncTask<File, Long, String> {
     @Override
     protected void onPostExecute(String name) {
         Log.d(TAG, "onPostExecute " + name);
+        super.onPostExecute(name);
         cleanUp();
-        if (name != null) {
-            super.onPostExecute(name);
-            runJavascript("CallbackManager.cloud.downloadComplete('" + bbxEncode(name) + "')");
-        }
-        //closeUnzipDialog();
-        unzipDialog.close();
     }
 
     /**
      * Clean up the class and check if the resulting file exists. Called after task completion.
      */
     void cleanUp() {
-        deleteZipFile();
         try {
             if (!new File(to, "program.xml").exists()) {
                 FileUtils.deleteDirectory(to);
                 Log.e(TAG, "Could not download file");
-                //Toast.makeText(mainWebViewContext, "Could not download file : Invalid file type", Toast.LENGTH_SHORT).show();
             }
-            unzipDialog.progressBar.setVisibility(View.INVISIBLE);
         } catch (IOException | SecurityException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             Log.e(TAG, "DeleteAfterUnzip: " + e.getMessage());
         }
     }
 
-    /**
-     * Close the unzip dialog. Called when unzipping is finished or canceled.
-     *//*
-    void closeUnzipDialog(){
-        try {
-            unzipDialog.cancel();
-        } catch (IllegalStateException e) {
-            Log.e(TAG, "Unable to close unzip dialog: " + e.getMessage());
-        }
-    }*/
-
-    /**
-     * Delete the zipped file to prevent zip file clutter
-     */
-    void deleteZipFile() {
-        try {
-            if (zipFile != null) {
-                if (zipFile.delete()){
-                    zipFile = null;
-                } else {
-                    Log.e(TAG, "could not delete zipfile " + zipFile);
-                }
-            }
-        } catch (SecurityException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            Log.e(TAG, "DeleteAfterUnzip: " + e.getMessage());
-        }
-    }
-
-
-    /**
-     * Runs on the UI thread after cancel(boolean) is invoked and doInBackground(Object[]) has
-     * finished. The default method does not use the String result, so calling super.onCancelled(s)
-     * is unnecessary.
-     * @param s - String result
-     */
-    @Override
-    protected void onCancelled(String s) {
-        Log.d(TAG, "onCancelled, result: " + s);
-        super.onCancelled();
-        deleteZipFile();
-        //closeUnzipDialog();
-        unzipDialog.close();
-    }
-
-    /**
-     * This override may not be necessary. This method is only invoked by super.onCancelled(s)
-     *//*
-    @Override
-    protected void onCancelled() {
-        super.onCancelled();
-        try {
-            if (zipFile != null) {
-                zipFile.delete();
-                zipFile = null;
-            }
-        } catch (SecurityException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            Log.e(TAG, "DeleteAfterUnzip: " + e.getMessage());
-        } finally {
-            try {
-                unzipDialog.cancel();
-            } catch (IllegalStateException e) {
-                Log.e(TAG, "Unable to close unzip dialog: " + e.getMessage());
-            }
-        }
-    }*/
 }

@@ -23,7 +23,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 
-import static android.content.ContentValues.TAG;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
@@ -38,6 +37,8 @@ import static io.reactivex.android.schedulers.AndroidSchedulers.from;
  * @author Zhendong Yuan (yzd1998111)
  */
 public class Hummingbird extends Robot<HBState> implements UARTConnection.RXDataListener {
+    private final String TAG = this.getClass().getSimpleName();
+
     /*
      * Command prefixes for the Hummingbird according to spec
      * More info: http://www.hummingbirdkit.com/learning/hummingbird-duo-usb-protocol

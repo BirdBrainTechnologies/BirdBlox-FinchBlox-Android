@@ -89,7 +89,7 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Pro
 
 
 public class MainWebView extends AppCompatActivity {
-    private String TAG = this.getClass().getName();
+    private String TAG = this.getClass().getSimpleName();
 
     /* OLDER LOCATIONS FOR LOADING THE LAYOUT ARE IN THE TWO LINES BELOW */
     private static final String PAGE_URL = "file:///android_asset/frontend/HummingbirdDragAndDrop.html";
@@ -252,6 +252,7 @@ public class MainWebView extends AppCompatActivity {
 //        }
 
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main_web_view);
 
         // Start service
@@ -265,6 +266,8 @@ public class MainWebView extends AppCompatActivity {
                 Log.d("MyApplication", "Message:" + consoleMessage.message() + ", Line:" + consoleMessage.lineNumber());
                 return super.onConsoleMessage(consoleMessage);
             }
+
+
         });
 //        webView.loadUrl("file:///" + lFile.getAbsolutePath());
         webView.loadUrl(PAGE_URL);
@@ -309,7 +312,9 @@ public class MainWebView extends AppCompatActivity {
                 //runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(Locale.getDefault().getLanguage()) + "');");
                 runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(defaultLang) + "');");
                 if (getIntent().getData() != null) {
-                    runJavascript("CallbackManager.tablet.setFile('" + bbxEncode(getIntent().getData().toString()) + "');");
+                    Log.d(TAG, "onCreate intent contained " + getIntent().getData().toString());
+                    importFromIntent(getIntent());
+                    //runJavascript("CallbackManager.tablet.setFile('" + bbxEncode(getIntent().getData().toString()) + "');");
                 }
                 runJavascript(" CallbackManager.tablet.changeDeviceLimit('" + bbxEncode("2") + "');");
 
@@ -345,19 +350,24 @@ public class MainWebView extends AppCompatActivity {
         webView.onResume();
         webView.resumeTimers();
         dropboxAppOAuth();
-        importFromIntent(getIntent());
+        //importFromIntent(getIntent());
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestLocationPermission();
         }
     }
 
+    /**
+     * Called when the app is brought back to the foreground with a new intent. For example,
+     * when opening a file in birdblox from another app. onResume() will be called after.
+     * @param intent The new Intent
+     */
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        setIntent(intent);
-        if (getIntent().getData() != null) {
-            runJavascript("CallbackManager.tablet.runFile('" + bbxEncode(getIntent().getData().toString()) + "');");
-        }
+        setIntent(intent); //Without this, getIntent() will still return the original intent.
+        //if (getIntent().getData() != null) {
+        //    runJavascript("CallbackManager.tablet.runFile('" + bbxEncode(getIntent().getData().toString()) + "');");
+        //}
         mainWebViewContext = MainWebView.this;
         dropboxWebOAuth(intent);
         importFromIntent(intent);
@@ -400,7 +410,14 @@ public class MainWebView extends AppCompatActivity {
         adjustRotationSettings();
     }
 
+    /**
+     * Called from onCreate and onNewIntent. If the user is trying to open a file from outside of
+     * BirdBlox (eg. from email or from the local file system), then the intent will carry that
+     * information. This method will import and open the file if possible.
+     * @param intent - the Intent used to open or resume BirdBlox
+     */
     private void importFromIntent(Intent intent) {
+        Log.d(TAG, "import From Intent " + intent.toString());
         if (intent == null) return;
 
         if (alreadyReceivedIntents.contains(intent)) return;
@@ -409,6 +426,8 @@ public class MainWebView extends AppCompatActivity {
         String type = null;
         Uri data = null;
         if (intent.getAction().equals(Intent.ACTION_SEND)) {
+            //TODO: in what case is this block called?
+            Log.d(TAG, "import from intent action send");
             String extraStream = null;
             if (intent.getExtras() != null && intent.getExtras().get(Intent.EXTRA_STREAM) != null) {
                 extraStream = intent.getExtras().get(Intent.EXTRA_STREAM).toString();
@@ -424,132 +443,34 @@ public class MainWebView extends AppCompatActivity {
             type = intent.getScheme();
             data = intent.getData();
         }
-        if (type != null)
-            Log.d("INTENTTYPE", "Type: " + type);
-        if (data != null)
-            Log.d("INTENTTYPE", "Data: " + data);
+
         if (type != null && data != null) {
-            if (type.equals("content")) {
-                sanitizeAndGetContent(data);
-            } else if (type.equals("file")) {
+            //if (type.equals("content")) {
+            //    sanitizeAndGetContent(data);
+            //} else if (type.equals("file")) {
+            if (type.equals("file")) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    Log.d(TAG, "about to request read external storage permission");
                     lastFileUriData = data;
                     requestReadExternalStoragePermission();
                 }
                 if (FilenameUtils.getExtension(data.toString()).equals("bbx")) {
+                    Log.d(TAG, "about to sanitize and copy file " + data.toString());
                     sanitizeAndCopyFile(data);
+                } else {
+                    Log.e(TAG, "Could not open file " + data.toString());
                 }
+            } else {
+                Log.e(TAG, "importFromIntent: unknown type.");
             }
         }
     }
 
-    /**
-     * Downloads the file at the given URL to the given location
-     *
-     * @param url        The URL of the file to be downloaded
-     * @param outputFile The location where the required file is to be downloaded,
-     *                   passed in as a 'File' object
-     */
-    private static void downloadFile(String url, File outputFile) {
-        try {
-            URL u = new URL(url);
-            URLConnection conn = u.openConnection();
-            int contentLength = conn.getContentLength();
-            DataInputStream stream = new DataInputStream(u.openStream());
-            byte[] buffer = new byte[contentLength];
-            stream.readFully(buffer);
-            stream.close();
-            DataOutputStream fos = new DataOutputStream(new FileOutputStream(outputFile));
-            fos.write(buffer);
-            fos.flush();
-            fos.close();
-            Log.d("Download", "File Downloaded Successfully!!");
-        } catch (IOException e) {
-            Log.e("Download", e.getMessage());
-        }
-    }
 
-    // Create a new thread to perform download and unzip operations for layout
-    Thread unzipAndDownloadThread = new Thread() {
-        @Override
-        public void run() {
-            // 'Parent' Location where downloaded, unzipped files are to be stored
-            // Currently set to our app's 'secret' internal storage location
-            final String parent_dir = getFilesDir().toString();
-            //Check if the locations to download and unzip already exist in the internal storage
-            // If they don't, create them
-            File f = new File(parent_dir + "/" + BIRDBLOX_ZIP_DIR + "/UI.zip");
-            if (!f.exists()) try {
-                if (!f.getParentFile().exists())
-                    f.getParentFile().mkdirs();
-                f.createNewFile();
-            } catch (IOException | SecurityException e) {
-                Log.e("Download", e.getMessage());
-            }
-            File f2 = new File(parent_dir + "/" + BIRDBLOX_UNZIP_DIR);
-            if (!f2.exists()) try {
-                f2.mkdirs();
-            } catch (SecurityException e) {
-                Log.e("Download", e.getMessage());
-            }
-            // Download the layout from github
-            try {
-                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
-//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
-//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/stable.zip", f);
-            } catch (NetworkOnMainThreadException | SecurityException e) {
-                Log.e("Download", "Error occurred while downloading file: " + e.getMessage());
-                return;
-            }
-            // Unzip the downloaded file
-            try {
-                unzip(f, f2);
-            } catch (IOException e) {
-                Log.e("Unzip", "Java I/O Error while unzipping file: " + e.getMessage());
-            }
-        }
-    };
 
-    /**
-     * Unzips the file at the given location, and stores the unzipped file at
-     * the given target directory.
-     *
-     * @param zipFile         The location of the zip file (which is to be unzipped),
-     *                        passed in as a 'File' object
-     * @param targetDirectory The location (target directory) where the required file
-     *                        is to be unzipped to, passed in as a 'File' object.
-     */
-    private static void unzip(File zipFile, File targetDirectory) throws IOException {
-        ZipInputStream zis = new ZipInputStream(
-                new BufferedInputStream(new FileInputStream(zipFile)));
-        try {
-            ZipEntry ze;
-            int count;
-            byte[] buffer = new byte[8192];
-            while ((ze = zis.getNextEntry()) != null) {
-                File file = new File(targetDirectory, ze.getName());
-                File dir = ze.isDirectory() ? file : file.getParentFile();
-                if (!dir.isDirectory() && !dir.mkdirs())
-                    throw new FileNotFoundException("Failed to ensure directory: " +
-                            dir.getAbsolutePath());
-                if (ze.isDirectory())
-                    continue;
-                FileOutputStream fout = new FileOutputStream(file);
-                try {
-                    while ((count = zis.read(buffer)) != -1)
-                        fout.write(buffer, 0, count);
-                } finally {
-                    fout.close();
-                }
-                Log.d("Unzip", "File Unzipped Successfully!!");
-            }
-        } catch (IOException e) {
-            Log.e("Unzip", "Exception thrown while unzipping: " + e.toString());
-        } finally {
-            zis.close();
-        }
-        Log.d("Unzip", "File Unzipped Successfully!");
-    }
+
+
+
 
     /**
      * Creates a copy of the 'file to be imported' in the app's internal (secret) directory,
@@ -559,6 +480,7 @@ public class MainWebView extends AppCompatActivity {
      * @return Returns the new (sanitized) filename
      */
     private synchronized String sanitizeAndCopyFile(Uri data) {
+        Log.d(TAG, "sanitize and copy file " + data.toString());
         try {
             lastFileUriData = null;
             File inputFile = new File(data.getPath());
@@ -583,6 +505,7 @@ public class MainWebView extends AppCompatActivity {
      * @return Returns the new (sanitized) filename
      */
     private synchronized String sanitizeAndGetContent(Uri data) {
+        Log.d(TAG, "sanitize and get content " + data.toString());
         try {
             String name = null;
             InputStream is;
@@ -620,6 +543,7 @@ public class MainWebView extends AppCompatActivity {
 
     /**
      * Checks device screen size, and adjusts rotation settings accordingly
+     * Called during onCreate() and onConfigurationChanged(newConfig)
      */
     private void adjustRotationSettings() {
         // Get the physical dimensions (width, height) of screen, and update  the static
@@ -638,6 +562,11 @@ public class MainWebView extends AppCompatActivity {
         }
     }
 
+
+    /**
+     * Shows the text and choice dialogs requested by the frontend.
+     * @param b
+     */
     private void showDialog(Bundle b) {
         BirdBloxDialog dialog = new BirdBloxDialog();
         dialog.setArguments(b);
@@ -645,6 +574,7 @@ public class MainWebView extends AppCompatActivity {
     }
 
     /**
+     * Shows the sharing dialog when the user wishes to share a file.
      * @param b
      */
     private void showShareDialog(Bundle b) {
@@ -656,14 +586,15 @@ public class MainWebView extends AppCompatActivity {
             sendIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             sendIntent.putExtra(Intent.EXTRA_STREAM, path);
             sendIntent.setType("application/zip");
-            startActivity(Intent.createChooser(sendIntent, "Send email..."));
-
+            //startActivity(Intent.createChooser(sendIntent, "Send email..."));
+            startActivity(Intent.createChooser(sendIntent, null)); //title not necessary
         } catch (Exception e) {
             Log.e("FileProvider", e.getMessage());
         }
     }
 
     /**
+     * Shows a dialog when the user wishes to share log files.
      * @param b
      */
     private void showShareLogDialog(Bundle b) {
@@ -683,6 +614,10 @@ public class MainWebView extends AppCompatActivity {
         }
     }
 
+    /**
+     * Programmatically exit the app. Originally called by the frontend FileMenu, a class which
+     * has since been deprecated.
+     */
     private void exitApp() {
         Log.d("APP", "Exiting");
         this.stopService(getIntent());
@@ -728,6 +663,9 @@ public class MainWebView extends AppCompatActivity {
         return "";
     }
 
+
+
+    //region Request Permission
     private boolean requestLocationPermission() {
         if (ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
@@ -948,6 +886,7 @@ public class MainWebView extends AppCompatActivity {
                 break;
         }
     }
+    //endregion
 
     /**
      * Checks if a given service is already running
@@ -957,7 +896,7 @@ public class MainWebView extends AppCompatActivity {
      * @param serviceClass The class pertaining to the required service
      * @return true if the given service is running, false otherwise
      */
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
+    /*private boolean isMyServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {
@@ -965,6 +904,123 @@ public class MainWebView extends AppCompatActivity {
             }
         }
         return false;
-    }
+    }*/
 
+
+
+    /**
+     * Create a new thread to perform download and unzip operations for the frontend files.
+     * Currently unused.
+     */
+    /*
+    Thread unzipAndDownloadThread = new Thread() {
+        @Override
+        public void run() {
+            // 'Parent' Location where downloaded, unzipped files are to be stored
+            // Currently set to our app's 'secret' internal storage location
+            final String parent_dir = getFilesDir().toString();
+            //Check if the locations to download and unzip already exist in the internal storage
+            // If they don't, create them
+            File f = new File(parent_dir + "/" + BIRDBLOX_ZIP_DIR + "/UI.zip");
+            if (!f.exists()) try {
+                if (!f.getParentFile().exists())
+                    f.getParentFile().mkdirs();
+                f.createNewFile();
+            } catch (IOException | SecurityException e) {
+                Log.e("Download", e.getMessage());
+            }
+            File f2 = new File(parent_dir + "/" + BIRDBLOX_UNZIP_DIR);
+            if (!f2.exists()) try {
+                f2.mkdirs();
+            } catch (SecurityException e) {
+                Log.e("Download", e.getMessage());
+            }
+            // Download the layout from github
+            try {
+                downloadFile("https://github.com/TomWildenhain/HummingbirdDragAndDrop-/archive/dev.zip", f);
+//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/dev.zip", f);
+//                downloadFile("https://github.com/BirdBrainTechnologies/HummingbirdDragAndDrop-/archive/stable.zip", f);
+            } catch (NetworkOnMainThreadException | SecurityException e) {
+                Log.e("Download", "Error occurred while downloading file: " + e.getMessage());
+                return;
+            }
+            // Unzip the downloaded file
+            try {
+                unzip(f, f2);
+            } catch (IOException e) {
+                Log.e("Unzip", "Java I/O Error while unzipping file: " + e.getMessage());
+            }
+        }
+    };*/
+
+    /**
+     * Unzips the file at the given location, and stores the unzipped file at
+     * the given target directory.
+     * Used only in unzipping the frontend files.
+     *
+     * @param zipFile         The location of the zip file (which is to be unzipped),
+     *                        passed in as a 'File' object
+     * @param targetDirectory The location (target directory) where the required file
+     *                        is to be unzipped to, passed in as a 'File' object.
+     */
+    /*
+    private static void unzip(File zipFile, File targetDirectory) throws IOException {
+        ZipInputStream zis = new ZipInputStream(
+                new BufferedInputStream(new FileInputStream(zipFile)));
+        try {
+            ZipEntry ze;
+            int count;
+            byte[] buffer = new byte[8192];
+            while ((ze = zis.getNextEntry()) != null) {
+                File file = new File(targetDirectory, ze.getName());
+                File dir = ze.isDirectory() ? file : file.getParentFile();
+                if (!dir.isDirectory() && !dir.mkdirs())
+                    throw new FileNotFoundException("Failed to ensure directory: " +
+                            dir.getAbsolutePath());
+                if (ze.isDirectory())
+                    continue;
+                FileOutputStream fout = new FileOutputStream(file);
+                try {
+                    while ((count = zis.read(buffer)) != -1)
+                        fout.write(buffer, 0, count);
+                } finally {
+                    fout.close();
+                }
+                Log.d("Unzip", "File Unzipped Successfully!!");
+            }
+        } catch (IOException e) {
+            Log.e("Unzip", "Exception thrown while unzipping: " + e.toString());
+        } finally {
+            zis.close();
+        }
+        Log.d("Unzip", "File Unzipped Successfully!");
+    }*/
+
+    /**
+     * Downloads the file at the given URL to the given location. Used only in downloading files
+     * for the frontend.
+     *
+     * @param url        The URL of the file to be downloaded
+     * @param outputFile The location where the required file is to be downloaded,
+     *                   passed in as a 'File' object
+     */
+    /*
+    private static void downloadFile(String url, File outputFile) {
+        try {
+            URL u = new URL(url);
+            URLConnection conn = u.openConnection();
+            int contentLength = conn.getContentLength();
+            DataInputStream stream = new DataInputStream(u.openStream());
+            byte[] buffer = new byte[contentLength];
+            stream.readFully(buffer);
+            stream.close();
+            DataOutputStream fos = new DataOutputStream(new FileOutputStream(outputFile));
+            fos.write(buffer);
+            fos.flush();
+            fos.close();
+            Log.d("Download", "File Downloaded Successfully!!");
+        } catch (IOException e) {
+            Log.e("Download", e.getMessage());
+        }
+    }*/
 }

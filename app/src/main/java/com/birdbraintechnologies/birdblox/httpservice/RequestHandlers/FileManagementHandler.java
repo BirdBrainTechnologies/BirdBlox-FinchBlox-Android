@@ -1,14 +1,9 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
-import android.Manifest;
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Environment;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
@@ -106,7 +101,8 @@ public class FileManagementHandler implements RequestHandler {
 
 
     /**
-     * Opens the 'program.xml' file of the given project, if it exists.
+     * Opens the 'program.xml' file of the given project, if it exists. Project must be unzipped and
+     * in the birdblox directory before this method is called.
      *
      * @param name The name of the project to be opened.
      * @return A 'OK' response if opening was successful,
@@ -115,28 +111,30 @@ public class FileManagementHandler implements RequestHandler {
     private NanoHTTPD.Response openProject(String name) {
         Log.d(TAG, "openProject " + name);
         File program = null;
-        if (name.startsWith("file:///")) {
-            try {
-                //program = new File(new URI(name));
-                program = new File(name);
-                name = name.substring(name.lastIndexOf('/') + 1, name.length() - 4);
-                //} catch (URISyntaxException e) {
-            } catch (NullPointerException e) {
-                Log.e(TAG, "openProject: " + e.toString());
-            }
+        //if (name.startsWith("file:///")) {
+        //    try {
+        //        program = new File(new URI(name));
+                //program = new File(name);
+        //        name = name.substring(name.lastIndexOf('/') + 1, name.length() - 4);
+        //    } catch (URISyntaxException e) {
+            //} catch (NullPointerException e) {
+        //        Log.e(TAG, "openProject: " + e.toString());
+        //    }
 
-        } else {
+        //} else {
             if (!isNameSanitized(name)) {
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, name + " is not a valid project name!");
             }
             program = new File(getBirdbloxDir(), name + "/program.xml");
-        }
+        //}
         if (program == null || !program.exists()) {
+            Log.e(TAG, "project not found " + program.getPath());
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " was not found!");
         }
         try {
+            Log.d(TAG, "opening project " + program.getAbsolutePath());
             String encodedXML = bbxEncode(FileUtils.readFileToString(program, "utf-8"));
             String encodedName = bbxEncode(name);
             if (encodedXML != null) {
@@ -223,6 +221,7 @@ public class FileManagementHandler implements RequestHandler {
                 }
             }
         }
+        Log.e(TAG, "recording not found " + oldName);
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "File " + oldName + " was not found.");
     }
@@ -253,6 +252,7 @@ public class FileManagementHandler implements RequestHandler {
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Given name invalid.");
         } else if (!projectExists(name)) {
+            Log.e(TAG, "could not delete project " + name + " (not found)");
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " was not found!");
         } else if (filesPrefs.getString(CURRENT_PREFS_KEY, "").equals(name)) {
@@ -291,6 +291,7 @@ public class FileManagementHandler implements RequestHandler {
                 }
             }
         }
+        Log.e(TAG, "could not delete recording " + name + " (not found)");
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Recording " + name + " was not found!");
     }

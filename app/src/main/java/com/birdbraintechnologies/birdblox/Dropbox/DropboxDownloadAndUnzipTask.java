@@ -120,7 +120,6 @@ public class DropboxDownloadAndUnzipTask extends UnzipTask {
         if (isCancelled()) {
             try {
                 if (localName != null) {
-                    //new File(mainWebViewContext.getFilesDir() + "/" + DBX_DOWN_DIR, localName + ".bbx").delete();
                     dbxDown.delete();
                     localName = null;
                 }
@@ -131,12 +130,12 @@ public class DropboxDownloadAndUnzipTask extends UnzipTask {
 
         //If we have made it this far, unzip the downloaded file
         if (localName != null) {
-            //File zip = new File(mainWebViewContext.getFilesDir() + "/" + DBX_DOWN_DIR, localName + ".bbx");
             File to = new File(getBirdbloxDir(), localName);
             String result = super.doInBackground(dbxDown, to);
+            return result;
         }
 
-        return localName;
+        return null;
     }
 
     /**
@@ -149,12 +148,18 @@ public class DropboxDownloadAndUnzipTask extends UnzipTask {
     @Override
     protected void onProgressUpdate(Long... progress) {
         super.onProgressUpdate(progress);
-        // update download progress in the progress bar here ...
-        //progressBar.setProgress(progress[0]);
-        //progressBar.setProgress(Math.round(progress[0]));
-        unzipDialog.progressBar.setProgress(Math.round(progress[0]));
+        progressDialog.progressBar.setProgress(Math.round(progress[0]));
     }
 
-
-
+    /**
+     * In this case, we just want to notify the frontend that the download has completed.
+     * @param name - String result of the task. Should be the name of the file unzipped.
+     */
+    @Override
+    protected void onPostExecute(String name) {
+        if (name != null) {
+            runJavascript("CallbackManager.cloud.downloadComplete('" + bbxEncode(name) + "')");
+        }
+        super.onPostExecute(name);
+    }
 }
