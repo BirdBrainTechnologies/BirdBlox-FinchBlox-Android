@@ -10,6 +10,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.birdbraintechnologies.birdblox.MainWebView;
 import com.birdbraintechnologies.birdblox.Project.UnzipTask;
 import com.birdbraintechnologies.birdblox.R;
 import com.birdbraintechnologies.birdblox.Util.ProgressOutputStream;
@@ -72,6 +73,7 @@ public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Integer, Stri
                 progressBar.setVisibility(View.VISIBLE);
                 progressBar.setProgress(0);
                 cancelButton = (Button) dialogView.findViewById(R.id.determinate_btn);
+                cancelButton.setText(MainWebView.cancel_text);
                 cancelButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
@@ -80,7 +82,8 @@ public class DropboxDownloadAndUnzipTask extends AsyncTask<String, Integer, Stri
                     }
                 });
                 showText = (TextView) dialogView.findViewById(R.id.determinate_tv);
-                showText.setText("Downloading...");
+                //showText.setText("Downloading...");
+                showText.setText(MainWebView.loading_text);
                 downloadDialog = builder.create();
                 downloadDialog.show();
             }

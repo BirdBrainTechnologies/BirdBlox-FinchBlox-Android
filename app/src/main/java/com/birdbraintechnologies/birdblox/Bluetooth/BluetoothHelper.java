@@ -249,6 +249,7 @@ public class BluetoothHelper {
         }
         UARTConnection conn = new UARTConnection(context, device, settings);
         if (!conn.isConnected() && deviceGatt.containsKey(addr)) {
+            Log.d(TAG, "disconnect connection failure.");
             runJavascript("CallbackManager.robot.connectionFailure('" + bbxEncode(addr)  + "')");
         }
         if (deviceGatt.containsKey(addr)) {

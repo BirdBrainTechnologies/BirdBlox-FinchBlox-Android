@@ -142,6 +142,7 @@ public class RobotRequestHandler implements RequestHandler {
                     return NanoHTTPD.newFixedLengthResponse(
                             NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Robot " + m.get("id").get(0) + " was not found.");
                 } else if (!robot.setOutput(path[1], m)) {
+                    //TODO: Is it really true that when you fail to set output it always means not connected?
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
                     return NanoHTTPD.newFixedLengthResponse(
                             NanoHTTPD.Response.Status.EXPECTATION_FAILED, MIME_PLAINTEXT, "Failed to send to robot " + m.get("id").get(0) + ".");

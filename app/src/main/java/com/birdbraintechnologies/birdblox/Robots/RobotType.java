@@ -24,16 +24,19 @@ public enum RobotType {
     }
 
     public static RobotType robotTypeFromString(String robotType) {
-        if (robotType.toLowerCase().equals("hummingbird")) {
+
+        switch (robotType.toLowerCase()) {
+        case "hummingbird":
             return RobotType.Hummingbird;
-        } else if (robotType.toLowerCase().equals("hummingbirdbit")) {
+        case "hummingbirdbit":
             return RobotType.Hummingbit;
-        } else if (robotType.toLowerCase().equals("microbit")) {
+        case "microbit":
             return RobotType.Microbit;
+        default:
+            Log.d("RobotType", "About to return null");
+            return null;
         }
 
-        Log.d("RobotType", "About to return null");
-        return null;
     }
 
 }

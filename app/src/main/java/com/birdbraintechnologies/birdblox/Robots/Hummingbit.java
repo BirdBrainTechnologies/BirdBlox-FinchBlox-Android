@@ -1,11 +1,12 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
 import android.os.HandlerThread;
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBitState;
-import com.birdbraintechnologies.birdblox.Robots.RobotStates.MBState;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.LedArrayState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
@@ -24,7 +25,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 
-import static android.content.ContentValues.TAG;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
@@ -37,6 +37,8 @@ import static io.reactivex.android.schedulers.AndroidSchedulers.from;
  * @author Zhendong Yuan (yzd1998111)
  */
 public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDataListener {
+
+    private final String TAG = this.getClass().getName();
     /*
      * Command prefixes for the Hummingbit according to spec
      */
@@ -81,12 +83,13 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
     private Disposable monitorDisposable;
 
     private byte[] cfresponse;
-    private MBState oldMBState = new MBState();
-    private MBState newMBState = new MBState();
+    private LedArrayState oldLedArrayState = new LedArrayState();
+    private LedArrayState newLedArrayState = new LedArrayState();
 
     private boolean ATTEMPTED = false;
     private boolean DISCONNECTED = false;
     private String last_battery_status;
+    private boolean isCalibratingCompass = false;
 
     private AtomicBoolean FORCESEND = new AtomicBoolean(false);
     private AtomicBoolean CALIBRATE = new AtomicBoolean(false);
@@ -231,6 +234,8 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 if (last_successfully_sent != null)
                     last_successfully_sent.set(currentTime);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                SystemClock.sleep(200);
+                isCalibratingCompass = true;
             } else {
                 // Sending Non-CF command failed
             }
@@ -238,14 +243,14 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             last_sent.set(currentTime);
         }
 
-        if (!newMBState.equals(oldMBState) || FORCESEND.get()) {
+        if (!newLedArrayState.equals(oldLedArrayState) || FORCESEND.get()) {
             setSendingTrue();
 
-            if (conn.writeBytes(newMBState.setAll())) {
+            if (conn.writeBytes(newLedArrayState.setAll())) {
                 // Successfully sent Non-CF command
                 if (last_successfully_sent != null)
                     last_successfully_sent.set(currentTime);
-                oldMBState.copy(newMBState);
+                oldLedArrayState.copy(newLedArrayState);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
             } else {
                 // Sending Non-CF command failed
@@ -325,8 +330,12 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                 return setRbSOOutput(oldState.getTriLED(port), newState.getTriLED(port), Integer.parseInt(args.get("red").get(0)),
                         Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));
             case "buzzer":
-                if (Integer.parseInt(args.get("duration").get(0)) != 0 && Integer.parseInt(args.get("note").get(0)) != 0) {
-                    return setRbSOOutput(oldState.getHBBuzzer(port), newState.getHBBuzzer(port), Integer.parseInt(args.get("note").get(0)), Integer.parseInt(args.get("duration").get(0)));
+                int duration = Integer.parseInt(args.get("duration").get(0));
+                int note = Integer.parseInt(args.get("note").get(0));
+                if (duration != 0 && note != 0) {
+                    return setRbSOOutput(oldState.getHBBuzzer(port), newState.getHBBuzzer(port), note, duration);
+                } else {
+                    return true;
                 }
             case "ledArray":
                 String charactersInInts = args.get("ledArrayStatus").get(0);
@@ -335,10 +344,21 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                     bitsInInt[i] = Integer.parseInt(charactersInInts.charAt(i) + "");
                 }
                 bitsInInt[bitsInInt.length - 1] = SYMBOL;
-                return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), bitsInInt);
+                return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), bitsInInt);
             case "printBlock":
                 FORCESEND.set(true);
                 String printString = args.get("printString").get(0);
+                char[] chars = printString.toCharArray();
+                int [] ints = new int[chars.length + 1];
+                for (int i = 0; i < chars.length; i++){
+                    ints[i] = (int)chars[i];
+                    if (ints[i] > 255) {
+                        ints[i] = 254;
+                    }
+                }
+                ints[ints.length-1] = FLASH;
+                return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), ints);
+                /*
                 if (printString.matches("\\A\\p{ASCII}*\\z")) {
                     byte[] tmpAscii = printString.getBytes(StandardCharsets.US_ASCII);
                     int[] charsInInts = new int[tmpAscii.length + 1];
@@ -346,8 +366,10 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                         charsInInts[i] = (int) tmpAscii[i];
                     }
                     charsInInts[charsInInts.length - 1] = FLASH;
-                    return setRbSOOutput(oldMBState.getLedArray(), newMBState.getLedArray(), charsInInts);
-                }
+                    return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), charsInInts);
+                } else {
+                    return true;
+                }*/
             case "compassCalibrate":
                 CALIBRATE.set(true);
                 return true;
@@ -474,7 +496,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             }
             if (statesEqual()) {
                 newState.resetAll();
-                newMBState.resetAll();
+                newLedArrayState.resetAll();
                 if (lock.isHeldByCurrentThread()) {
                     doneSending.signal();
                     lock.unlock();
@@ -513,7 +535,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             }
             ATTEMPTED = true;
             conn.writeBytes(new byte[]{TERMINATE_CMD});
-            newMBState.resetAll();
+            newLedArrayState.resetAll();
 
             AndroidSchedulers.from(sendThread.getLooper()).shutdown();
             sendThread.getLooper().quit();
@@ -586,7 +608,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             double batteryVoltage = (newData[3] & 0xFF) * 0.0406;
             if (batteryVoltage > 4.75) {
                 curBatteryStatus = "2";
-            } else if (batteryVoltage > 4.63) {
+            } else if (batteryVoltage > 4.4) {
                 curBatteryStatus = "1";
             } else {
                 curBatteryStatus = "0";
@@ -594,6 +616,21 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             if (!curBatteryStatus.equals(last_battery_status)) {
                 last_battery_status = curBatteryStatus;
                 runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(curBatteryStatus) + "');");
+            }
+            if (isCalibratingCompass) {
+                boolean success = ((newData[7] >> 2) & 0x1) == 0x1;
+                boolean failure = ((newData[7] >> 3) & 0x1) == 0x1;
+                if (success){
+                    Log.v(TAG, "Calibration success!");
+                    isCalibratingCompass = false;
+                    runJavascript("CallbackManager.robot.compassCalibrationResult('" + getMacAddress() + "', 'true');");
+                } else if (failure){
+                    Log.v(TAG, "Calibration failure");
+                    isCalibratingCompass = false;
+                    runJavascript("CallbackManager.robot.compassCalibrationResult('" + getMacAddress() + "', 'false');");
+                } else {
+                    Log.v(TAG, "Calibration unknown");
+                }
             }
         }
     }

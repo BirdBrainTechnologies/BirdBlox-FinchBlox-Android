@@ -1,10 +1,14 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
 import android.os.HandlerThread;
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.LedArrayState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.MBState;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.HBitBuzzer;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.Pad;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
@@ -23,7 +27,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 
-import static android.content.ContentValues.TAG;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
@@ -36,6 +39,8 @@ import static io.reactivex.android.schedulers.AndroidSchedulers.from;
  * @author Zhendong Yuan (yzd1998111)
  */
 public class Microbit extends Robot<MBState> implements UARTConnection.RXDataListener {
+
+    private final String TAG = this.getClass().getName();
     /*
      * Command prefixes for the Microbit according to spec
      */
@@ -81,9 +86,14 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
 
     private boolean ATTEMPTED = false;
     private boolean DISCONNECTED = false;
+    private boolean isCalibratingCompass = false;
 
     private AtomicBoolean FORCESEND = new AtomicBoolean(false);
     private AtomicBoolean CALIBRATE = new AtomicBoolean(false);
+
+    private LedArrayState oldLedArrayState;
+    private LedArrayState newLedArrayState;
+
     /**
      * Initializes a Microbit device
      *
@@ -95,6 +105,9 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
 
         oldState = new MBState();
         newState = new MBState();
+
+        oldLedArrayState = new LedArrayState();
+        newLedArrayState = new LedArrayState();
 
 
         FIRMWARECOMMAND[0] = (byte) 0xCF;
@@ -221,6 +234,8 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 if (last_successfully_sent != null)
                     last_successfully_sent.set(currentTime);
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                SystemClock.sleep(200);
+                isCalibratingCompass = true;
             } else {
                 // Sending Non-CF command failed
             }
@@ -228,7 +243,25 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             last_sent.set(currentTime);
         }
 
-        if (!statesEqual() || FORCESEND.get()) {
+        if (!newLedArrayState.equals(oldLedArrayState) || FORCESEND.get()) {
+            setSendingTrue();
+
+            if (conn.writeBytes(newLedArrayState.setAll())) {
+                // Successfully sent Non-CF command
+                if (last_successfully_sent != null)
+                    last_successfully_sent.set(currentTime);
+                oldLedArrayState.copy(newLedArrayState);
+                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+            } else {
+                // Sending Non-CF command failed
+            }
+
+            setSendingFalse();
+            last_sent.set(currentTime);
+            FORCESEND.set(false);
+        }
+
+        if (!statesEqual()) {
             // Not currently sending, but oldState and newState are different
             // Send here
             setSendingTrue();
@@ -243,7 +276,6 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             }
             setSendingFalse();
             last_sent.set(currentTime);
-            FORCESEND.set(false);
         } else {
             // Not currently sending, and oldState and newState are the same
             if (currentTime - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
@@ -288,10 +320,21 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                     bitsInInt[i] = Integer.parseInt(charactersInInts.charAt(i) + "");
                 }
                 bitsInInt[bitsInInt.length - 1] = SYMBOL;
-                return setRbSOOutput(oldState.getLedArray(), newState.getLedArray(), bitsInInt);
+                return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), bitsInInt);
             case "printBlock":
                 FORCESEND.set(true);
                 String printString = args.get("printString").get(0);
+                char[] chars = printString.toCharArray();
+                int [] ints = new int[chars.length + 1];
+                for (int i = 0; i < chars.length; i++){
+                    ints[i] = (int)chars[i];
+                    if (ints[i] > 255) {
+                        ints[i] = 254;
+                    }
+                }
+                ints[ints.length-1] = FLASH;
+                return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), ints);
+                /*
                 if (printString.matches("\\A\\p{ASCII}*\\z")) {
                     byte[] tmpAscii = printString.getBytes(StandardCharsets.US_ASCII);
                     int[] charsInInts = new int[tmpAscii.length + 1];
@@ -299,11 +342,24 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                         charsInInts[i] = (int) tmpAscii[i];
                     }
                     charsInInts[charsInInts.length - 1] = FLASH;
-                    return setRbSOOutput(oldState.getLedArray(), newState.getLedArray(), charsInInts);
-                }
+                    return setRbSOOutput(oldLedArrayState.getLedArray(), newLedArrayState.getLedArray(), charsInInts);
+                } else {
+                    return true;
+                }*/
             case "compassCalibrate":
                 CALIBRATE.set(true);
                 return true;
+            case "write":
+                port = Integer.parseInt(args.get("port").get(0));
+                return setRbSOOutput(oldState.getPad(port), newState.getPad(port), Integer.parseInt(args.get("percent").get(0)));
+            case "buzzer":
+                int duration = Integer.parseInt(args.get("duration").get(0));
+                int note = Integer.parseInt(args.get("note").get(0));
+                if (duration != 0 && note != 0) {
+                    return setRbSOOutput(oldState.getHBBuzzer(), newState.getHBBuzzer(), note, duration);
+                } else {
+                    return true;
+                }
         }
 
         return false;
@@ -323,6 +379,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
         byte[] rawMagnetometerValue = new byte[6];
         byte[] rawAccelerometerValue = new byte[3];
         byte[] rawButtonShakeValue = new byte[1];
+        byte[] rawPadValue = new byte[3];
         synchronized (rawSensorValuesLock) {
             rawAccelerometerValue[0] = rawSensorValues[4];
             rawAccelerometerValue[1] = rawSensorValues[5];
@@ -334,6 +391,9 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             rawMagnetometerValue[3] = rawSensorValues[11];
             rawMagnetometerValue[4] = rawSensorValues[12];
             rawMagnetometerValue[5] = rawSensorValues[13];
+            rawPadValue[0] = rawSensorValues[0];
+            rawPadValue[1] = rawSensorValues[1];
+            rawPadValue[2] = rawSensorValues[2];
         }
         switch (sensorType) {
             case "magnetometer":
@@ -360,9 +420,56 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                 return rawAccelerometerValue[1] > 51 ? "1" : "0";
             case "compass":
                 return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue));
+            case "pin":
+                int padNum = Integer.parseInt(portString) - 1;
+                //Check to make sure that pad is in read mode.
+                if (!checkReadMode(padNum)){
+                    //if not, set to read mode, wait for readings to start, and then read a new value.
+                    if (setReadMode(padNum)){
+                        SystemClock.sleep(200);
+                        byte raw;
+                        synchronized (rawSensorValuesLock) {
+                            raw = rawSensorValues[padNum];
+                        }
+                        return DeviceUtil.RawToPad(raw);
+                    } else {
+                        return "";
+                    }
+                } else {
+                    return DeviceUtil.RawToPad(rawPadValue[padNum]);
+                }
             default:
                 return "";
         }
+    }
+    private boolean checkReadMode(int pad){
+        return (oldState.mode == newState.mode && newState.mode[2*(pad+1)] == false &&
+                newState.mode[2*(pad+1)+1] == true);
+    }
+    private boolean setReadMode(int pad){
+        try {
+            lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
+            AtomicInteger count = new AtomicInteger(0);
+            while (!newState.mode.equals(oldState.mode)) {
+                if (count.incrementAndGet() > 1) break;
+                doneSending.await(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
+            }
+            if (newState.mode.equals(oldState.mode)) {
+                newState.mode[(pad+1)*2] = false;
+                newState.mode[(pad+1)*2+1] = true;
+
+                if (lock.isHeldByCurrentThread()) {
+                    doneSending.signal();
+                    lock.unlock();
+                }
+                return true;
+            }
+        } catch (InterruptedException | IllegalMonitorStateException | IllegalStateException | IllegalThreadStateException e) {
+        } finally {
+            if (lock.isHeldByCurrentThread())
+                lock.unlock();
+        }
+        return false;
     }
 
     private byte[] startPollingSensors() {
@@ -379,11 +486,25 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
             AtomicInteger count = new AtomicInteger(0);
             while (!newobj.equals(oldobj)) {
-                if (count.incrementAndGet() > 1) break;
+                if (count.incrementAndGet() > 1) {
+                    Log.d(TAG, "object equals timed out.");
+                    break;
+                }
                 doneSending.await(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
             }
+
             if (newobj.equals(oldobj)) {
                 newobj.setValue(values);
+                if (newobj.getClass() == HBitBuzzer.class){
+                    newState.mode[2] = true;
+                    newState.mode[3] = false;
+                } else if (newobj.getClass() == Pad.class) {
+                    Pad p = (Pad) newobj;
+                    int pNum = p.getPadNum();
+                    newState.mode[(pNum+1)*2] = false;
+                    newState.mode[(pNum+1)*2+1] = false;
+                }
+
                 if (lock.isHeldByCurrentThread()) {
                     doneSending.signal();
                     lock.unlock();
@@ -414,6 +535,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             }
             if (statesEqual()) {
                 newState.resetAll();
+                newLedArrayState.resetAll();
                 if (lock.isHeldByCurrentThread()) {
                     doneSending.signal();
                     lock.unlock();
@@ -522,6 +644,21 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
     public void onRXData(byte[] newData) {
         synchronized (rawSensorValuesLock) {
             this.rawSensorValues = newData;
+            if (isCalibratingCompass) {
+                boolean success = ((newData[7] >> 2) & 0x1) == 0x1;
+                boolean failure = ((newData[7] >> 3) & 0x1) == 0x1;
+                if (success){
+                    Log.v(TAG, "Calibration success!");
+                    isCalibratingCompass = false;
+                    runJavascript("CallbackManager.robot.compassCalibrationResult('" + getMacAddress() + "', 'true');");
+                } else if (failure){
+                    Log.v(TAG, "Calibration failure");
+                    isCalibratingCompass = false;
+                    runJavascript("CallbackManager.robot.compassCalibrationResult('" + getMacAddress() + "', 'false');");
+                } else {
+                    Log.v(TAG, "Calibration unknown");
+                }
+            }
         }
     }
 

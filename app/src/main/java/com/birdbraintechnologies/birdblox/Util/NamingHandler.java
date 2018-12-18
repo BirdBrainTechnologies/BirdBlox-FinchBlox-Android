@@ -28,7 +28,6 @@ public class NamingHandler {
         middleNames = context.getResources().getStringArray(R.array.middle_names);
         lastNames = context.getResources().getStringArray(R.array.last_names);
         badNames = context.getResources().getStringArray(R.array.bad_names);
-        badWordsLen = badNames.length;
         List<String> badNamesList = Arrays.asList(badNames);
         // expected input: "aa:bb:cc:dd:ee:ff" => "d:ee:ff"
         mac = mac.substring(9);
@@ -49,15 +48,15 @@ public class NamingHandler {
         j += offset;
         k += offset;
 
-        first = firstNames[i];
-        middle = middleNames[j];
-        last = lastNames[k];
+        first = firstNames[i % firstNames.length];
+        middle = middleNames[j % middleNames.length];
+        last = lastNames[k % lastNames.length];
 
         if (first != null && middle != null && last != null) {
             prefix = Character.toString(first.charAt(0)) + Character.toString(middle.charAt(0)) +
                      Character.toString(last.charAt(0));
             while (badNamesList.contains(prefix)) {
-                j = (j + 1) % badWordsLen;
+                j = (j + 1) % middleNames.length;
                 middle = middleNames[j];
                 prefix = Character.toString(first.charAt(0)) + Character.toString(middle.charAt(0)) +
                          Character.toString(last.charAt(0));

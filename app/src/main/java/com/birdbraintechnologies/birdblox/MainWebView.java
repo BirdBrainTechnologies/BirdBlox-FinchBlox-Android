@@ -116,6 +116,16 @@ public class MainWebView extends AppCompatActivity {
 
     private static final String IMPORT_ZIP_DIR = "ZippedImport";
 
+    /* Popup text - must be retrieved from frontend after content has loaded */
+    public static String name_error_already_exists = "";
+    public static String cancel_text = "";
+    public static String rename_text = "";
+    public static String ok_text = "";
+    public static String enter_new_name = "";
+    public static String delete_text = "";
+    public static String delete_question = "";
+    public static String loading_text = "";
+
     private static HashSet<Intent> alreadyReceivedIntents = new HashSet<>();
     private static Uri lastFileUriData;
 
@@ -294,7 +304,10 @@ public class MainWebView extends AppCompatActivity {
 
         webView.setWebViewClient(new WebViewClient() {
             public void onPageFinished(WebView view, String url) {
-                runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(Locale.getDefault().getLanguage().toUpperCase()) + "');");
+                String defaultLang = Locale.getDefault().toString();
+                Log.d(TAG, "setting language to " + defaultLang);
+                //runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(Locale.getDefault().getLanguage()) + "');");
+                runJavascript("CallbackManager.tablet.getLanguage('" + bbxEncode(defaultLang) + "');");
                 if (getIntent().getData() != null) {
                     runJavascript("CallbackManager.tablet.setFile('" + bbxEncode(getIntent().getData().toString()) + "');");
                 }

@@ -54,6 +54,7 @@ public class FileManagementHandler implements RequestHandler {
     public static SharedPreferences filesPrefs = mainWebViewContext.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
 
     public static final String CURRENT_PREFS_KEY = "com.birdbraintechnologies.birdblox.CURRENT_PROJECT";
+    public static final String LAST_PROJECT_KEY = "com.birdbraintechnologies.birdblox.LAST_PROJECT";
 
     private HttpService service;
 
@@ -229,6 +230,8 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response.
      */
     private NanoHTTPD.Response closeProject() {
+        String filename = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+        filesPrefs.edit().putString(LAST_PROJECT_KEY, filename).apply();
         filesPrefs.edit().putString(CURRENT_PREFS_KEY, null).apply();
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Current project closed successfully");

@@ -1,67 +1,92 @@
 package com.birdbraintechnologies.birdblox.Robots.RobotStates;
 
 
-import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.LEDArray;
+import android.util.Log;
+
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.HBitBuzzer;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.Pad;
 
 import java.util.Arrays;
 
 public class MBState extends RobotState<MBState> {
-    private LEDArray[] ledArray;
+
+    private final String TAG = this.getClass().getName();
+    private Pad[] pads;
+    private HBitBuzzer[] hbitbuzzers;
+    public boolean[] mode;
 
     public MBState() {
-        ledArray = new LEDArray[1];
-        for (int i = 0; i < ledArray.length; i++) ledArray[i] = new LEDArray();
+        pads = new Pad[3];
+        hbitbuzzers = new HBitBuzzer[1];
+        mode = new boolean[8];
+        for (int i = 0; i < pads.length; i++) pads[i] = new Pad(i);
+        for (int i = 0; i < hbitbuzzers.length; i++) hbitbuzzers[i] = new HBitBuzzer();
+        for (int i = 0; i < 8; i++) mode[i] = false; //necessary?
+
+        resetHBitBuzzer(); //TODO: should not need this here. Find out what is really going on
     }
 
-    public LEDArray getLedArray() {
-        return ledArray[0];
+    public Pad getPad(int port) {
+        if (1 <= port && port <= pads.length)
+            return pads[port - 1];
+        return null;
+    }
+
+    public HBitBuzzer getHBBuzzer() {
+        Log.d("TEST", "Getting the buzzer. " + hbitbuzzers.length);
+        return hbitbuzzers[0];
     }
 
     /**
-     * Compares the current ('this') HBitState object with another HBitState object for equality.
+     * Compares the current ('this') MBState object with another MBState object for equality.
      *
-     * @param hbs The other HBitState object.
+     * @param mbs The other MBState object.
      * @return Returns true if they're equal (all their attributes
      * have the same values), false otherwise.
      */
     @Override
-    public synchronized boolean equals_helper(MBState hbs) {
-        return Arrays.equals(ledArray, hbs.ledArray);
+    public synchronized boolean equals_helper(MBState mbs) {
+        return Arrays.equals(pads, mbs.pads) && Arrays.equals(hbitbuzzers, mbs.hbitbuzzers) &&
+                (mode == mbs.mode);
     }
 
 
     /**
-     * Compares the current ('this') HBitState object with another object for equality.
+     * Compares the current ('this') MBState object with another object for equality.
      *
-     * @param hbs The other object.
-     * @return Returns true if they're equal (they're both HBitState objects, and all
+     * @param mbs The other object.
+     * @return Returns true if they're equal (they're both MBState objects, and all
      * their attributes have the same values), false otherwise.
      */
     @Override
-    public synchronized boolean equals(Object hbs) {
+    public synchronized boolean equals(Object mbs) {
         // self check
-        if (this == hbs)
+        if (this == mbs)
             return true;
         // null check
-        if (hbs == null)
+        if (mbs == null)
             return false;
         // type check and cast
-        if (getClass() != hbs.getClass())
+        if (getClass() != mbs.getClass())
             return false;
-        return equals_helper((MBState) hbs);
+        return equals_helper((MBState) mbs);
     }
 
 
     /**
-     * Copies all attributes of the input HBitState into the current ('this') HBitState.
+     * Copies all attributes of the input MBState into the current ('this') MBState.
      *
      * @param source The HBitState from which the attributes are copied.
      */
     @Override
     public synchronized void copy(MBState source) {
-        for (int i = 0; i < ledArray.length; i++) {
-            ledArray[i].setValue(source.ledArray[i].getCharacters());
+        for (int i = 0; i < pads.length; i++) {
+            pads[i].setValue(source.pads[i].getIntensity());
         }
+        for (int i = 0; i < hbitbuzzers.length; i++) {
+            hbitbuzzers[i].setValue((int) source.hbitbuzzers[i].getFrequency(), (int) source.hbitbuzzers[i].getDuration());
+        }
+        mode = source.mode;
     }
 
     /**
@@ -74,46 +99,49 @@ public class MBState extends RobotState<MBState> {
     @Override
     public synchronized byte[] setAll() {
         byte[] all = new byte[20];
-        all[0] = (byte) 0xCC;
-        int[] lightData = ledArray[0].getCharacters();
-        if (lightData[lightData.length - 1] == 0) {
-            // symbol
-            all[1] = (byte) 0x80;
-            all[2] = ConstructByteFromInts(lightData, 24, 25);
-            all[3] = ConstructByteFromInts(lightData, 16, 24);
-            all[4] = ConstructByteFromInts(lightData, 8, 16);
-            all[5] = ConstructByteFromInts(lightData, 0, 8);
-        } else if (lightData.length == 1 && lightData[0] == -1) {
-            //reset
-            all[1] = (byte) 0x00;
-            all[2] = (byte) 0xFF;
-            all[3] = (byte) 0xFF;
-            all[4] = (byte) 0xFF;
-        } else {
-            // flash
-            int flashLen = lightData.length - 1;
-            all[1] = (byte) ((byte) 0x40 | (byte) flashLen);
-            for (int i = 0; i < flashLen; i++) {
-                all[2 + i] = (byte) lightData[i];
+        all[0] = (byte) 0x90;
+
+        for (int bit=0; bit<8; bit++){
+            if (mode[bit]) {
+                all[4] |= (128 >> bit);
             }
         }
+        all[5] = pads[0].getIntensity();
+        all[6] = pads[1].getIntensity();
+        all[7] = pads[2].getIntensity();
+
+        //If pad 0 is in buzzer mode
+        if (mode[2] && !mode[3]) {
+            all[1] = (byte) ((hbitbuzzers[0].getFrequency() >> 8) & 0xFF);
+            all[2] = (byte) (hbitbuzzers[0].getFrequency() & 0xFF);
+            all[3] = (byte) ((hbitbuzzers[0].getDuration() >> 8) & 0xFF);
+            all[5] = (byte) (hbitbuzzers[0].getDuration() & 0xFF);
+            resetHBitBuzzer();
+        }
+        String logString = "";
+        for (int i = 0; i < 8; i++){
+            logString += Integer.toString(all[i]  & 0xFF) + " ";
+        }
+        Log.d(TAG, logString);
         return all;
     }
-
-    private synchronized byte ConstructByteFromInts(int[] data, int start, int end) {
-        int resultByte = 0;
-        for (int i = start; i < end; i++) {
-            resultByte = resultByte + (data[i] << (i - start));
+    private synchronized void resetHBitBuzzer() {
+        int resetVal = 0;
+        for (int i = 0; i < hbitbuzzers.length; i++) {
+            hbitbuzzers[i].setValue(resetVal, resetVal);
         }
-        return (byte) resultByte;
     }
+
 
     /**
      * Resets all attributes of all state objects to their default values.
      */
     @Override
     public synchronized void resetAll() {
-        for (int i = 0; i < ledArray.length; i++) ledArray[i] = new LEDArray();
+        for (int i = 0; i < pads.length; i++) pads[i] = new Pad(i);
+        //for (int i = 0; i < hbitbuzzers.length; i++) hbitbuzzers[i] = new HBitBuzzer();
+        resetHBitBuzzer(); //TODO: Should be able to do the above like for bit. Why doesn't that work?
+        for (int i = 0; i < 8; i++) mode[i] = false;
     }
 
 }

@@ -2,6 +2,7 @@ package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblox.MainWebView;
 import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
 
@@ -10,6 +11,7 @@ import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -17,6 +19,7 @@ import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.HttpService.TAG;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.CURRENT_PREFS_KEY;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.LAST_PROJECT_KEY;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.filesPrefs;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.getBirdbloxDir;
 import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
@@ -36,9 +39,32 @@ public class UIRequestHandler implements RequestHandler {
     @Override
     public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
         String[] path = args.get(0).split("/");
+        Map<String, List<String>> m = session.getParameters();
         switch (path[0]) {
             case "contentLoaded":
+
+                String currentFile = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+                String lastFile = filesPrefs.getString(LAST_PROJECT_KEY, null);
+                if (currentFile != null) {
+                    Log.d(TAG, "default filename " + currentFile);
+                    runJavascript("CallbackManager.setFilePreference('" + currentFile + "');");
+                } else if (lastFile != null) {
+                    Log.d(TAG, "last filename " + lastFile);
+                    runJavascript("CallbackManager.setFilePreference('" + lastFile + "');");
+                }
+
 //                return loadContent();
+                break;
+            case "translatedStrings":
+                MainWebView.name_error_already_exists = m.get("Name_error_already_exists").get(0);
+                MainWebView.cancel_text = m.get("Cancel").get(0);
+                MainWebView.rename_text = m.get("Rename").get(0);
+                MainWebView.ok_text = m.get("OK").get(0);
+                MainWebView.enter_new_name = m.get("Enter_new_name").get(0);
+                MainWebView.delete_text = m.get("Delete").get(0);
+                MainWebView.delete_question = m.get("Delete_question").get(0);
+                MainWebView.loading_text = m.get("Loading").get(0);
+
                 break;
         }
         return NanoHTTPD.newFixedLengthResponse(

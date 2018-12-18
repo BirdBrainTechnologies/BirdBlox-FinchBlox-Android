@@ -13,6 +13,7 @@ import android.widget.EditText;
 import com.birdbraintechnologies.birdblox.Dropbox.DropboxDownloadAndUnzipTask;
 import com.birdbraintechnologies.birdblox.Dropbox.DropboxOperation;
 import com.birdbraintechnologies.birdblox.Dropbox.DropboxZipAndUploadTask;
+import com.birdbraintechnologies.birdblox.MainWebView;
 import com.birdbraintechnologies.birdblox.R;
 import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
@@ -298,18 +299,19 @@ public class DropboxRequestHandler implements RequestHandler {
 
     public static void showDropboxDialog(final String name, final DropboxOperation dbxOperation) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(mainWebViewContext);
-        builder.setTitle(dbxOperation.toString());
+        //builder.setTitle(dbxOperation.toString());
         builder.setMessage(getNameError(name, dbxOperation));
         builder.setCancelable(true);
         builder.setPositiveButton(
-                "Rename",
+                MainWebView.rename_text,
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();
                         showRenameDialog(name, dbxOperation);
                     }
                 });
-        builder.setNegativeButton(
+        //The word 'overwrite' has not been translated
+        /* builder.setNegativeButton(
                 "Overwrite",
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
@@ -320,9 +322,9 @@ public class DropboxRequestHandler implements RequestHandler {
                             startDropboxOperation(name, dbxOperation);
                         }
                     }
-                });
+                });*/
         builder.setNeutralButton(
-                "Cancel",
+                MainWebView.cancel_text,
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();
@@ -339,18 +341,19 @@ public class DropboxRequestHandler implements RequestHandler {
 
     public static void showDropboxDialog(final String oldName, final String newName, final DropboxOperation dbxOperation) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(mainWebViewContext);
-        builder.setTitle(dbxOperation.toString());
+        //builder.setTitle(dbxOperation.toString());
         builder.setMessage(getNameError(oldName, dbxOperation));
         builder.setCancelable(true);
         builder.setPositiveButton(
-                "Rename",
+                MainWebView.rename_text,
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();
                         showRenameDialog(oldName, newName, dbxOperation);
                     }
                 });
-        builder.setNegativeButton(
+        //The word 'overwrite' has not been translated
+        /* builder.setNegativeButton(
                 "Overwrite",
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
@@ -361,9 +364,9 @@ public class DropboxRequestHandler implements RequestHandler {
                             startDropboxOperation(oldName, newName, dbxOperation);
                         }
                     }
-                });
+                });*/
         builder.setNeutralButton(
-                "Cancel",
+                MainWebView.cancel_text,
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();
@@ -381,25 +384,28 @@ public class DropboxRequestHandler implements RequestHandler {
     private static String getNameError(final String name, DropboxOperation dbxOperation) {
         switch (dbxOperation) {
             case DOWNLOAD:
-                return "\"" + name + "\" already exists on disk. Enter a different name.";
+                //return "\"" + name + "\" already exists on disk. Enter a different name.";
+                return "\"" + name + MainWebView.name_error_already_exists;
             case UPLOAD:
-                return "\"" + name + "\" already exists on Dropbox. Enter a different name.";
+                //return "\"" + name + "\" already exists on Dropbox. Enter a different name.";
+                return "\"" + name + MainWebView.name_error_already_exists;
             case RENAME:
-                return "Please enter a different name for the project \"" + name + "\" : ";
+                //return "Please enter a different name for the project \"" + name + "\" : ";
+                return MainWebView.enter_new_name;
         }
         return "Error";
     }
 
     private static void showRenameDialog(final String name, final DropboxOperation dbxOperation) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(mainWebViewContext);
-        builder.setTitle("Rename");
+        builder.setTitle(MainWebView.rename_text);
         builder.setMessage(getNameError(name, DropboxOperation.RENAME));
         final EditText input = new EditText(mainWebViewContext);
         input.setInputType(InputType.TYPE_CLASS_TEXT);
         input.setText(findAvailableName(getBirdbloxDir(), name, ""));
         input.setSelectAllOnFocus(true);
         builder.setView(input);
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton(MainWebView.ok_text, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.cancel();
@@ -413,7 +419,7 @@ public class DropboxRequestHandler implements RequestHandler {
             }
         });
         if (dbxOperation != DropboxOperation.RENAME) {
-            builder.setNegativeButton("Back", new DialogInterface.OnClickListener() {
+            builder.setNegativeButton(MainWebView.cancel_text, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                     dialog.cancel();
@@ -432,14 +438,14 @@ public class DropboxRequestHandler implements RequestHandler {
 
     private static void showRenameDialog(final String oldName, final String newName, final DropboxOperation dbxOperation) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(mainWebViewContext);
-        builder.setTitle("Rename");
+        builder.setTitle(MainWebView.rename_text);
         builder.setMessage(getNameError(oldName, DropboxOperation.RENAME));
         final EditText input = new EditText(mainWebViewContext);
         input.setInputType(InputType.TYPE_CLASS_TEXT);
         input.setText(newName);
         input.setSelectAllOnFocus(true);
         builder.setView(input);
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton(MainWebView.ok_text, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.cancel();
@@ -453,7 +459,7 @@ public class DropboxRequestHandler implements RequestHandler {
             }
         });
         if (dbxOperation != DropboxOperation.RENAME) {
-            builder.setNegativeButton("Back", new DialogInterface.OnClickListener() {
+            builder.setNegativeButton(MainWebView.cancel_text, new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
                     dialog.cancel();
@@ -472,16 +478,17 @@ public class DropboxRequestHandler implements RequestHandler {
 
     private static void showDeleteDialog(final String name) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(mainWebViewContext);
-        builder.setTitle("Delete");
-        builder.setMessage("Are you sure you want to delete \"" + name + "\" from Dropbox?");
-        builder.setNegativeButton("Delete", new DialogInterface.OnClickListener() {
+        builder.setTitle(MainWebView.delete_text);
+        //builder.setMessage("Are you sure you want to delete \"" + name + "\" from Dropbox?");
+        builder.setMessage(MainWebView.delete_question);
+        builder.setNegativeButton(MainWebView.delete_text, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.cancel();
                 checkInput(name, DropboxOperation.DELETE);
             }
         });
-        builder.setNeutralButton("Cancel", new DialogInterface.OnClickListener() {
+        builder.setNeutralButton(MainWebView.cancel_text, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.cancel();
