@@ -14,6 +14,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
@@ -34,6 +35,14 @@ public class ZipUtility {
      */
     public static final void zipDirectory(File directory, File zip) throws IOException {
         Log.d(TAG, "zip directory " + directory + " to " + zip);
+        /* To check the contents of the destination directory...
+        String[] list = zip.getParentFile().list();
+        if (list == null){
+            Log.d(TAG, "destination directory empty");
+        } else {
+            Log.d(TAG, "destination contents: " + Arrays.toString(list));
+        }*/
+        if (zip.exists()) Log.d(TAG, "file " + zip.getName() + " exists");
         if (!zip.exists()) {
             if(!zip.getParentFile().exists()){
                 boolean success = zip.getParentFile().mkdirs();
@@ -45,17 +54,14 @@ public class ZipUtility {
             if (!success) {
                 throw new IOException("Unable to make " + zip);
             }
-        }
-        //try {
-            ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip));
-            // Set compression level to uncompressed.
-            zos.setLevel(Deflater.NO_COMPRESSION);
-            zip(directory, directory, zos);
-            zos.close();
-        /*} catch (IOException e) {
-            Log.e(TAG, "zipDirectory: " + e.getMessage());
-        }*/
 
+        }
+
+        ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip));
+        // Set compression level to uncompressed.
+        zos.setLevel(Deflater.NO_COMPRESSION);
+        zip(directory, directory, zos);
+        zos.close();
     }
 
     /**

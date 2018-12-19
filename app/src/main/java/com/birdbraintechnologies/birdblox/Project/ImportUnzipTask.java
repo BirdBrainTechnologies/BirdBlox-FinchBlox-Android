@@ -2,11 +2,6 @@ package com.birdbraintechnologies.birdblox.Project;
 
 import android.util.Log;
 
-import org.apache.commons.io.FileUtils;
-
-import java.io.File;
-import java.io.IOException;
-
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.CURRENT_PREFS_KEY;
@@ -32,14 +27,6 @@ public class ImportUnzipTask extends UnzipTask {
         if (name != null) {
             filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
             runJavascript("CallbackManager.tablet.runFile('" + bbxEncode(name) + "');");
-            /*
-            try {
-                String contents = FileUtils.readFileToString(new File(to, "program.xml"), "utf-8");
-                runJavascript("CallbackManager.data.open('" + bbxEncode(name) + "', '" + bbxEncode(contents) + "');");
-                filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
-            } catch (IOException e) {
-                Log.e(TAG, "OpenAfterImport: " + e.getMessage());
-            }*/
         }
         super.onPostExecute(name);
     }

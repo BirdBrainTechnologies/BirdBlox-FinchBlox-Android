@@ -343,7 +343,6 @@ public class FileManagementHandler implements RequestHandler {
         }
         try {
             File dir = new File(getBirdbloxDir(), name);
-            //String zipName = name + ".zip";
             String zipName = name + ".bbx";
             File zip = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), zipName);
             ZipUtility.zipDirectory(dir, zip);
@@ -354,6 +353,7 @@ public class FileManagementHandler implements RequestHandler {
                 return NanoHTTPD.newFixedLengthResponse(
                         NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully exported project " + name);
             }
+            //TODO: remove zip file once transfer is complete? Consider using a different directory for the temp file.
         } catch (SecurityException | IOException e) {
             Log.e(TAG, "Export: " + e.getMessage());
         }
