@@ -73,6 +73,7 @@ public class UARTConnection extends BluetoothGattCallback {
      * @return True on success, false otherwise
      */
     synchronized public boolean writeBytes(byte[] bytes) {
+        Log.d(TAG, "writing value " + bytes[0]);
         try {
             startLatch = new CountDownLatch(1);
             doneLatch = new CountDownLatch(1);
@@ -81,6 +82,7 @@ public class UARTConnection extends BluetoothGattCallback {
             boolean res;
             int retryCount = 0;
             while (!(res = btGatt.writeCharacteristic(tx))) {
+                Log.d(TAG, "retrying to write " + bytes[0]);
                 if (retryCount > MAX_RETRIES) {
                     break;
                 }
@@ -97,6 +99,7 @@ public class UARTConnection extends BluetoothGattCallback {
             }
             return res;
         } catch (Exception e) {
+            Log.e(TAG, "Error writing: " + e.getMessage());
         }
         return false;
     }
@@ -138,7 +141,7 @@ public class UARTConnection extends BluetoothGattCallback {
                 return Arrays.copyOf(res, res.length);
             }
         } catch (Exception e) {
-
+            Log.e(TAG, e.getMessage());
         }
         Log.e(TAG, "Unable to write bytes to tx");
         return new byte[]{};

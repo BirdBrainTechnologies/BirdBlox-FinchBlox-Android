@@ -104,11 +104,11 @@ public class DeviceUtil {
 
         switch (axisString) {
             case "x":
-                return mx;
+                return mx/10; //convert values to uT
             case "y":
-                return my;
+                return my/10;
             case "z":
-                return mz;
+                return mz/10;
         }
         return 0.0;
     }
@@ -117,17 +117,24 @@ public class DeviceUtil {
      * Converts raw readings from sensors [0,255] into angle in degrees.
      * @param rawMag the byte array of raw magnetometer values in 3 directions
      * @param rawAccl the byte array of raw accelerometer values in 3 directions
-     * @return the anglge in degrees based on the raw magnetometer values and raw accelerometer values.
+     * @return the angle in degrees based on the raw magnetometer values and raw accelerometer values.
      */
     public static double RawToCompass(byte[] rawAccl, byte[] rawMag) {
         double ax = Complement(RawToInt(rawAccl[0])) * 1.0;
         double ay = Complement(RawToInt(rawAccl[1])) * 1.0;
         double az = Complement(RawToInt(rawAccl[2])) * 1.0;
 
-        short mx = (short) ((rawMag[1] & 0xFF) | (rawMag[0] << 8)) ;
-        short my = (short) ((rawMag[3] & 0xFF) | (rawMag[2] << 8)) ;
-        short mz = (short) ((rawMag[5] & 0xFF) | (rawMag[4] << 8)) ;
-
+        short mx, my, mz;
+        if (rawMag.length == 3) {
+            //when only 3 values are returned, there is one per axis and they are in uT.
+            mx = (short) (rawMag[0] * 10);
+            my = (short) (rawMag[1] * 10);
+            mz = (short) (rawMag[2] * 10);
+        } else {
+            mx = (short) ((rawMag[1] & 0xFF) | (rawMag[0] << 8)) ;
+            my = (short) ((rawMag[3] & 0xFF) | (rawMag[2] << 8)) ;
+            mz = (short) ((rawMag[5] & 0xFF) | (rawMag[4] << 8)) ;
+        }
 
         double phi = Math.atan(-ay / az);
         double theta = Math.atan(ax / (ay * Math.sin(phi) + az * Math.cos(phi)));

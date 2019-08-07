@@ -166,7 +166,8 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
                             public void run() {
                                 super.run();
                                 String macAddr = getMacAddress();
-                                RobotRequestHandler.disconnectFromHummingbit(macAddr);
+                                //RobotRequestHandler.disconnectFromHummingbit(macAddr);
+                                RobotRequestHandler.disconnectFromRobot(RobotType.Hummingbit, macAddr);
                                 if (DISCONNECTED) {
                                     return;
                                 }

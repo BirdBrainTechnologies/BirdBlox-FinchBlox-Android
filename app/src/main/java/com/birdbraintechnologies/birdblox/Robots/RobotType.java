@@ -6,7 +6,8 @@ public enum RobotType {
 
     Hummingbird("Hummingbird"),
     Hummingbit("Hummingbirdbit"),
-    Microbit("Microbit");
+    Microbit("Microbit"),
+    Finch("Finch");
 
 
     private final String name;
@@ -32,6 +33,8 @@ public enum RobotType {
             return RobotType.Hummingbit;
         case "microbit":
             return RobotType.Microbit;
+        case "finch":
+            return RobotType.Finch;
         default:
             Log.d("RobotType", "About to return null");
             return null;

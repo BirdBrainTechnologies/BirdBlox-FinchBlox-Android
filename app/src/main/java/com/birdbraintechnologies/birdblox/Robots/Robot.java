@@ -11,6 +11,8 @@ import java.util.Map;
 
 public abstract class Robot<T extends RobotState<T>> {
 
+    public final String TAG = this.getClass().getSimpleName();
+
     protected T oldState;
     protected T newState;
 
@@ -69,5 +71,13 @@ public abstract class Robot<T extends RobotState<T>> {
     public abstract boolean hasMinFirmware();
 
     public abstract boolean hasLatestFirmware();
+
+    public abstract void setConnected();
+
+    public abstract void disconnect();
+
+    public abstract boolean getDisconnected();
+
+    public abstract boolean isConnected();
 
 }
