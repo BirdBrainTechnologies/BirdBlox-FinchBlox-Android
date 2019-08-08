@@ -521,9 +521,15 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
             case "encoder":
                 int i = 0;
                 if (axisString.equals("right")) { i = 3; }
-                int val = (rawEncoder[i] << 24) + (rawEncoder[i+1] << 16) + (rawEncoder[i+2] << 8);
-                val = val/256;
-                return Integer.toString(val);
+
+                int msb = rawEncoder[i] & 0xFF;
+                int ssb = rawEncoder[i+1] & 0xFF;
+                int lsb = rawEncoder[i+2] & 0xFF;
+
+                int unsigned = (msb << 16) + (ssb << 8) + lsb;
+                int signed = (unsigned << 8) >> 8;
+
+                return Integer.toString(signed);
             case "magnetometer":
                 //The values reported by the finch are one byte and already in uT.
                 switch(axisString){
@@ -605,6 +611,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 doneSending.await(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
             }
             if (statesEqual()) {
+                conn.writeBytes(new byte[]{TERMINATE_CMD});
                 newState.resetAll();
                 newFMState.resetAll();
                 if (lock.isHeldByCurrentThread()) {
