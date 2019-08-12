@@ -418,7 +418,20 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 int speedR = Integer.parseInt(args.get("speedR").get(0));
                 int ticksR = Integer.parseInt(args.get("ticksR").get(0));
                 Log.d(TAG, "set motors " + speedL + ", " + ticksL + ", " + speedR + ", " + ticksR);
-                return setRbSOOutput(oldFMState.getMotors(), newFMState.getMotors(), speedL, ticksL, speedR, ticksR);
+                boolean isMoving = (rawSensorValues[4] < 0);
+                boolean wasMoving = isMoving;
+                boolean success = setRbSOOutput(oldFMState.getMotors(), newFMState.getMotors(), speedL, ticksL, speedR, ticksR);
+                if (success && (ticksR != 0 || ticksL != 0)) { //0 ticks is either stop or continuous motion.
+                    boolean done = false;
+                    while (!done) {
+                        isMoving = (rawSensorValues[4] < 0);
+                        if (wasMoving && !isMoving) {
+                            done = true;
+                        }
+                        wasMoving = isMoving;
+                    }
+                }
+                return success;
             case "ledArray":
                 String charactersInInts = args.get("ledArrayStatus").get(0);
                 int[] bitsInInt = new int[charactersInInts.length() + 1];
@@ -499,9 +512,10 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
         switch (sensorType) {
             case "distance":
                 int num = (rawDistance[0] << 8) + rawDistance[1];
-                int scaled = (int)Math.round((double)num * (117/100));
-                Log.d(TAG, "returning distance " + Arrays.toString(rawDistance) + "; " + num + "; " + scaled);
-                return Integer.toString(scaled);
+                //int scaled = (int)Math.round((double)num * (117/100));
+                //Log.d(TAG, "returning distance " + Arrays.toString(rawDistance) + "; " + num + "; " + scaled);
+                //return Integer.toString(scaled);
+                return Integer.toString(num);
             case "light":
                 if (axisString.equals("right")) {
                     return Integer.toString(rawLight[1]);
