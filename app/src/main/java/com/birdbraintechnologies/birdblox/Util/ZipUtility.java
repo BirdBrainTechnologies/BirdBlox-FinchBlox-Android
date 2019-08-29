@@ -105,6 +105,10 @@ public class ZipUtility {
         while (e.hasMoreElements()) {
             ZipEntry entry = (ZipEntry) e.nextElement();
             File file = new File(extractTo, entry.getName());
+            String canonicalPath = file.getCanonicalPath();
+            if (!canonicalPath.startsWith(extractTo.getPath())) {
+                throw new SecurityException("Zip Path Traversal Vulnerability");
+            }
             if (entry.isDirectory() && !file.exists()) {
                 if(!file.mkdirs()){
                     throw new IOException("Failed to make " + file.getName());

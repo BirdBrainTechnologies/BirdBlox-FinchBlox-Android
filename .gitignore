@@ -9,3 +9,4 @@
 .externalNativeBuild
 .idea/compiler.xml
 .idea/copyright/profiles_settings.xml
+*.aab

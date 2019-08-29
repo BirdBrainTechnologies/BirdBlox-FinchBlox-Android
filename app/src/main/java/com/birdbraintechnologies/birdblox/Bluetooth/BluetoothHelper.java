@@ -46,24 +46,24 @@ public class BluetoothHelper {
     private static final int THRESHOLD = 20;
     public static final int AUTOCONNECTION_THRESHOLD = -75;
     private static final String TAG = "BluetoothHelper";
-    private static final int SCAN_DURATION = 2000;  /* Length of time to perform a scan, in milliseconds */
+    private static final int SCAN_DURATION = 10000;//2000;  /* Length of time to perform a scan, in milliseconds */
     public static boolean currentlyScanning;
     private BluetoothAdapter btAdapter;
     private Handler handler;
-    private boolean btScanning;
     private Context context;
     public static HashMap<String, BluetoothDevice> deviceList;
     private static HashMap<String, BluetoothDevice> discoveredList;
     private BluetoothLeScanner scanner;
     private static HashMap<String, Integer> deviceRSSI = new HashMap<>();
+    private static HashMap<String, AtomicLong> deviceLastSeen = new HashMap<>();
     private static ScanSettings scanSettings = (new ScanSettings.Builder())
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build();
     private AtomicLong last_sent = new AtomicLong(System.currentTimeMillis());
-    private static final int SEND_INTERVAL = 2000; /* Interval that scan results will be sent to frontend, in milliseconds */
+    private static final int SEND_INTERVAL = 500;//2000; /* Interval that scan results will be sent to frontend, in milliseconds */
 
-    private AtomicLong last_clear = new AtomicLong(System.currentTimeMillis());
-    private static final int CLEAR_INTERVAL = 10000; /* Interval that scan results will be sent to frontend, in milliseconds */
+//    private AtomicLong last_clear = new AtomicLong(System.currentTimeMillis());
+//    private static final int CLEAR_INTERVAL = 10000; /* Interval that scan results will be cleared from deviceList, in milliseconds */
 
     /* Callback for populating the device list and discoveredList
        The discoveredList keeps track of all the devices found after a startDiscover request is issued,
@@ -75,8 +75,10 @@ public class BluetoothHelper {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             synchronized (deviceList) {
+                Log.d(TAG, "onScanResult " + result.toString());
                 deviceList.put(result.getDevice().getAddress(), result.getDevice());
                 discoveredList.put(result.getDevice().getAddress(), result.getDevice());
+                deviceLastSeen.put(result.getDevice().getAddress(), new AtomicLong(System.currentTimeMillis()));
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
                 if (hummingbirdsToConnect != null) {
                     if (hummingbirdsToConnect.contains(result.getDevice().getAddress())) {
@@ -127,44 +129,49 @@ public class BluetoothHelper {
                     last_sent.set(System.currentTimeMillis());
                     JSONArray robots = new JSONArray();
                     for (BluetoothDevice device : BLEDeviceList) {
-                        String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
-                        String prefix = "";
+                        //Make sure we have seen this device recently
+                        if (System.currentTimeMillis() - deviceLastSeen.get(device.getAddress()).get() <= 2000) {
 
-                        switch (device.getName().substring(0, 2)) {
-                            case "HM":
-                                prefix = "Duo";
-                                break;
-                            case "HB":
-                                prefix = "Duo";
-                                break;
-                            case "FN":
-                                prefix = "Finch";
-                                break;
-                            case "BB":
-                                prefix = "Bit";
-                                break;
-                            case "MB":
-                                prefix = "micro:bit";
-                                break;
+                            String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
+                            String prefix = "";
+
+                            switch (device.getName().substring(0, 2)) {
+                                case "HM":
+                                    prefix = "Duo";
+                                    break;
+                                case "HB":
+                                    prefix = "Duo";
+                                    break;
+                                case "FN":
+                                    prefix = "Finch";
+                                    break;
+                                case "BB":
+                                    prefix = "Bit";
+                                    break;
+                                case "MB":
+                                    prefix = "micro:bit";
+                                    break;
+                            }
+                            JSONObject robot = new JSONObject();
+                            try {
+                                robot.put("id", device.getAddress());
+                                robot.put("device", prefix);
+                                robot.put("name", name);
+                                robot.put("RSSI", deviceRSSI.get(device.getAddress()));
+                            } catch (JSONException e) {
+                                Log.e("JSON", "JSONException while discovering devices");
+                            }
+                            robots.put(robot);
                         }
-                        JSONObject robot = new JSONObject();
-                        try {
-                            robot.put("id", device.getAddress());
-                            robot.put("device", prefix);
-                            robot.put("name", name);
-                            robot.put("RSSI", deviceRSSI.get(device.getAddress()));
-                        } catch (JSONException e) {
-                            Log.e("JSON", "JSONException while discovering devices");
-                        }
-                        robots.put(robot);
                     }
+                    Log.d(TAG, "onScanResult sending " + robots.toString());
                     runJavascript("CallbackManager.robot.discovered('" + bbxEncode(robots.toString()) + "');");
                 }
 
-                if (System.currentTimeMillis() - last_clear.get() >= CLEAR_INTERVAL) {
-                    last_clear.set(System.currentTimeMillis());
-                    deviceList.clear();
-                }
+               // if (System.currentTimeMillis() - last_clear.get() >= CLEAR_INTERVAL) {
+               //     last_clear.set(System.currentTimeMillis());
+               //     deviceList.clear();
+               // }
             }
         }
     };
@@ -176,7 +183,6 @@ public class BluetoothHelper {
      */
     public BluetoothHelper(Context context) {
         this.context = context;
-        this.btScanning = false;
         this.handler = new Handler();
         deviceList = new HashMap<>();
         discoveredList = new HashMap<>();
@@ -208,7 +214,7 @@ public class BluetoothHelper {
             // Start scanning for devices
             scanner = btAdapter.getBluetoothLeScanner();
 
-            btScanning = true;
+
             // Build scan settings (scan as fast as possible)
             currentlyScanning = true;
             scanner.startScan(scanFilters, scanSettings, populateDevices);
@@ -216,10 +222,9 @@ public class BluetoothHelper {
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    btScanning = false;
                     if (scanner != null) {
                         scanner.stopScan(populateDevices);
-                        Log.d("BLEScan", "Stopped scan.");
+                        Log.d("BLEScan", "Stopped scan (timeout).");
                         scanner = null;
                     }
                     currentlyScanning = false;
@@ -229,6 +234,8 @@ public class BluetoothHelper {
         } else {
             currentlyScanning = true;
         }
+        //Wait a full send interval before sending first results
+        last_sent.set(System.currentTimeMillis() + SEND_INTERVAL);
     }
 
     /**
