@@ -191,7 +191,7 @@ public class BluetoothHelper {
                 (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         this.btAdapter = btManager.getAdapter();
         // Ask to enable Bluetooth if disabled
-        if (!btAdapter.isEnabled()) {
+        if (btAdapter != null && !btAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             enableBtIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(enableBtIntent);

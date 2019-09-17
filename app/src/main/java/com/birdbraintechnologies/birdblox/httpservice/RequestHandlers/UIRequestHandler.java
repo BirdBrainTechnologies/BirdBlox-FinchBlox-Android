@@ -43,7 +43,7 @@ public class UIRequestHandler implements RequestHandler {
         Map<String, List<String>> m = session.getParameters();
         switch (path[0]) {
             case "contentLoaded":
-
+                Log.d(TAG, "contentLoaded");
                 String currentFile = filesPrefs.getString(CURRENT_PREFS_KEY, null);
                 String lastFile = filesPrefs.getString(LAST_PROJECT_KEY, null);
                 if (currentFile != null) {
@@ -57,6 +57,7 @@ public class UIRequestHandler implements RequestHandler {
 //                return loadContent();
                 break;
             case "translatedStrings":
+                Log.d(TAG, "translatedStrings");
                 MainWebView.name_error_already_exists = m.get("Name_error_already_exists").get(0);
                 MainWebView.cancel_text = m.get("Cancel").get(0);
                 MainWebView.rename_text = m.get("Rename").get(0);

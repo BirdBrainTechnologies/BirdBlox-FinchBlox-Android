@@ -316,7 +316,7 @@ public class MainWebView extends AppCompatActivity {
                     importFromIntent(getIntent());
                     //runJavascript("CallbackManager.tablet.setFile('" + bbxEncode(getIntent().getData().toString()) + "');");
                 }
-                runJavascript(" CallbackManager.tablet.changeDeviceLimit('" + bbxEncode("2") + "');");
+                //runJavascript(" CallbackManager.tablet.changeDeviceLimit('" + bbxEncode("2") + "');");
 
             }
         });
