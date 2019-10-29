@@ -42,7 +42,7 @@ import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblox.Dialogs.BirdBloxDialog;
 import com.birdbraintechnologies.birdblox.Project.ImportUnzipTask;
 import com.birdbraintechnologies.birdblox.Sound.CancelableMediaPlayer;
-import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+//import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RecordingHandler;
 import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.v2.DbxClientV2;
@@ -215,7 +215,7 @@ public class MainWebView extends AppCompatActivity {
         /* If the bluetooth service is already running, stop it. */
         stopService(new Intent(this, BluetoothHelper.class));
         /* If the HTTP service is already running, stop it. */
-        stopService(new Intent(this, HttpService.class));
+        //stopService(new Intent(this, HttpService.class));
 
         mainWebViewContext = MainWebView.this;
 
@@ -256,7 +256,7 @@ public class MainWebView extends AppCompatActivity {
         setContentView(R.layout.activity_main_web_view);
 
         // Start service
-        startService(new Intent(this, HttpService.class));
+        //startService(new Intent(this, HttpService.class));
 
         // Create webview
         webView = (WebView) findViewById(R.id.main_webview);
@@ -281,6 +281,10 @@ public class MainWebView extends AppCompatActivity {
 
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
+        final JavascriptInterface myJavaScriptInterface
+                = new JavascriptInterface(this);
+        webView.addJavascriptInterface(myJavaScriptInterface, "AndroidInterface");
+
         webView.resumeTimers();
 
 
@@ -387,7 +391,7 @@ public class MainWebView extends AppCompatActivity {
         super.onDestroy();
         bManager.unregisterReceiver(bReceiver);
         webView.destroy();
-        stopService(new Intent(this, HttpService.class));
+        //stopService(new Intent(this, HttpService.class));
         stopService(new Intent(this, BluetoothHelper.class));
     }
 

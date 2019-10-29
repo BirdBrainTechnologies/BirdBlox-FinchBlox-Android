@@ -20,8 +20,11 @@ import com.birdbraintechnologies.birdblox.Robots.Hummingbit;
 import com.birdbraintechnologies.birdblox.Robots.Microbit;
 import com.birdbraintechnologies.birdblox.Robots.Robot;
 import com.birdbraintechnologies.birdblox.Robots.RobotType;
-import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+//import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidResponse;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidSession;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
+import com.birdbraintechnologies.birdblox.httpservice.Status;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,7 +65,7 @@ public class RobotRequestHandler implements RequestHandler {
     public static HashSet<String> microbitsToConnect = new HashSet<>();
     public static HashSet<String> finchesToConnect = new HashSet<>();
 
-    HttpService service;
+    //HttpService service;
     private static BluetoothHelper btHelper;
     private static HashMap<String, Thread> threadMap;
 
@@ -84,9 +87,11 @@ public class RobotRequestHandler implements RequestHandler {
 
     public static HashMap<String, BluetoothGatt> deviceGatt;
 
-    public RobotRequestHandler(HttpService service) {
-        this.service = service;
-        btHelper = service.getBluetoothHelper();
+    //public RobotRequestHandler(HttpService service) {
+    public RobotRequestHandler(BluetoothHelper btService) {
+        //this.service = service;
+        //btHelper = service.getBluetoothHelper();
+        btHelper = btService;
         threadMap = new HashMap<>();
 
         connectedHummingbirds = new HashMap<>();
@@ -125,7 +130,8 @@ public class RobotRequestHandler implements RequestHandler {
 
 
     @Override
-    public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    //public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    public NativeAndroidResponse handleRequest(NativeAndroidSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         Map<String, List<String>> m = session.getParameters();
         // Generate response body
@@ -151,13 +157,15 @@ public class RobotRequestHandler implements RequestHandler {
                 robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
                 if (robot == null) {
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
-                    return NanoHTTPD.newFixedLengthResponse(
-                            NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Robot " + m.get("id").get(0) + " was not found.");
+                    //return NanoHTTPD.newFixedLengthResponse(
+                    //        NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Robot " + m.get("id").get(0) + " was not found.");
+                    return new NativeAndroidResponse(Status.NOT_FOUND, "Robot " + m.get("id").get(0) + " was not found.");
                 } else if (!robot.setOutput(path[1], m)) {
                     //TODO: Is it really true that when you fail to set output it always means not connected?
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
-                    return NanoHTTPD.newFixedLengthResponse(
-                            NanoHTTPD.Response.Status.EXPECTATION_FAILED, MIME_PLAINTEXT, "Failed to send to robot " + m.get("id").get(0) + ".");
+                    //return NanoHTTPD.newFixedLengthResponse(
+                    //        NanoHTTPD.Response.Status.EXPECTATION_FAILED, MIME_PLAINTEXT, "Failed to send to robot " + m.get("id").get(0) + ".");
+                    return new NativeAndroidResponse(Status.EXPECTATION_FAILED, "Failed to send to robot " + m.get("id").get(0) + ".");
                 } else {
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', true);");
                     responseBody = "Sent to robot " + m.get("type").get(0) + " successfully.";
@@ -167,8 +175,9 @@ public class RobotRequestHandler implements RequestHandler {
                 robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
                 if (robot == null) {
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
-                    return NanoHTTPD.newFixedLengthResponse(
-                            NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Robot " + m.get("id").get(0) + " was not found.");
+                    //return NanoHTTPD.newFixedLengthResponse(
+                    //        NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Robot " + m.get("id").get(0) + " was not found.");
+                    return new NativeAndroidResponse(Status.NOT_FOUND, "Robot " + m.get("id").get(0) + " was not found.");
                 } else {
                     String sensorPort = null;
                     String sensorAxis = null;
@@ -185,8 +194,9 @@ public class RobotRequestHandler implements RequestHandler {
                     String sensorValue = robot.readSensor(m.get("sensor").get(0), sensorPort, sensorAxis);
                     if (sensorValue == null) {
                         runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
-                        return NanoHTTPD.newFixedLengthResponse(
-                                NanoHTTPD.Response.Status.NO_CONTENT, MIME_PLAINTEXT, "Failed to read sensors from robot " + m.get("id").get(0) + ".");
+                        //return NanoHTTPD.newFixedLengthResponse(
+                        //        NanoHTTPD.Response.Status.NO_CONTENT, MIME_PLAINTEXT, "Failed to read sensors from robot " + m.get("id").get(0) + ".");
+                        return new NativeAndroidResponse(Status.NO_CONTENT, "Failed to read sensors from robot " + m.get("id").get(0) + ".");
                     } else {
                         runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', true);");
                         responseBody = sensorValue;
@@ -204,8 +214,9 @@ public class RobotRequestHandler implements RequestHandler {
                 break;
         }
 
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
+        return new NativeAndroidResponse(Status.OK, responseBody);
     }
 
 

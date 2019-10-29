@@ -45,13 +45,13 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
-
+<!--
         <service
             android:name="com.birdbraintechnologies.birdblox.httpservice.HttpService"
             android:enabled="true"
             android:exported="true"
             android:stopWithTask="false"/>
-
+-->
         <activity
             android:name="com.birdbraintechnologies.birdblox.SplashScreen"
             android:label="${appLabel}"

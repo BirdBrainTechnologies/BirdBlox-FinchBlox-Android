@@ -4,8 +4,11 @@ import android.os.Build;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
-import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+//import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidResponse;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidSession;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
+import com.birdbraintechnologies.birdblox.httpservice.Status;
 
 import java.util.List;
 
@@ -19,15 +22,17 @@ import fi.iki.elonen.NanoHTTPD;
 
 public class PropertiesHandler implements RequestHandler {
 
-    HttpService service;
+    //HttpService service;
     public static DisplayMetrics metrics;
 
-    public PropertiesHandler(HttpService service) {
-        this.service = service;
-    }
+    //public PropertiesHandler(HttpService service) {
+    //    this.service = service;
+    //}
+    public PropertiesHandler() {}
 
     @Override
-    public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    //public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    public NativeAndroidResponse handleRequest(NativeAndroidSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         String responseBody = "";
         switch (path[0]) {
@@ -40,8 +45,9 @@ public class PropertiesHandler implements RequestHandler {
             default:
                 break;
         }
-        NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+        //NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+        NativeAndroidResponse r = new NativeAndroidResponse(Status.OK, responseBody);
         return r;
     }
 

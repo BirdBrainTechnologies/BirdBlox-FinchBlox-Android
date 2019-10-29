@@ -1,5 +1,6 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
+import android.content.Context;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.media.AudioFormat;
@@ -10,8 +11,11 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Sound.CancelableMediaPlayer;
-import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+//import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidResponse;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidSession;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
+import com.birdbraintechnologies.birdblox.httpservice.Status;
 
 import java.io.IOException;
 import java.util.List;
@@ -44,15 +48,19 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
     /* Number of milliseconds per second*/
     private static double MILLIS_PER_SEC = 1000.0;
 
-    private HttpService service;
+    //private HttpService service;
     private CancelableMediaPlayer mediaPlayer;
+    private Context context;
 
-    public SoundHandler(HttpService service) {
-        this.service = service;
+    //public SoundHandler(HttpService service) {
+        //this.service = service;
+    public SoundHandler(Context context) {
+        this.context = context;
     }
 
     @Override
-    public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    //public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    public NativeAndroidResponse handleRequest(NativeAndroidSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         Map<String, List<String>> m = session.getParameters();
         // Generate response body
@@ -64,8 +72,9 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                 else if (m.get("type").get(0).equals("recording"))
                     responseBody = listSounds(true);
                 else {
-                    return NanoHTTPD.newFixedLengthResponse(
-                            NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "Unknown sound type");
+                    //return NanoHTTPD.newFixedLengthResponse(
+                    //        NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "Unknown sound type");
+                    return new NativeAndroidResponse(Status.BAD_REQUEST, "Unknown sound type");
                 }
                 break;
             case "duration":
@@ -74,8 +83,9 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                 else if (m.get("type").get(0).equals("recording"))
                     responseBody = getDuration(m.get("filename").get(0), true);
                 else {
-                    return NanoHTTPD.newFixedLengthResponse(
-                            NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "Unknown sound type");
+                    //return NanoHTTPD.newFixedLengthResponse(
+                    //        NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "Unknown sound type");
+                    return new NativeAndroidResponse(Status.BAD_REQUEST, "Unknown sound type");
                 }
                 break;
             case "play":
@@ -86,8 +96,9 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                 else if (m.get("type").get(0).equals("ui"))
                     playSound(m.get("filename").get(0), "ui");
                 else {
-                    return NanoHTTPD.newFixedLengthResponse(
-                            NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "Unknown sound type");
+                    //return NanoHTTPD.newFixedLengthResponse(
+                    //        NanoHTTPD.Response.Status.BAD_REQUEST, NanoHTTPD.MIME_PLAINTEXT, "Unknown sound type");
+                    return new NativeAndroidResponse(Status.BAD_REQUEST, "Unknown sound type");
                 }
                 break;
             case "note":
@@ -103,8 +114,9 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                 break;
         }
 
-        NanoHTTPD.Response r = newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+        //NanoHTTPD.Response r = newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+        NativeAndroidResponse r = new NativeAndroidResponse(Status.OK, responseBody);
         return r;
     }
 
@@ -118,7 +130,8 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
         if (recording) {
             return (new RecordingHandler()).listRecordings();
         }
-        AssetManager assets = service.getAssets();
+        //AssetManager assets = service.getAssets();
+        AssetManager assets = context.getAssets();
         try {
             String[] sounds = assets.list(SOUNDS_DIR);
             for (int i = 0; i < sounds.length; i++) {
@@ -144,7 +157,8 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
         }
         String path = SOUNDS_DIR + "/%s.wav";
         try {
-            AssetManager assets = service.getAssets();
+            //AssetManager assets = service.getAssets();
+            AssetManager assets = context.getAssets();
             AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
             CancelableMediaPlayer mediaPlayer = new CancelableMediaPlayer();
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
@@ -178,7 +192,8 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                 @Override
                 public void run() {
                     try {
-                        AssetManager assets = service.getAssets();
+                        //AssetManager assets = service.getAssets();
+                        AssetManager assets = context.getAssets();
                         AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
                         CancelableMediaPlayer mediaPlayer = new CancelableMediaPlayer();
                         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
@@ -193,7 +208,8 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
         } else {
             path = SOUNDS_DIR + "/%s.wav";
             try {
-                AssetManager assets = service.getAssets();
+                //AssetManager assets = service.getAssets();
+                AssetManager assets = context.getAssets();
                 AssetFileDescriptor fd = assets.openFd(String.format(path, soundId));
                 mediaPlayer = new CancelableMediaPlayer();
                 synchronized (mediaPlayers) {

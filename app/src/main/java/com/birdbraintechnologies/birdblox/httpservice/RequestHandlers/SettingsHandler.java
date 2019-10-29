@@ -1,9 +1,14 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
+import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
-import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+//import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidResponse;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidSession;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
+import com.birdbraintechnologies.birdblox.httpservice.Status;
 
 import java.util.List;
 import java.util.Map;
@@ -17,16 +22,20 @@ import fi.iki.elonen.NanoHTTPD;
  * @author Shreyan Bakshi (AppyFizz)
  */
 public class SettingsHandler implements RequestHandler {
+    private final String TAG = this.getClass().getSimpleName();
     public static final String PREFS_NAME = "Settings";
     private static final String DEFAULT_VALUE = "Default";
     private SharedPreferences settings;
 
-    public SettingsHandler(HttpService service) {
-        settings = service.getSharedPreferences(PREFS_NAME, 0);
+    public SettingsHandler(Context context) {
+        //settings = service.getSharedPreferences(PREFS_NAME, 0);
+        settings = context.getSharedPreferences(PREFS_NAME, 0);
     }
 
     @Override
-    public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    //public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    public NativeAndroidResponse handleRequest(NativeAndroidSession session, List<String> args) {
+        Log.d(TAG, "handle request");
         String[] path = args.get(0).split("/");
         Map<String, List<String>> m = session.getParameters();
         // Generate response body
@@ -35,8 +44,9 @@ public class SettingsHandler implements RequestHandler {
             case "get":
                 responseBody = getSetting(m.get("key").get(0));
                 if (responseBody.equals(DEFAULT_VALUE)) {
-                    return NanoHTTPD.newFixedLengthResponse(
-                            NanoHTTPD.Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+                    //return NanoHTTPD.newFixedLengthResponse(
+                    //        NanoHTTPD.Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+                    return new NativeAndroidResponse(Status.NOT_FOUND, responseBody);
                 }
                 break;
             case "set":
@@ -44,8 +54,9 @@ public class SettingsHandler implements RequestHandler {
                 break;
         }
 
-        NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+        //NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, NanoHTTPD.MIME_PLAINTEXT, responseBody);
+        NativeAndroidResponse r = new NativeAndroidResponse(Status.OK, responseBody);
         return r;
     }
 

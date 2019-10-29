@@ -15,8 +15,11 @@ import com.birdbraintechnologies.birdblox.Dropbox.DropboxOperation;
 import com.birdbraintechnologies.birdblox.Dropbox.DropboxZipAndUploadTask;
 import com.birdbraintechnologies.birdblox.MainWebView;
 import com.birdbraintechnologies.birdblox.R;
-import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+//import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidResponse;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidSession;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
+import com.birdbraintechnologies.birdblox.httpservice.Status;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.android.Auth;
@@ -34,6 +37,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.annotation.Native;
 import java.util.List;
 import java.util.Map;
 
@@ -68,7 +72,7 @@ public class DropboxRequestHandler implements RequestHandler {
 
     public static final String DB_PREFS_KEY = "com.birdbraintechnologies.birdblox.DROPBOX_ACCESS_TOKEN";
 
-    HttpService service;
+    //HttpService service;
 
     public static DbxRequestConfig dropboxConfig;
     public static DbxClientV2 dropboxClient;
@@ -77,8 +81,9 @@ public class DropboxRequestHandler implements RequestHandler {
 
     SharedPreferences dropboxPrefs;
 
-    public DropboxRequestHandler(HttpService service) {
-        this.service = service;
+    //public DropboxRequestHandler(HttpService service) {
+    public DropboxRequestHandler() {
+        //this.service = service;
 
         // If access token already present, initialize.
         dropboxPrefs = mainWebViewContext.getSharedPreferences(DB_PREFS_KEY, MODE_PRIVATE);
@@ -89,7 +94,8 @@ public class DropboxRequestHandler implements RequestHandler {
     }
 
     @Override
-    public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    //public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    public NativeAndroidResponse handleRequest(NativeAndroidSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         Map<String, List<String>> m = session.getParameters();
         switch (path[0]) {
@@ -108,22 +114,26 @@ public class DropboxRequestHandler implements RequestHandler {
             case "delete":
                 return startDropboxDelete(m.get("filename").get(0));
         }
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Bad Request");
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Bad Request");
+        return new NativeAndroidResponse(Status.BAD_REQUEST, "Bad Request");
     }
 
-    private NanoHTTPD.Response dropboxSignIn() {
+    //private NanoHTTPD.Response dropboxSignIn() {
+    private NativeAndroidResponse dropboxSignIn() {
         String accessToken = dropboxPrefs.getString("access-token", null);
         if (accessToken == null) {
             obtainDropboxAccessToken();
         } else {
             createDropboxClient(accessToken);
         }
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Sign In Process started");
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Sign In Process started");
+        return new NativeAndroidResponse(Status.OK, "Sign In Process started");
     }
 
-    private NanoHTTPD.Response dropboxSignOut() {
+    //private NanoHTTPD.Response dropboxSignOut() {
+    private NativeAndroidResponse dropboxSignOut() {
         try {
             dropboxSignInInfo = null;
             if (dropboxClient != null) {
@@ -135,43 +145,53 @@ public class DropboxRequestHandler implements RequestHandler {
             if (dropboxPrefs.getString("access-token", null) != null) {
                 dropboxPrefs.edit().putString("access-token", null).apply();
             }
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Signed out successfully");
+            //return NanoHTTPD.newFixedLengthResponse(
+            //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Signed out successfully");
+            return new NativeAndroidResponse(Status.OK, "Signed out successfully");
         } catch (Exception e) {
             Log.e(TAG, "Dropbox sign out: " + e.getMessage());
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while signing out: " + e.getMessage());
+            //return NanoHTTPD.newFixedLengthResponse(
+            //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while signing out: " + e.getMessage());
+            return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while signing out: " + e.getMessage());
         }
     }
 
-    private NanoHTTPD.Response listDropboxFolder() {
+    //private NanoHTTPD.Response listDropboxFolder() {
+    private NativeAndroidResponse listDropboxFolder() {
         JSONObject obj = dropboxAppFolderContents();
         if (obj != null) {
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, obj.toString());
+            //return NanoHTTPD.newFixedLengthResponse(
+            //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, obj.toString());
+            return new NativeAndroidResponse(Status.OK, obj.toString());
         }
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Error while listing contents of Dropbox folder.");
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Error while listing contents of Dropbox folder.");
+        return new NativeAndroidResponse(Status.SERVICE_UNAVAILABLE, "Error while listing contents of Dropbox folder.");
     }
 
-    private NanoHTTPD.Response startDropboxDownload(String name) {
+    //private NanoHTTPD.Response startDropboxDownload(String name) {
+    private NativeAndroidResponse startDropboxDownload(String name) {
         if (!dropboxSignedIn()) {
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Not signed in to Dropbox");
+            //return NanoHTTPD.newFixedLengthResponse(
+            //        NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Not signed in to Dropbox");
+            return new NativeAndroidResponse(Status.SERVICE_UNAVAILABLE, "Not signed in to Dropbox");
         }
         if (checkValidName(name, DropboxOperation.DOWNLOAD)) {
             startDropboxOperation(name, DropboxOperation.DOWNLOAD);
         } else {
             showDropboxDialog(name, DropboxOperation.DOWNLOAD);
         }
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started download and unzip of project: " + name);
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started download and unzip of project: " + name);
+        return new NativeAndroidResponse(Status.OK, "Successfully started download and unzip of project: " + name);
     }
 
-    private NanoHTTPD.Response startDropboxUpload(String name) {
+    //private NanoHTTPD.Response startDropboxUpload(String name) {
+    private NativeAndroidResponse startDropboxUpload(String name) {
         if (!dropboxSignedIn()) {
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Not signed in to Dropbox");
+            //return NanoHTTPD.newFixedLengthResponse(
+            //        NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Not signed in to Dropbox");
+            return new NativeAndroidResponse(Status.SERVICE_UNAVAILABLE, "Not signed in to Dropbox");
         }
         name = sanitizeName(name);
         if (checkValidName(name, DropboxOperation.UPLOAD)) {
@@ -179,14 +199,17 @@ public class DropboxRequestHandler implements RequestHandler {
         } else {
             showDropboxDialog(name, DropboxOperation.UPLOAD);
         }
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started upload of project: " + name);
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started upload of project: " + name);
+        return new NativeAndroidResponse(Status.OK, "Successfully started upload of project: " + name);
     }
 
-    private NanoHTTPD.Response startDropboxRename(final String name) {
+    //private NanoHTTPD.Response startDropboxRename(final String name) {
+    private NativeAndroidResponse startDropboxRename(final String name) {
         if (!dropboxSignedIn()) {
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Not signed in to Dropbox");
+            //return NanoHTTPD.newFixedLengthResponse(
+            //        NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Not signed in to Dropbox");
+            return new NativeAndroidResponse(Status.SERVICE_UNAVAILABLE, "Not signed in to Dropbox");
         }
         new Thread() {
             @Override
@@ -196,18 +219,22 @@ public class DropboxRequestHandler implements RequestHandler {
                 showRenameDialog(name, newName, DropboxOperation.RENAME);
             }
         }.start();
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully renamed project: " + name);
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully renamed project: " + name);
+        return new NativeAndroidResponse(Status.OK, "Successfully renamed project: " + name);
     }
 
-    private NanoHTTPD.Response startDropboxDelete(final String name) {
+    //private NanoHTTPD.Response startDropboxDelete(final String name) {
+    private NativeAndroidResponse startDropboxDelete(final String name) {
         if (!dropboxSignedIn()) {
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Not signed in to Dropbox");
+            //return NanoHTTPD.newFixedLengthResponse(
+            //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Not signed in to Dropbox");
+            return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Not signed in to Dropbox");
         }
         showDeleteDialog(name);
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started deletion of: " + name);
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully started deletion of: " + name);
+        return new NativeAndroidResponse(Status.OK, "Successfully started deletion of: " + name);
     }
 
     private void obtainDropboxAccessToken() {

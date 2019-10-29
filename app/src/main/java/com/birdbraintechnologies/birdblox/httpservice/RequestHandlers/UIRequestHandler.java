@@ -3,8 +3,11 @@ package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.MainWebView;
-import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+//import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidResponse;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidSession;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
+import com.birdbraintechnologies.birdblox.httpservice.Status;
 
 import org.apache.commons.io.FileUtils;
 
@@ -31,14 +34,16 @@ import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 public class UIRequestHandler implements RequestHandler {
     private static final String TAG = "UIRequestHandler";
 
-    HttpService service;
+    //HttpService service;
 
-    public UIRequestHandler(HttpService service) {
-        this.service = service;
-    }
+    //public UIRequestHandler(HttpService service) {
+    //    this.service = service;
+    //}
+    public UIRequestHandler() {}
 
     @Override
-    public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    //public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    public NativeAndroidResponse handleRequest(NativeAndroidSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         Map<String, List<String>> m = session.getParameters();
         switch (path[0]) {
@@ -55,7 +60,8 @@ public class UIRequestHandler implements RequestHandler {
                 }
 
 //                return loadContent();
-                break;
+                //break;
+                return new NativeAndroidResponse(Status.OK, "content loaded");
             case "translatedStrings":
                 Log.d(TAG, "translatedStrings");
                 MainWebView.name_error_already_exists = m.get("Name_error_already_exists").get(0);
@@ -67,13 +73,15 @@ public class UIRequestHandler implements RequestHandler {
                 MainWebView.delete_question = m.get("Delete_question").get(0);
                 MainWebView.loading_text = m.get("Loading").get(0);
 
-                break;
+                //break;
+                return new NativeAndroidResponse(Status.OK, "String translations received.");
         }
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Error in UI command.");
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Error in UI command.");
+        return new NativeAndroidResponse(Status.BAD_REQUEST, "Error in UI command.");
     }
 
-    public static NanoHTTPD.Response loadContent() {
+/*    public static NanoHTTPD.Response loadContent() {
         String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
         if (currProj != null) {
             try {
@@ -91,6 +99,6 @@ public class UIRequestHandler implements RequestHandler {
         }
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while opening current project.");
-    }
+    }*/
 
 }

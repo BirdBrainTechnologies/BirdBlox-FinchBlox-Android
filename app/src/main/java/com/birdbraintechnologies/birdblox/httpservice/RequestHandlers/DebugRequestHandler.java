@@ -1,12 +1,16 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
+import android.content.Context;
 import android.content.Intent;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.MainWebView;
-import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+//import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidResponse;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidSession;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
+import com.birdbraintechnologies.birdblox.httpservice.Status;
 
 import org.apache.commons.io.FileUtils;
 
@@ -32,14 +36,18 @@ public class DebugRequestHandler implements RequestHandler {
 
     private final static String LOG_DIR = "LOG";
 
-    HttpService service;
+    //HttpService service;
+    private Context context;
 
-    public DebugRequestHandler(HttpService service) {
-        this.service = service;
+    //public DebugRequestHandler(HttpService service) {
+    //    this.service = service;
+    public DebugRequestHandler(Context context) {
+        this.context = context;
     }
 
     @Override
-    public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    //public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    public NativeAndroidResponse handleRequest(NativeAndroidSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         switch (path[0]) {
             case "log":
@@ -47,8 +55,9 @@ public class DebugRequestHandler implements RequestHandler {
             case "shareLog":
                 return shareLog();
         }
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Error in Debug command.");
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Error in Debug command.");
+        return new NativeAndroidResponse(Status.BAD_REQUEST, "Error in Debug command.");
     }
 
     /**
@@ -59,18 +68,24 @@ public class DebugRequestHandler implements RequestHandler {
      * @return A 'OK' response if logging was successful,
      * and an 'ERROR' response otherwise.
      */
-    private NanoHTTPD.Response appendToLog(NanoHTTPD.IHTTPSession session) {
-        if (session.getMethod() != NanoHTTPD.Method.POST) {
-            Log.d(TAG, "Log: Messages must be sent via POST request");
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Please send a POST request.");
+    //private NanoHTTPD.Response appendToLog(NanoHTTPD.IHTTPSession session) {
+    private NativeAndroidResponse appendToLog(NativeAndroidSession session) {
+        //if (session.getMethod() != NanoHTTPD.Method.POST) {
+        //    Log.d(TAG, "Log: Messages must be sent via POST request");
+        //    return NanoHTTPD.newFixedLengthResponse(
+        //            NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Please send a POST request.");
+        //}
+        String message = session.getBody();
+        if (message.equals("")) {
+            return new NativeAndroidResponse(Status.BAD_REQUEST, "String to append to log is empty.");
         }
         try {
-            Map<String, String> postFiles = new HashMap<>();
+            //Map<String, String> postFiles = new HashMap<>();
             // Parse POST body to get parameters
-            session.parseBody(postFiles);
+            //session.parseBody(postFiles);
             // Obtain the message to be written to file from "postData"
-            String message = postFiles.get("postData");
+            //String message = postFiles.get("postData");
+
             // Get the log file
             File logFile = new File(mainWebViewContext.getFilesDir(), LOG_DIR + "/Log.txt");
             // If the log file doesn't exist yet, create a blank log file
@@ -105,14 +120,17 @@ public class DebugRequestHandler implements RequestHandler {
                 FileUtils.writeStringToFile(logFile, toWrite, "utf-8", false);
             }
             // Return OK Response
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully modified log file.");
-        } catch (IOException | SecurityException | NullPointerException | IllegalStateException | IllegalArgumentException | NanoHTTPD.ResponseException e) {
+            //return NanoHTTPD.newFixedLengthResponse(
+            //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully modified log file.");
+            return new NativeAndroidResponse(Status.OK, "Successfully modified log file.");
+        //} catch (IOException | SecurityException | NullPointerException | IllegalStateException | IllegalArgumentException | NanoHTTPD.ResponseException e) {
+        } catch (IOException | SecurityException | NullPointerException | IllegalStateException | IllegalArgumentException e) {
             Log.e(TAG, "Error while writing to log file: " + e.getMessage());
         }
         // Return Error Response
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while storing log message.");
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while storing log message.");
+        return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while storing log message.");
     }
 
     /**
@@ -122,7 +140,8 @@ public class DebugRequestHandler implements RequestHandler {
      * @return A 'OK' response if opening the dialog was successful,
      * and an 'ERROR' response otherwise.
      */
-    private NanoHTTPD.Response shareLog() {
+    //private NanoHTTPD.Response shareLog() {
+    private NativeAndroidResponse shareLog() {
         try {
             File logFile = new File(mainWebViewContext.getFilesDir(), LOG_DIR + "/Log.txt");
             // If the log file doesn't exist yet, create a blank log file
@@ -134,16 +153,19 @@ public class DebugRequestHandler implements RequestHandler {
                 // Send broadcast to MainWebView, to show share dialog for sharing the log file
                 Intent showDialog = new Intent(MainWebView.SHARE_LOG);
                 showDialog.putExtra("log_file_path", logFile.getAbsolutePath());
-                LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+                //LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+                LocalBroadcastManager.getInstance(context).sendBroadcast(showDialog);
                 // Return OK Response
-                return NanoHTTPD.newFixedLengthResponse(
-                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully shared log file");
+                //return NanoHTTPD.newFixedLengthResponse(
+                //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully shared log file");
+                return new NativeAndroidResponse(Status.OK, "Successfully shared log file");
             }
         } catch (IOException | IllegalArgumentException | SecurityException e) {
             Log.e(TAG, "Error sharing log file: " + e.getMessage());
         }
         // Return Error Response
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while sharing log file.");
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while sharing log file.");
+        return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while sharing log file.");
     }
 }

@@ -1,7 +1,9 @@
 package com.birdbraintechnologies.birdblox.httpservice;
 
+import android.content.Context;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DebugRequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler;
@@ -28,14 +30,24 @@ import fi.iki.elonen.NanoHTTPD;
  * @author Terence Sun (tsun1215)
  * @author Shreyan Bakshi (AppyFizz)
  */
-class RequestRouter {
+public class RequestRouter {
+    private final String TAG = this.getClass().getSimpleName();
 
     private HashMap<Pattern, RequestHandler> routes;
-    private HttpService service;
+    private Context context;
+    private BluetoothHelper btService;
+    /*private HttpService service;
 
     RequestRouter(HttpService service) {
         this.routes = new HashMap<>();
         this.service = service;
+        initRoutes();
+    }*/
+
+    public RequestRouter(Context context, BluetoothHelper btService) {
+        this.routes = new HashMap<>();
+        this.context = context;
+        this.btService = btService;
         initRoutes();
     }
 
@@ -45,16 +57,16 @@ class RequestRouter {
      */
     private void initRoutes() {
         // TODO: Make this have a match ordering
-        addRoute("^/robot/(.*)$", new RobotRequestHandler(service));
-        addRoute("^/tablet/(.*)$", new HostDeviceHandler(service));
-        addRoute("^/settings/(.*)$", new SettingsHandler(service));
-        addRoute("^/data/(.*)$", new FileManagementHandler(service));
-        addRoute("^/sound/recording/(.*)$", new RecordingHandler(service));
-        addRoute("^/sound/(?!recording)(.*)$", new SoundHandler(service));
-        addRoute("^/properties/(.*)$", new PropertiesHandler(service));
-        addRoute("^/cloud/(.*)$", new DropboxRequestHandler(service));
-        addRoute("^/ui/(.*)$", new UIRequestHandler(service));
-        addRoute("^/debug/(.*)$", new DebugRequestHandler(service));
+        addRoute("^/robot/(.*)$", new RobotRequestHandler(btService));
+        addRoute("^/tablet/(.*)$", new HostDeviceHandler(context));
+        addRoute("^/settings/(.*)$", new SettingsHandler(context));
+        addRoute("^/data/(.*)$", new FileManagementHandler(context));
+        addRoute("^/sound/recording/(.*)$", new RecordingHandler(context));
+        addRoute("^/sound/(?!recording)(.*)$", new SoundHandler(context));
+        addRoute("^/properties/(.*)$", new PropertiesHandler());
+        addRoute("^/cloud/(.*)$", new DropboxRequestHandler());
+        addRoute("^/ui/(.*)$", new UIRequestHandler());
+        addRoute("^/debug/(.*)$", new DebugRequestHandler(context));
         /**
          * These were older command patterns (NOT to be used anymore):
          * addRoute("^/hummingbird/(.*)$", new HummingbirdRequestHandler(service));
@@ -80,7 +92,8 @@ class RequestRouter {
      * @param session HttpRequest from the server
      * @return Response to the request
      */
-    NanoHTTPD.Response routeAndDispatch(NanoHTTPD.IHTTPSession session) {
+    //NanoHTTPD.Response routeAndDispatch(NanoHTTPD.IHTTPSession session) {
+    public NativeAndroidResponse routeAndDispatch(NativeAndroidSession session) {
 
         String path = session.getUri();
 
@@ -96,10 +109,12 @@ class RequestRouter {
                 for (int i = 1; i <= match.groupCount(); i++) {
                     args.add(match.group(i));
                 }
+                Log.d(TAG, "about to handle request for '" + session.getUri() + "' with args " + args.toString());
                 return e.getValue().handleRequest(session, args);
             }
         }
         // No match
-        return null;
+        //return null;
+        return new NativeAndroidResponse(Status.BAD_REQUEST, "No handler found for the following request: " + path);
     }
 }

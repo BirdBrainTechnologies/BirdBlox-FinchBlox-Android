@@ -26,8 +26,11 @@ import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Dialogs.DialogType;
 import com.birdbraintechnologies.birdblox.MainWebView;
-import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+//import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidResponse;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidSession;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
+import com.birdbraintechnologies.birdblox.httpservice.Status;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,7 +69,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private int shakeCount;
     private boolean shaken = false;
 
-    HttpService service;
+    //HttpService service;
     private double longitude = 0, latitude = 0, altitude = 0, pressure = 0,
             deviceAccelX = 0, deviceAccelY = 0, deviceAccelZ = 0;
 
@@ -84,8 +87,12 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     };
     LocalBroadcastManager bManager;
 
-    public HostDeviceHandler(HttpService service) {
-        this.service = service;
+    private Context context;
+
+    //public HostDeviceHandler(HttpService service) {
+    //    this.service = service;
+    public HostDeviceHandler(Context context) {
+        this.context = context;
         initLocationListener();
         initSensors();
         initBroadcastManager();
@@ -95,7 +102,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * Initializes the broadcast manager endpoint for Dialogs
      */
     private void initBroadcastManager() {
-        bManager = LocalBroadcastManager.getInstance(service);
+        //bManager = LocalBroadcastManager.getInstance(service);
+        bManager = LocalBroadcastManager.getInstance(context);
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(DIALOG_RESPONSE);
         bManager.registerReceiver(bReceiver, intentFilter);
@@ -105,7 +113,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * Initializes the sensor manager with sensors that BirdBlocks uses
      */
     private void initSensors() {
-        SensorManager manager = (SensorManager) service.getSystemService(SENSOR_SERVICE);
+        //SensorManager manager = (SensorManager) service.getSystemService(SENSOR_SERVICE);
+        SensorManager manager = (SensorManager) context.getSystemService(SENSOR_SERVICE);
         manager.registerListener(this, manager.getDefaultSensor(Sensor.TYPE_PRESSURE),
                 SensorManager.SENSOR_DELAY_UI);
         manager.registerListener(this, manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
@@ -116,13 +125,18 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * Initializes the location manager to obtain location
      */
     private void initLocationListener() {
+        //LocationManager locationManager =
+        //        (LocationManager) service.getSystemService(Context.LOCATION_SERVICE);
         LocationManager locationManager =
-                (LocationManager) service.getSystemService(Context.LOCATION_SERVICE);
-        if (ActivityCompat.checkSelfPermission(service,
+                (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        //if (ActivityCompat.checkSelfPermission(service,
+        //        Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(context,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "Location permissions not granted. Requesting permission now, if possible.");
             Intent getLocPerm = new Intent(MainWebView.LOCATION_PERMISSION);
-            LocalBroadcastManager.getInstance(service).sendBroadcast(getLocPerm);
+            //LocalBroadcastManager.getInstance(service).sendBroadcast(getLocPerm);
+            LocalBroadcastManager.getInstance(context).sendBroadcast(getLocPerm);
         } else {
             Criteria criteria = new Criteria();
             criteria.setAccuracy(Criteria.ACCURACY_FINE);
@@ -135,7 +149,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     }
 
     @Override
-    public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    //public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    public NativeAndroidResponse handleRequest(NativeAndroidSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         String responseBody = "";
         Map<String, List<String>> m = session.getParameters();
@@ -183,8 +198,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             case "availableSensors":
                 return getAvailableSensors();
         }
-        NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
+        //NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
+        NativeAndroidResponse r = new NativeAndroidResponse(Status.OK, responseBody);
         return r;
     }
 
@@ -193,7 +209,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      *
      * @return Longitude and latitude separated by a space
      */
-    private NanoHTTPD.Response getDeviceLocation() {
+    //private NanoHTTPD.Response getDeviceLocation() {
+    private NativeAndroidResponse getDeviceLocation() {
         /*
         if (ActivityCompat.checkSelfPermission(service,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -237,8 +254,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
                 */
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(latitude) + " " + Double.toString(longitude));
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(latitude) + " " + Double.toString(longitude));
+        return new NativeAndroidResponse(Status.OK, Double.toString(latitude) + " " + Double.toString(longitude));
     }
 
 
@@ -247,7 +265,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      *
      * @return Altitute of device from gps
      */
-    private NanoHTTPD.Response getDeviceAltitude() {
+    //private NanoHTTPD.Response getDeviceAltitude() {
+    private NativeAndroidResponse getDeviceAltitude() {
         /*
         PackageManager packageManager = service.getPackageManager();
         boolean gps = packageManager.hasSystemFeature(PackageManager.FEATURE_LOCATION);
@@ -259,8 +278,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
         }*/
         Log.d(TAG, "altitude is " + altitude);
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(altitude));
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(altitude));
+        return new NativeAndroidResponse(Status.OK, Double.toString(altitude));
     }
 
     /**
@@ -269,7 +289,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @return Device's SSID or "null" if there is not one
      */
     private String getDeviceSSID() {
-        WifiManager wifiManager = (WifiManager) service.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        //WifiManager wifiManager = (WifiManager) service.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
         WifiInfo info = wifiManager.getConnectionInfo();
         String result = info.getSSID();
         result = result.replace("\"", "");
@@ -283,7 +304,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      *
      * @return Atmospheric pressure (mPa or mbar, depending on device)
      */
-    private NanoHTTPD.Response getPressure() {
+    //private NanoHTTPD.Response getPressure() {
+    private NativeAndroidResponse getPressure() {
         /*
         PackageManager packageManager = service.getPackageManager();
         boolean barometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_BAROMETER);
@@ -294,8 +316,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Barometer not detected");
         }*/
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(pressure));
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(pressure));
+        return new NativeAndroidResponse(Status.OK, Double.toString(pressure));
     }
 
     /**
@@ -303,7 +326,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      *
      * @return Each axis' acceleration separated by spaces
      */
-    private NanoHTTPD.Response getDeviceAcceleration() {
+    //private NanoHTTPD.Response getDeviceAcceleration() {
+    private NativeAndroidResponse getDeviceAcceleration() {
         /*
         PackageManager packageManager = service.getPackageManager();
         boolean accelerometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_ACCELEROMETER);
@@ -314,8 +338,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Accelerometer not detected");
         }*/
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, (-deviceAccelX) + " " + (-deviceAccelY) + " " + (-deviceAccelZ));
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, (-deviceAccelX) + " " + (-deviceAccelY) + " " + (-deviceAccelZ));
+        return new NativeAndroidResponse(Status.OK, (-deviceAccelX) + " " + (-deviceAccelY) + " " + (-deviceAccelZ));
     }
 
     /**
@@ -355,7 +380,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         showDialog.putExtra("select", selectAll.toLowerCase().equals("true"));
         showDialog.putExtra("okText", okText);
         showDialog.putExtra("cancelText", cancelText);
-        LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+        //LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(showDialog);
     }
 
     /**
@@ -375,7 +401,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         showDialog.putExtra("message", question);
         showDialog.putExtra("button1", option1);
         showDialog.putExtra("button2", option2);
-        LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+        //LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(showDialog);
     }
 
     /**
@@ -418,7 +445,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      * @return String representing the orientation of the device
      */
     private String getDeviceOrientation() {
-        PackageManager packageManager = service.getPackageManager();
+        //PackageManager packageManager = service.getPackageManager();
+        PackageManager packageManager = context.getPackageManager();
         boolean accelerometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_ACCELEROMETER);
         String orientation = "Other";
         if (accelerometer) {
@@ -449,7 +477,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
      */
     private void exitApp() {
         Intent showDialog = new Intent(MainWebView.EXIT);
-        LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+        //LocalBroadcastManager.getInstance(service).sendBroadcast(showDialog);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(showDialog);
     }
 
     @Override
@@ -517,10 +546,13 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     /**
      * @return
      */
-    private NanoHTTPD.Response getAvailableSensors() {
-        SensorManager sensorManager = (SensorManager) service.getSystemService(SENSOR_SERVICE);
+    //private NanoHTTPD.Response getAvailableSensors() {
+    private NativeAndroidResponse getAvailableSensors() {
+        //SensorManager sensorManager = (SensorManager) service.getSystemService(SENSOR_SERVICE);
+        SensorManager sensorManager = (SensorManager) context.getSystemService(SENSOR_SERVICE);
         List<String> sensorList = new ArrayList<>();
-        PackageManager packageManager = service.getPackageManager();
+        //PackageManager packageManager = service.getPackageManager();
+        PackageManager packageManager = context.getPackageManager();
         boolean accelerometer = packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_ACCELEROMETER);
         if (accelerometer) {
             sensorList.add("accelerometer");
@@ -539,7 +571,8 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         }
         String response = TextUtils.join("\n", sensorList);
         Log.d("SENSORRESPONSE", response);
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, response);
+        //return NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, response);
+        return new NativeAndroidResponse(Status.OK, response);
     }
 }

@@ -1,6 +1,7 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
@@ -12,8 +13,11 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.MainWebView;
-import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+//import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidResponse;
+import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidSession;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
+import com.birdbraintechnologies.birdblox.httpservice.Status;
 import com.coremedia.iso.boxes.Container;
 import com.googlecode.mp4parser.authoring.Movie;
 import com.googlecode.mp4parser.authoring.Track;
@@ -24,6 +28,7 @@ import com.googlecode.mp4parser.authoring.tracks.AppendTrack;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.annotation.Native;
 import java.nio.channels.FileChannel;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -78,7 +83,7 @@ public class RecordingHandler implements RequestHandler {
     // Current state of the Media Player/Recorder
     // Takes the values "Recording", "Paused", "Stopped", "Playing"
     private static String currState = "Stopped";
-    HttpService service;
+    //HttpService service;
 
     private static Timer timer;
 
@@ -88,8 +93,12 @@ public class RecordingHandler implements RequestHandler {
 
     private String currProj;
 
-    public RecordingHandler(HttpService service) {
-        this.service = service;
+    private Context context;
+
+    //public RecordingHandler(HttpService service) {
+    public RecordingHandler(Context context) {
+        //this.service = service;
+        this.context = context;
         mediaRecorder = new MediaRecorder();
         timer = new Timer();
 
@@ -154,7 +163,8 @@ public class RecordingHandler implements RequestHandler {
     }
 
     @Override
-    public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    //public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
+    public NativeAndroidResponse handleRequest(NativeAndroidSession session, List<String> args) {
         String[] path = args.get(0).split("/");
         Map<String, List<String>> m = session.getParameters();
         String responseBody = "";
@@ -176,8 +186,9 @@ public class RecordingHandler implements RequestHandler {
             default:
                 break;
         }
-        NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
+        //NanoHTTPD.Response r = NanoHTTPD.newFixedLengthResponse(
+        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, responseBody);
+        NativeAndroidResponse r = new NativeAndroidResponse(Status.OK, responseBody);
         return r;
     }
 
@@ -187,7 +198,8 @@ public class RecordingHandler implements RequestHandler {
      * @return Returns true if user has provided these permissions, and false otherwise.
      */
     private boolean checkMicPermission() {
-        return (ActivityCompat.checkSelfPermission(service, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED);
+        //return (ActivityCompat.checkSelfPermission(service, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED);
+        return (ActivityCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED);
     }
 
     /**
@@ -196,12 +208,15 @@ public class RecordingHandler implements RequestHandler {
      * @return Filename of the recording if success.
      * Returns null in case of error.
      */
-    private NanoHTTPD.Response startRecording() {
-        PackageManager packageManager = service.getPackageManager();
+    //private NanoHTTPD.Response startRecording() {
+    private NativeAndroidResponse startRecording() {
+        //PackageManager packageManager = service.getPackageManager();
+        PackageManager packageManager = context.getPackageManager();
         boolean microphone = packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE);
         if (!microphone) {
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Microphone not detected");
+            //return NanoHTTPD.newFixedLengthResponse(
+            //        NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Microphone not detected");
+            return new NativeAndroidResponse(Status.SERVICE_UNAVAILABLE, "Microphone not detected");
         } else if (checkMicPermission()) {
             currState = "Recording";
             try {
@@ -230,19 +245,23 @@ public class RecordingHandler implements RequestHandler {
                 mediaRecorder.prepare();
                 mediaRecorder.start();
                 Log.d("RecordingHandler", "Started Recording");
-                return NanoHTTPD.newFixedLengthResponse(
-                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Started");
+                //return NanoHTTPD.newFixedLengthResponse(
+                //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Started");
+                return new NativeAndroidResponse(Status.OK, "Started");
             } catch (SecurityException | IllegalStateException | IOException | NullPointerException e) {
                 // Stop recording and save here.
                 Log.e("RecordingHandler", "Start Recording: " + e.getMessage());
-                return NanoHTTPD.newFixedLengthResponse(
-                        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Could not start recording.");
+                //return NanoHTTPD.newFixedLengthResponse(
+                //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Could not start recording.");
+                return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Could not start recording.");
             }
         } else {
             Intent getMicPerm = new Intent(MainWebView.MICROPHONE_PERMISSION);
-            LocalBroadcastManager.getInstance(service).sendBroadcast(getMicPerm);
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "Microphone permission disabled");
+            //LocalBroadcastManager.getInstance(service).sendBroadcast(getMicPerm);
+            LocalBroadcastManager.getInstance(context).sendBroadcast(getMicPerm);
+            //return NanoHTTPD.newFixedLengthResponse(
+            //        NanoHTTPD.Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "Microphone permission disabled");
+            return new NativeAndroidResponse(Status.UNAUTHORIZED, "Microphone permission disabled");
         }
     }
 
