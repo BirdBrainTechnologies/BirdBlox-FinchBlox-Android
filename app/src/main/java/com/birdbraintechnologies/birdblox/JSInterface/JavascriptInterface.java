@@ -1,16 +1,10 @@
-package com.birdbraintechnologies.birdblox;
+package com.birdbraintechnologies.birdblox.JSInterface;
 
 import android.content.Context;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
-import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidResponse;
-import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidSession;
 import com.birdbraintechnologies.birdblox.httpservice.RequestRouter;
-
-import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
-import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
-
 
 
 /**
@@ -22,7 +16,7 @@ public class JavascriptInterface {
     private BluetoothHelper btService;
     private RequestRouter router;
 
-    JavascriptInterface(Context c) {
+    public JavascriptInterface(Context c) {
         mainContext = c;
 
         btService = new BluetoothHelper(mainContext);
@@ -36,6 +30,12 @@ public class JavascriptInterface {
      */
     @android.webkit.JavascriptInterface
     public void sendAndroidRequest(String jsonRequest){
+        Log.d(TAG, "jsI request: " + jsonRequest);
+        RequestRunnable runnable = new RequestRunnable(jsonRequest, router);
+
+        RequestManager.handleRequest(runnable);
+
+        /*
         Log.d(TAG, "Got frontend request: " + jsonRequest);
 
         NativeAndroidSession session = new NativeAndroidSession(jsonRequest);
@@ -46,6 +46,6 @@ public class JavascriptInterface {
         String status = response.getStatus();
         String body = response.getBody();
 
-        runJavascript("CallbackManager.httpResponse('" + bbxEncode(id) + "', " + status + ", '" + bbxEncode(body) + "');");
+        runJavascript("CallbackManager.httpResponse('" + bbxEncode(id) + "', " + status + ", '" + bbxEncode(body) + "');");*/
     }
 }
