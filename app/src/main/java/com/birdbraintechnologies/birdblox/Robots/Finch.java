@@ -28,6 +28,7 @@ import io.reactivex.disposables.Disposable;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.finchesToConnect;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbitsToConnect;
 import static io.reactivex.android.schedulers.AndroidSchedulers.from;
 
@@ -369,21 +370,6 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
         // All remaining outputs are of the format: /out/<outputType>/<port>/<args>...
         int port = 0;
         switch (outputType) {
-            /*
-            case "servo":
-                port = Integer.parseInt(args.get("port").get(0));
-                if (args.get("angle") == null) {
-                    return setRbSOOutput(oldState.getHBitServo(port), newState.getHBitServo(port), Integer.parseInt(args.get("percent").get(0)), ROTATION);
-                } else {
-                    return setRbSOOutput(oldState.getHBitServo(port), newState.getHBitServo(port), Integer.parseInt(args.get("angle").get(0)), POSITION);
-                }
-            case "led":
-                port = Integer.parseInt(args.get("port").get(0));
-                return setRbSOOutput(oldState.getLED(port), newState.getLED(port), Integer.parseInt(args.get("intensity").get(0)));
-            case "triled":
-                port = Integer.parseInt(args.get("port").get(0));
-                return setRbSOOutput(oldState.getTriLED(port), newState.getTriLED(port), Integer.parseInt(args.get("red").get(0)),
-                        Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));*/
             case "beak":
                 return setRbSOOutput(oldState.getTriLED(1), newState.getTriLED(1), Integer.parseInt(args.get("red").get(0)),
                         Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));
@@ -545,21 +531,13 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
 
                 return Integer.toString(signed);
             case "magnetometer":
-                //The values reported by the finch are one byte and already in uT.
-                switch(axisString){
-                    case "x":
-                        return Integer.toString(rawMagnetometerValue[0]);
-                    case "y":
-                        return Integer.toString(rawMagnetometerValue[1]);
-                    case "z":
-                        return Integer.toString(rawMagnetometerValue[2]);
-                    default:
-                        return "0";
-                }
+                return Double.toString(DeviceUtil.RawToFinchMag(rawMagnetometerValue, axisString));
             case "accelerometer":
-                return Double.toString(DeviceUtil.RawToAccl(rawAccelerometerValue, axisString));
+                return Double.toString(DeviceUtil.RawToFinchAccl(rawAccelerometerValue, axisString) * 196.0 / 1280.0);
             case "compass":
-                return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue));
+                double heading = DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue, true);
+                //turn it around so that the finch beak points north at 0
+                return Double.toString((heading + 180) % 360);
             case "buttonA":
                 return (((rawButtonShakeValue >> 4) & 0x1) == 0x0) ? "1" : "0";
             case "buttonB":
@@ -567,17 +545,17 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
             case "shake":
                 return ((rawButtonShakeValue & 0x1) == 0x0) ? "0" : "1";
             case "screenUp":
-                return rawAccelerometerValue[2] < -51 ? "1" : "0";
+                return DeviceUtil.RawToFinchAccl(rawAccelerometerValue, "z") < -51 ? "1" : "0";
             case "screenDown":
-                return rawAccelerometerValue[2] > 51 ? "1" : "0";
+                return DeviceUtil.RawToFinchAccl(rawAccelerometerValue, "z") > 51 ? "1" : "0";
             case "tiltLeft":
-                return rawAccelerometerValue[0] > 51 ? "1" : "0";
+                return DeviceUtil.RawToFinchAccl(rawAccelerometerValue, "x") > 51 ? "1" : "0";
             case "tiltRight":
-                return rawAccelerometerValue[0] < -51 ? "1" : "0";
+                return DeviceUtil.RawToFinchAccl(rawAccelerometerValue, "x") < -51 ? "1" : "0";
             case "logoUp":
-                return rawAccelerometerValue[1] < -51 ? "1" : "0";
+                return DeviceUtil.RawToFinchAccl(rawAccelerometerValue, "y") < -51 ? "1" : "0";
             case "logoDown":
-                return rawAccelerometerValue[1] > 51 ? "1" : "0";
+                return DeviceUtil.RawToFinchAccl(rawAccelerometerValue, "y") > 51 ? "1" : "0";
             default:
                 return "";
         }
@@ -722,9 +700,9 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 conn.removeRxDataListener(this);
                 conn.forceDisconnect();
             }
-            synchronized (hummingbitsToConnect) {
-                if (!hummingbitsToConnect.contains(macAddr)) {
-                    hummingbitsToConnect.add(macAddr);
+            synchronized (finchesToConnect) {
+                if (!finchesToConnect.contains(macAddr)) {
+                    finchesToConnect.add(macAddr);
                 }
             }
             DISCONNECTED = true;
@@ -774,7 +752,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
         try {
             return conn.getBLEDevice().getAddress();
         } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting hummingbit mac address: " + e.getMessage());
+            Log.e(TAG, "Error getting finch mac address: " + e.getMessage());
             return null;
         }
     }
@@ -783,7 +761,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
         try {
             return NamingHandler.GenerateName(mainWebViewContext, conn.getBLEDevice().getAddress());
         } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting hummingbit name: " + e.getMessage());
+            Log.e(TAG, "Error getting finch name: " + e.getMessage());
             return null;
         }
     }
@@ -792,7 +770,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
         try {
             return conn.getBLEDevice().getName();
         } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting hummingbit gap name: " + e.getMessage());
+            Log.e(TAG, "Error getting finch gap name: " + e.getMessage());
             return null;
         }
     }
@@ -801,7 +779,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
         try {
             return Byte.toString(cfresponse[0]);
         } catch (ArrayIndexOutOfBoundsException e) {
-            Log.e(TAG, "Hummingbit hardware version: " + e.getMessage());
+            Log.e(TAG, "Finch hardware version: " + e.getMessage());
             return null;
         }
     }
@@ -832,7 +810,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 return false;
             }
         } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
-            Log.e(TAG, "Hummingbit firmware version: " + e.getMessage());
+            Log.e(TAG, "Finch firmware version: " + e.getMessage());
             return false;
         }
     }

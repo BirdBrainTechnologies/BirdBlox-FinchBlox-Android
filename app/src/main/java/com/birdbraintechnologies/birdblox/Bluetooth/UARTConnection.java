@@ -24,7 +24,7 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Rob
  * @author Terence Sun (tsun1215)
  */
 public class UARTConnection extends BluetoothGattCallback {
-    private static final String TAG = UARTConnection.class.getName();
+    private static final String TAG = UARTConnection.class.getSimpleName();
     private static final int MAX_RETRIES = 100;
     private static final int CONNECTION_TIMEOUT_IN_SECS = 15;
 
@@ -73,7 +73,7 @@ public class UARTConnection extends BluetoothGattCallback {
      * @return True on success, false otherwise
      */
     synchronized public boolean writeBytes(byte[] bytes) {
-        Log.d(TAG, "writing value " + bytes[0]);
+        //Log.d(TAG, "writing value " + bytes[0]);
         try {
             startLatch = new CountDownLatch(1);
             doneLatch = new CountDownLatch(1);
@@ -82,8 +82,9 @@ public class UARTConnection extends BluetoothGattCallback {
             boolean res;
             int retryCount = 0;
             while (!(res = btGatt.writeCharacteristic(tx))) {
-                Log.d(TAG, "retrying to write " + bytes[0]);
+                //Log.d(TAG, "retrying to write " + bytes[0]);
                 if (retryCount > MAX_RETRIES) {
+                    Log.e(TAG, "failed to write " + bytes[0] + " after " + MAX_RETRIES + " attempts.");
                     break;
                 }
                 retryCount++;
@@ -121,6 +122,7 @@ public class UARTConnection extends BluetoothGattCallback {
             int retryCount = 0;
             while (!(success = btGatt.writeCharacteristic(tx))) {
                 if (retryCount > MAX_RETRIES) {
+                    Log.e(TAG, "writeCharacteristic(tx) failed to write " + Arrays.toString(bytes) + " after " + MAX_RETRIES + " tries.");
                     break;
                 }
                 retryCount++;
@@ -141,7 +143,7 @@ public class UARTConnection extends BluetoothGattCallback {
                 return Arrays.copyOf(res, res.length);
             }
         } catch (Exception e) {
-            Log.e(TAG, e.getMessage());
+            Log.e(TAG, "writeBytesWithResponse " + e.getMessage());
         }
         Log.e(TAG, "Unable to write bytes to tx");
         return new byte[]{};
@@ -169,7 +171,7 @@ public class UARTConnection extends BluetoothGattCallback {
                     return false;
                 }
             } catch (InterruptedException e) {
-                // TODO: Handle error
+                Log.e(TAG, "Error while trying to establish UART connection: " + e.toString());
                 return false;
             }
             // Enable RX notification
@@ -193,6 +195,7 @@ public class UARTConnection extends BluetoothGattCallback {
 
     @Override
     public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+        Log.d(TAG, "onConnectionStateChange to " + newState);
         connectionState = newState;
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (newState == BluetoothGatt.STATE_CONNECTED) {
@@ -222,7 +225,7 @@ public class UARTConnection extends BluetoothGattCallback {
         }
 
         if (status == BluetoothGatt.GATT_SUCCESS) {
-            Log.v(TAG, "Successfully wrote " + Arrays.toString(characteristic.getValue()) + " to TX");
+            //Log.v(TAG, "Successfully wrote " + Arrays.toString(characteristic.getValue()) + " to TX");
         } else {
             Log.e(TAG, "Error writing " + Arrays.toString(characteristic.getValue()) + " to TX");
         }
@@ -243,7 +246,7 @@ public class UARTConnection extends BluetoothGattCallback {
             Log.e(TAG, "Error: " + e);
         }
         byte[] newValue = characteristic.getValue();
-        Log.v(TAG, "Got response " + Arrays.toString(newValue) + " from RX");
+        //Log.v(TAG, "Got response " + Arrays.toString(newValue) + " from RX");
         for (RXDataListener l : rxListeners) {
             l.onRXData(newValue);
         }

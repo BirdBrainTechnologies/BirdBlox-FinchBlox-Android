@@ -420,7 +420,7 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
             case "logoDown":
                 return rawAccelerometerValue[1] > 51 ? "1" : "0";
             case "compass":
-                return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue));
+                return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue, false));
             case "pin":
                 int padNum = Integer.parseInt(portString) - 1;
                 //Check to make sure that pad is in read mode.

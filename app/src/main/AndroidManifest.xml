@@ -32,6 +32,7 @@
         android:resizeableActivity="true">
         <activity
             android:name="com.birdbraintechnologies.birdblox.MainWebView"
+            android:screenOrientation="${orientation}"
             android:configChanges="orientation|screenSize"
             android:launchMode="singleInstance">
 

@@ -423,7 +423,7 @@ public class Hummingbit extends Robot<HBitState> implements UARTConnection.RXDat
             case "accelerometer":
                 return Double.toString(DeviceUtil.RawToAccl(rawAccelerometerValue, axisString));
             case "compass":
-                return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue));
+                return Double.toString(DeviceUtil.RawToCompass(rawAccelerometerValue, rawMagnetometerValue, false));
             case "buttonA":
                 return (((rawButtonShakeValue[0] >> 4) & 0x1) == 0x0) ? "1" : "0";
             case "buttonB":

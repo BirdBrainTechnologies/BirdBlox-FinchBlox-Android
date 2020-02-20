@@ -92,6 +92,33 @@ public class DeviceUtil {
     }
 
     /**
+     * Converts raw readings from sensors [0,255] into raw accelerometer values in the finch
+     * reference frame.
+     * @param rawAccl the byte array of raw accelerometer values in 3 directions
+     * @param axisString the axis of acceleration
+     * @return the acceleration in a specific axis based on the raw value.
+     */
+    public static double RawToFinchAccl(byte[] rawAccl, String axisString) {
+        switch (axisString) {
+            case "x":
+                return Complement(RawToInt(rawAccl[0]));
+            case "y":
+            case "z":
+                float y = Complement(RawToInt(rawAccl[1]));
+                float z = Complement(RawToInt(rawAccl[2]));
+
+                switch (axisString) {
+                    case "y":
+                        return (y * Math.cos(Math.toRadians(40)) - z * Math.sin(Math.toRadians(40)));
+                    case "z":
+                        return (y * Math.sin(Math.toRadians(40)) + z * Math.cos(Math.toRadians(40)));
+                }
+                break;
+        }
+        return 0.0;
+    }
+
+    /**
      * Converts raw readings from sensors [0,255] into magnetometer values.
      * @param rawMag the byte array of raw magnetometer values in 3 directions
      * @param axisString the axis of magnetometer.
@@ -114,26 +141,66 @@ public class DeviceUtil {
     }
 
     /**
+     * Converts raw readings from sensors [0,255] into magnetometer values in the finch reference
+     * frame.
+     * @param rawMag the byte array of raw magnetometer values in 3 directions
+     * @param axisString the axis of magnetometer.
+     * @return the magnetometer value in a specific axis based on the raw value.
+     */
+    public static double RawToFinchMag(byte[] rawMag, String axisString) {
+        switch (axisString) {
+            case "x":
+                return Complement(RawToInt(rawMag[0]));
+            case "y":
+            case "z":
+                double y = Complement(RawToInt(rawMag[1]));
+                double z = Complement(RawToInt(rawMag[2]));
+
+                switch (axisString) {
+                    case "y":
+                        return (y * Math.cos(Math.toRadians(40)) + z * Math.sin(Math.toRadians(40)));
+                    case "z":
+                        return (z * Math.cos(Math.toRadians(40)) - y * Math.sin(Math.toRadians(40)));
+                }
+                break;
+        }
+        return 0.0;
+    }
+
+    /**
      * Converts raw readings from sensors [0,255] into angle in degrees.
      * @param rawMag the byte array of raw magnetometer values in 3 directions
      * @param rawAccl the byte array of raw accelerometer values in 3 directions
+     * @param finchRef true if value should be returned in the finch reference frame
      * @return the angle in degrees based on the raw magnetometer values and raw accelerometer values.
      */
-    public static double RawToCompass(byte[] rawAccl, byte[] rawMag) {
-        double ax = Complement(RawToInt(rawAccl[0])) * 1.0;
-        double ay = Complement(RawToInt(rawAccl[1])) * 1.0;
-        double az = Complement(RawToInt(rawAccl[2])) * 1.0;
-
+    public static double RawToCompass(byte[] rawAccl, byte[] rawMag, boolean finchRef) {
         short mx, my, mz;
-        if (rawMag.length == 3) {
-            //when only 3 values are returned, there is one per axis and they are in uT.
-            mx = (short) (rawMag[0] * 10);
-            my = (short) (rawMag[1] * 10);
-            mz = (short) (rawMag[2] * 10);
+        double ax, ay, az;
+
+        if (finchRef) { //raw values moved to reference frame of finch
+            mx = (short)Math.round(RawToFinchMag(rawMag, "x"));
+            my = (short)Math.round(RawToFinchMag(rawMag, "y"));
+            mz = (short)Math.round(RawToFinchMag(rawMag, "z"));
+            ax = RawToFinchAccl(rawAccl, "x");
+            ay = RawToFinchAccl(rawAccl, "y");
+            az = RawToFinchAccl(rawAccl, "z");
         } else {
-            mx = (short) ((rawMag[1] & 0xFF) | (rawMag[0] << 8)) ;
-            my = (short) ((rawMag[3] & 0xFF) | (rawMag[2] << 8)) ;
-            mz = (short) ((rawMag[5] & 0xFF) | (rawMag[4] << 8)) ;
+
+            ax = Complement(RawToInt(rawAccl[0])) * 1.0;
+            ay = Complement(RawToInt(rawAccl[1])) * 1.0;
+            az = Complement(RawToInt(rawAccl[2])) * 1.0;
+
+            if (rawMag.length == 3) {
+                //when only 3 values are returned, there is one per axis and they are in uT.
+                mx = (short) (rawMag[0] * 10);
+                my = (short) (rawMag[1] * 10);
+                mz = (short) (rawMag[2] * 10);
+            } else {
+                mx = (short) ((rawMag[1] & 0xFF) | (rawMag[0] << 8));
+                my = (short) ((rawMag[3] & 0xFF) | (rawMag[2] << 8));
+                mz = (short) ((rawMag[5] & 0xFF) | (rawMag[4] << 8));
+            }
         }
 
         double phi = Math.atan(-ay / az);
