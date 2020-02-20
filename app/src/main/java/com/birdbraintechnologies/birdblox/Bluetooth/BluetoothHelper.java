@@ -32,6 +32,7 @@ import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.connectToRobot;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.deviceGatt;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.finchesToConnect;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbirdsToConnect;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbitsToConnect;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.microbitsToConnect;
@@ -117,6 +118,19 @@ public class BluetoothHelper {
                             } catch (InterruptedException e) {
                             }
                             connectToRobot(RobotType.Microbit, result.getDevice().getAddress());
+                        }
+                    }
+                }
+                if (finchesToConnect != null) {
+                    if (finchesToConnect.contains(result.getDevice().getAddress())) {
+                        if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
+                            finchesToConnect = new HashSet<>();
+                        } else {
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException e) {
+                            }
+                            connectToRobot(RobotType.Finch, result.getDevice().getAddress());
                         }
                     }
                 }

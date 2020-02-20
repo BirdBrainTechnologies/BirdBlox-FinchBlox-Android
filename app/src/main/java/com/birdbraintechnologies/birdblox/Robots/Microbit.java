@@ -169,6 +169,11 @@ public class Microbit extends Robot<MBState> implements UARTConnection.RXDataLis
                                 String macAddr = getMacAddress();
                                 //RobotRequestHandler.disconnectFromMicrobit(macAddr);
                                 RobotRequestHandler.disconnectFromRobot(RobotType.Microbit, macAddr);
+                                synchronized (microbitsToConnect) {
+                                    if (!microbitsToConnect.contains(macAddr)) {
+                                        microbitsToConnect.add(macAddr);
+                                    }
+                                }
                                 if (DISCONNECTED) {
                                     return;
                                 }

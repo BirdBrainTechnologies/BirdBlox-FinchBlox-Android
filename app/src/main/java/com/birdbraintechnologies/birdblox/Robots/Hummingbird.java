@@ -165,6 +165,11 @@ public class Hummingbird extends Robot<HBState> implements UARTConnection.RXData
                                 String macAddr = getMacAddress();
                                 //RobotRequestHandler.disconnectFromHummingbird(macAddr);
                                 RobotRequestHandler.disconnectFromRobot(RobotType.Hummingbird, macAddr);
+                                synchronized (hummingbirdsToConnect) {
+                                    if (!hummingbirdsToConnect.contains(macAddr)) {
+                                        hummingbirdsToConnect.add(macAddr);
+                                    }
+                                }
                                 if (DISCONNECTED) {
                                     return;
                                 }

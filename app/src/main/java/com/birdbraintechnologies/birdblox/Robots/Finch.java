@@ -29,7 +29,6 @@ import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.finchesToConnect;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbitsToConnect;
 import static io.reactivex.android.schedulers.AndroidSchedulers.from;
 
 
@@ -172,6 +171,11 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                                 String macAddr = getMacAddress();
                                 //RobotRequestHandler.disconnectFromHummingbit(macAddr);
                                 RobotRequestHandler.disconnectFromRobot(RobotType.Finch, macAddr);
+                                synchronized (finchesToConnect) {
+                                    if (!finchesToConnect.contains(macAddr)) {
+                                        finchesToConnect.add(macAddr);
+                                    }
+                                }
                                 if (DISCONNECTED) {
                                     return;
                                 }
