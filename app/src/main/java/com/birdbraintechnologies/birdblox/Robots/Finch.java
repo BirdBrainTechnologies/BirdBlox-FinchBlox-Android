@@ -55,6 +55,9 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
     private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
     private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 15000;
     private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 3000;
+    private static final double FINCH_RAW_TO_VOLTAGE = 0.0376;
+    private static final double FINCH_GREEN_THRESHOLD = 3.385;
+    private static final double FINCH_YELLOW_THRESHOLD = 3.271;
     private static byte[] FIRMWARECOMMAND = new byte[1];
     private static byte[] RESETENCODERSCOMMAND = new byte[1];
     private static byte[] CALIBRATECOMMAND = new byte[4];
@@ -510,7 +513,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                     return Integer.toString(val);
                 }
             case "battery":
-                return Double.toString(((double)(rawBattery & 0xFF)) * 0.0406);
+                return Double.toString(((double)(rawBattery & 0xFF)) * FINCH_RAW_TO_VOLTAGE);
             case "encoder":
                 int i = 0;
                 if (axisString.equals("right")) { i = 3; }
@@ -711,10 +714,10 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
             }
             this.rawSensorValues = newData;
             String curBatteryStatus = "";
-            double batteryVoltage = (newData[6] & 0xFF) * 0.0406;
-            if (batteryVoltage > 3.6) {
+            double batteryVoltage = (newData[6] & 0xFF) * FINCH_RAW_TO_VOLTAGE;
+            if (batteryVoltage > FINCH_GREEN_THRESHOLD) {
                 curBatteryStatus = "2";
-            } else if (batteryVoltage > 3.4) {
+            } else if (batteryVoltage > FINCH_YELLOW_THRESHOLD) {
                 curBatteryStatus = "1";
             } else {
                 curBatteryStatus = "0";
