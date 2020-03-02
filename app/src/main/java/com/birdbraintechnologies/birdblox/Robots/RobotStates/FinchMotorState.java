@@ -184,11 +184,13 @@ public class FinchMotorState extends RobotState<FinchMotorState> {
      */
     @Override
     public synchronized void resetAll() {
-        motors = new Motors();
+        //motors = new Motors();
+        motors.reset();
         ledArray = new LEDArray();
     }
 
     public synchronized void resetMotors() {
-        motors = new Motors();
+        //motors = new Motors();
+        motors.reset();
     }
 }

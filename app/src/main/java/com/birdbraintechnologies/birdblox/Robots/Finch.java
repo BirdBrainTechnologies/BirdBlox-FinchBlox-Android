@@ -580,6 +580,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 return true;
             }
         } catch (InterruptedException | IllegalMonitorStateException | IllegalStateException | IllegalThreadStateException e) {
+            Log.e(TAG, "Error setting finch output: " + e.getMessage());
         } finally {
             if (lock.isHeldByCurrentThread())
                 lock.unlock();

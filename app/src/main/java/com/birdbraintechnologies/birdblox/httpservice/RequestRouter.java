@@ -97,7 +97,7 @@ public class RequestRouter {
 
         String path = session.getUri();
 
-        Log.d("parametersURI", path);
+        //Log.d("parametersURI", path);
 
         // Route the request
         for (Map.Entry<Pattern, RequestHandler> e : routes.entrySet()) {

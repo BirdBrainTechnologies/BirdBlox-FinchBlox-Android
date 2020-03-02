@@ -20,7 +20,7 @@ public class RequestRunnable implements Runnable {
     }
 
     public void run () {
-        Log.d(TAG, "Got frontend request: " + jsonRequest);
+        //Log.d(TAG, "Got frontend request: " + jsonRequest);
         NativeAndroidSession session = new NativeAndroidSession(jsonRequest);
 
         NativeAndroidResponse response = router.routeAndDispatch(session);

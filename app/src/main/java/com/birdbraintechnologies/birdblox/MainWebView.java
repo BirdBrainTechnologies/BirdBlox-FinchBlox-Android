@@ -630,7 +630,7 @@ public class MainWebView extends AppCompatActivity {
             public void run() {
                 if (webView != null) {
                     webView.evaluateJavascript(script, null);
-                    Log.d("RUNJS", script);
+                    //Log.d("RUNJS", script);
                 }
             }
         };

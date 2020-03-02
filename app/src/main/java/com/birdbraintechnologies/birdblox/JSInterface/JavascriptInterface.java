@@ -30,7 +30,7 @@ public class JavascriptInterface {
      */
     @android.webkit.JavascriptInterface
     public void sendAndroidRequest(String jsonRequest){
-        Log.d(TAG, "jsI request: " + jsonRequest);
+        //Log.d(TAG, "jsI request: " + jsonRequest);
         RequestRunnable runnable = new RequestRunnable(jsonRequest, router);
 
         RequestManager.handleRequest(runnable);

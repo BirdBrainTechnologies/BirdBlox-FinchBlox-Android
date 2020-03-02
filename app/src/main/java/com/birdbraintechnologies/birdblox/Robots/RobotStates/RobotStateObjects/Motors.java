@@ -1,10 +1,15 @@
 package com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects;
 
+import android.util.Log;
+
+import java.util.Arrays;
+
 /**
  * @author Krissie Lauwers.
  */
 
 public class Motors extends RobotStateObject {
+    private final String TAG = this.getClass().getSimpleName();
 
     private byte speedL;
     private byte speedR;
@@ -17,7 +22,6 @@ public class Motors extends RobotStateObject {
         ticksL = 1;
         ticksR = 1;
     }
-
 
     public synchronized int[] getValues() {
         int[] a = {(int)speedL, ticksL, (int)speedR, ticksR};
@@ -76,6 +80,7 @@ public class Motors extends RobotStateObject {
 
     @Override
     public void setValue(byte... values) {
+        Log.e(TAG, "set value by bytes not implemented for motors");
         if (values.length == 1) {
             //setSpeed(values[0]);
         }
@@ -95,6 +100,16 @@ public class Motors extends RobotStateObject {
 
         return (speedL == ((Motors) motors).speedL) && (speedR == ((Motors) motors).speedR) &&
                 (ticksL == ((Motors) motors).ticksL) && (ticksR == ((Motors) motors).ticksR);
+    }
+
+    /*
+        Reset the motors to their initial state
+     */
+    public void reset() {
+        speedL = 0;
+        speedR = 0;
+        ticksL = 1;
+        ticksR = 1;
     }
 
     private static int clamp(int value, int min, int max) {

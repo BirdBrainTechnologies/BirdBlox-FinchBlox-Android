@@ -165,6 +165,7 @@ public class RobotRequestHandler implements RequestHandler {
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
                     //return NanoHTTPD.newFixedLengthResponse(
                     //        NanoHTTPD.Response.Status.EXPECTATION_FAILED, MIME_PLAINTEXT, "Failed to send to robot " + m.get("id").get(0) + ".");
+                    Log.e(TAG, "set output failed " + path[1]);
                     return new NativeAndroidResponse(Status.EXPECTATION_FAILED, "Failed to send to robot " + m.get("id").get(0) + ".");
                 } else {
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', true);");
