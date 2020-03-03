@@ -8,6 +8,7 @@ import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.FinchMotorState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.FinchState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.TriLED;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
@@ -499,11 +500,22 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 //return Integer.toString(scaled);
                 return Integer.toString(num);
             case "light":
+                //compensate for the effect of the beak light on the light sensors
+                TriLED currentBeak = oldState.getTriLED(1);
+                long R = Math.round((currentBeak.getRed() & 0xFF) / 2.55); //using 0-100 rgb values
+                long G = Math.round((currentBeak.getGreen() & 0xFF) / 2.55);
+                long B = Math.round((currentBeak.getBlue() & 0xFF) / 2.55);
+                Double raw;
+                Double correction;
                 if (axisString.equals("right")) {
-                    return Integer.toString(rawLight[1]);
+                    raw = Double.valueOf(rawLight[1] & 0xFF);
+                    correction = 6.40473070e-03*R +  1.41015162e-02*G +  5.05547817e-02*B +  3.98301391e-04*R*G +  4.41091223e-04*R*B +  6.40756862e-04*G*B + -4.76971242e-06*R*G*B;
                 } else {
-                    return Integer.toString(rawLight[0]);
+                    raw = Double.valueOf(rawLight[0] & 0xFF);
+                    correction = 1.06871493e-02*R +  1.94526614e-02*G +  6.12409825e-02*B +  4.01343475e-04*R*G + 4.25761981e-04*R*B +  6.46091068e-04*G*B + -4.41056971e-06*R*G*B;
                 }
+                Log.d(TAG, "Correcting " + axisString + " light sensor raw value " + raw + " by " + Math.round(correction) + " : " + R + "," + G + "," + B);
+                return Integer.toString(Math.max(0, (int)Math.round(raw - correction)));
             case "line":
                 if (axisString.equals("right")) {
                     return Integer.toString(rawLine[1]);
