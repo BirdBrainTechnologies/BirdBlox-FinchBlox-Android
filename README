@@ -1,11 +1,17 @@
 SETUP
 -----
 
-To set up the dev environment for BirdBlox:
+To set up the dev environment for BirdBlox/FinchBlox:
 
 - Clone into the dev branch of the BirdBlox-Android-Support repository
 - Within the 'assets' directory, clone the HummingbirdDragAndDrop repository into a directory titled 'frontend'
 - Checkout the dev branch of HummingbirdDragAndDrop as well
 
-This sets up the most recent version of BirdBlox.
+This sets up the most recent version of BirdBlox/FinchBlox.
 
+
+BUILD
+-----
+
+- To build FinchBlox, open all.js and set the FinchBlox flag on line 2 to true (make sure DebugOptions.enabled=false). Select a finchblox build variant, and then build!
+ - To build BirdBlox, open all.js and set the FinchBlox flag on line 2 to false (make sure DebugOptions.enabled=false). Select a birdblox build variant, and then build!

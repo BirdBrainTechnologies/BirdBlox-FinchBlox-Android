@@ -21,6 +21,7 @@ import fi.iki.elonen.NanoHTTPD;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
+import static com.birdbraintechnologies.birdblox.MainWebView.setUiVis;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.CURRENT_PREFS_KEY;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.LAST_PROJECT_KEY;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.filesPrefs;
@@ -47,6 +48,9 @@ public class UIRequestHandler implements RequestHandler {
         String[] path = args.get(0).split("/");
         Map<String, List<String>> m = session.getParameters();
         switch (path[0]) {
+            case "hideNavigationBar":
+                setUiVis();
+                return new NativeAndroidResponse(Status.OK, "navigation bar hidden");
             case "contentLoaded":
                 Log.d(TAG, "contentLoaded");
                 String currentFile = filesPrefs.getString(CURRENT_PREFS_KEY, null);
