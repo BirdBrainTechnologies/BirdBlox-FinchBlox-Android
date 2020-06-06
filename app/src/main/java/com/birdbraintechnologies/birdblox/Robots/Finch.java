@@ -516,7 +516,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                     correction = 1.06871493e-02*R +  1.94526614e-02*G +  6.12409825e-02*B +  4.01343475e-04*R*G + 4.25761981e-04*R*B +  6.46091068e-04*G*B + -4.41056971e-06*R*G*B;
                 }
                 Log.d(TAG, "Correcting " + axisString + " light sensor raw value " + raw + " by " + Math.round(correction) + " : " + R + "," + G + "," + B);
-                return Integer.toString(Math.max(0, (int)Math.round(raw - correction)));
+                return Integer.toString(Math.min(100, Math.max(0, (int)Math.round(raw - correction))));
             case "line":
                 if (axisString.equals("right")) {
                     return Integer.toString(rawLine[1]);
