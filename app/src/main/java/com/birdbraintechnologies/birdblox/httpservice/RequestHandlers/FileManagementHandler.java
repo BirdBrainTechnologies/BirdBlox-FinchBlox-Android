@@ -151,6 +151,7 @@ public class FileManagementHandler implements RequestHandler {
             Log.d(TAG, "opening project " + program.getAbsolutePath());
             String encodedXML = bbxEncode(FileUtils.readFileToString(program, "utf-8"));
             String encodedName = bbxEncode(name);
+            Log.d(TAG, "project named '" + encodedName + "' with contents '" + encodedXML + "'");
             if (encodedXML != null) {
                 runJavascript("CallbackManager.data.open('" + encodedName + "', \"" + encodedXML + "\");");
                 filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();

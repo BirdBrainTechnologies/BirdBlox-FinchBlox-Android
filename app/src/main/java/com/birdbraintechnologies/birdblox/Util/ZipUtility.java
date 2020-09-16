@@ -8,6 +8,8 @@ package com.birdbraintechnologies.birdblox.Util;
 
 import android.util.Log;
 
+import org.apache.commons.io.FileUtils;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -104,11 +106,13 @@ public class ZipUtility {
         Log.d(TAG, "unzip " + zip.getName() + " " + extractTo.getName());
         while (e.hasMoreElements()) {
             ZipEntry entry = (ZipEntry) e.nextElement();
+            Log.d(TAG, "unzipping " + entry.getName());
             File file = new File(extractTo, entry.getName());
-            String canonicalPath = file.getCanonicalPath();
+            /*String canonicalPath = file.getCanonicalPath();
             if (!canonicalPath.startsWith(extractTo.getPath())) {
+                Log.e(TAG, canonicalPath + " does not start with " + extractTo.getPath());
                 throw new SecurityException("Zip Path Traversal Vulnerability");
-            }
+            }*/
             if (entry.isDirectory() && !file.exists()) {
                 if(!file.mkdirs()){
                     throw new IOException("Failed to make " + file.getName());
@@ -128,6 +132,8 @@ public class ZipUtility {
                 }
                 in.close();
                 out.close();
+                String unzipped = FileUtils.readFileToString(file, "utf-8");
+                Log.d(TAG, "unzipping finished. Contents: '" + unzipped + "'");
             }
         }
     }

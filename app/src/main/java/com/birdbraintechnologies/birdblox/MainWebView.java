@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
+import android.provider.OpenableColumns;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v4.content.LocalBroadcastManager;
@@ -291,13 +292,14 @@ public class MainWebView extends AppCompatActivity {
         intentFilter.addAction(WRITE_EXTERNAL_STORAGE_PERMISSION);
         bManager.registerReceiver(bReceiver, intentFilter);
 
-        SharedPreferences dropboxPrefs = this.getSharedPreferences(DB_PREFS_KEY, MODE_PRIVATE);
+        //Dropbox use discontinued September 2020
+        /*SharedPreferences dropboxPrefs = this.getSharedPreferences(DB_PREFS_KEY, MODE_PRIVATE);
         String accessToken = dropboxPrefs.getString("access-token", null);
         if (accessToken != null) {
             // Create Dropbox client
             dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
             dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
-        }
+        }*/
 
         webView.setWebViewClient(new WebViewClient() {
             public void onPageFinished(WebView view, String url) {
@@ -356,7 +358,7 @@ public class MainWebView extends AppCompatActivity {
         mainWebViewContext = MainWebView.this;
         webView.onResume();
         webView.resumeTimers();
-        dropboxAppOAuth();
+        //dropboxAppOAuth(); //Dropbox use discontinued September 2020
         //importFromIntent(getIntent());
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestLocationPermission();
@@ -371,12 +373,13 @@ public class MainWebView extends AppCompatActivity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        Log.d(TAG, "onNewIntent " + intent.toString());
         setIntent(intent); //Without this, getIntent() will still return the original intent.
         //if (getIntent().getData() != null) {
         //    runJavascript("CallbackManager.tablet.runFile('" + bbxEncode(getIntent().getData().toString()) + "');");
         //}
         mainWebViewContext = MainWebView.this;
-        dropboxWebOAuth(intent);
+        //dropboxWebOAuth(intent); //Dropbox use discontinued September 2020
         importFromIntent(intent);
     }
 
@@ -432,6 +435,7 @@ public class MainWebView extends AppCompatActivity {
 
         String type = null;
         Uri data = null;
+        String displayName = null;
         if (intent.getAction().equals(Intent.ACTION_SEND)) {
             //TODO: in what case is this block called?
             Log.d(TAG, "import from intent action send");
@@ -449,34 +453,41 @@ public class MainWebView extends AppCompatActivity {
         } else if (intent.getAction().equals(Intent.ACTION_VIEW)) {
             type = intent.getScheme();
             data = intent.getData();
+            if (data.toString().startsWith("content://")) {
+                Cursor cursor = null;
+                try {
+                    cursor = getContentResolver().query(data, null, null, null, null);
+                    if (cursor != null && cursor.moveToFirst()) {
+                        displayName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+                        Log.d(TAG, "FILE NAME = " + displayName);
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
         }
 
         if (type != null && data != null) {
             //if (type.equals("content")) {
             //    sanitizeAndGetContent(data);
             //} else if (type.equals("file")) {
-            if (type.equals("file")) {
+            if (type.equals("file") || type.equals("content")) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     Log.d(TAG, "about to request read external storage permission");
                     lastFileUriData = data;
                     requestReadExternalStoragePermission();
                 }
-                if (FilenameUtils.getExtension(data.toString()).equals("bbx")) {
+                if (FilenameUtils.getExtension(data.toString()).equals("bbx") || displayName.endsWith(".bbx")) {
                     Log.d(TAG, "about to sanitize and copy file " + data.toString());
-                    sanitizeAndCopyFile(data);
+                    sanitizeAndCopyFile(data, type, displayName);
                 } else {
                     Log.e(TAG, "Could not open file " + data.toString());
                 }
             } else {
-                Log.e(TAG, "importFromIntent: unknown type.");
+                Log.e(TAG, "importFromIntent: unknown type " + type);
             }
         }
     }
-
-
-
-
-
 
 
     /**
@@ -484,17 +495,38 @@ public class MainWebView extends AppCompatActivity {
      * starts the unzip operation, and then returns the filename of this copy.
      *
      * @param data Uri containing path of file to be imported.
+     * @param type String type of request: either file or content
+     * @param displayName String name to display in file list. May be null.
      * @return Returns the new (sanitized) filename
      */
-    private synchronized String sanitizeAndCopyFile(Uri data) {
-        Log.d(TAG, "sanitize and copy file " + data.toString());
+    private synchronized String sanitizeAndCopyFile(Uri data, String type, String displayName) {
+        Log.d(TAG, "sanitize and copy file " + data.toString() + " of type " + type + " with displayName " + displayName);
         try {
             lastFileUriData = null;
-            File inputFile = new File(data.getPath());
-            String newName = findAvailableName(getBirdbloxDir(), sanitizeName(FilenameUtils.getBaseName(inputFile.getName())), "");
-            String extension = FilenameUtils.getExtension(inputFile.getName());
+            String newName;
+            String extension;
+            if (displayName != null) {
+                newName = findAvailableName(getBirdbloxDir(), sanitizeName(FilenameUtils.getBaseName(displayName)), "");
+                extension = FilenameUtils.getExtension(displayName);
+            } else {
+                newName = findAvailableName(getBirdbloxDir(), sanitizeName(FilenameUtils.getBaseName(data.getPath())), "");
+                extension = FilenameUtils.getExtension(data.getPath());
+            }
             File zipFile = new File(getFilesDir(), IMPORT_ZIP_DIR + "/" + newName + "." + extension);
-            FileUtils.copyFile(inputFile, zipFile);
+
+            if (type.equals("file")) {
+                File inputFile = new File(data.getPath());
+                //String newName = findAvailableName(getBirdbloxDir(), sanitizeName(FilenameUtils.getBaseName(inputFile.getName())), "");
+                //String extension = FilenameUtils.getExtension(inputFile.getName());
+                //File zipFile = new File(getFilesDir(), IMPORT_ZIP_DIR + "/" + newName + "." + extension);
+                FileUtils.copyFile(inputFile, zipFile);
+            } else if (type.equals("content")) {
+                InputStream source = mainWebViewContext.getContentResolver().openInputStream(data);
+                FileUtils.copyInputStreamToFile(source, zipFile);
+            } else {
+                Log.e("MainWebView", "SanitizeAndCopy: unrecognized type " + type);
+            }
+
             File outputFile = new File(getBirdbloxDir(), newName);
             new ImportUnzipTask().execute(zipFile, outputFile);
             return newName;
@@ -868,7 +900,7 @@ public class MainWebView extends AppCompatActivity {
                             Manifest.permission.READ_EXTERNAL_STORAGE)
                             == PackageManager.PERMISSION_GRANTED) {
                         if (lastFileUriData != null) {
-                            sanitizeAndCopyFile(lastFileUriData);
+                            sanitizeAndCopyFile(lastFileUriData, "file", null);
                         }
                     }
                 } else {

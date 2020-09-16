@@ -122,6 +122,14 @@ public class DropboxRequestHandler implements RequestHandler {
     //private NanoHTTPD.Response dropboxSignIn() {
     private NativeAndroidResponse dropboxSignIn() {
         String accessToken = dropboxPrefs.getString("access-token", null);
+        Log.d(TAG, "dropBoxSignIn accessToken=" + accessToken);
+        /*if (accessToken == null) {
+            accessToken = Auth.getOAuth2Token();
+            Log.d(TAG, "dropBoxSignIn looked for token with getOAuth2Token. accessToken=" + accessToken);
+            if (accessToken != null) {
+                dropboxPrefs.edit().putString("access-token", accessToken).apply();
+            }
+        }*/
         if (accessToken == null) {
             obtainDropboxAccessToken();
         } else {
@@ -129,6 +137,7 @@ public class DropboxRequestHandler implements RequestHandler {
         }
         //return NanoHTTPD.newFixedLengthResponse(
         //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Sign In Process started");
+        Log.d(TAG, "dropBoxSignIn Sign In Process started");
         return new NativeAndroidResponse(Status.OK, "Sign In Process started");
     }
 
@@ -238,6 +247,7 @@ public class DropboxRequestHandler implements RequestHandler {
     }
 
     private void obtainDropboxAccessToken() {
+        Log.d(TAG, "obtainDropboxAccessToken");
         new Handler(mainWebViewContext.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
@@ -247,12 +257,14 @@ public class DropboxRequestHandler implements RequestHandler {
     }
 
     public static void dropboxAppOAuth() {
+        Log.d("dropboxAppOAuth", String.valueOf((result == null)));
         Intent intent = result;
         if (intent == null || !intent.hasExtra(EXTRA_ACCESS_TOKEN)) return;
         initializeDropbox(intent.getStringExtra(EXTRA_ACCESS_SECRET));
     }
 
     public static void dropboxWebOAuth(Intent intent) {
+        Log.d("dropboxWebOAuth", intent.toString());
         if (intent == null) return;
         Uri uri = intent.getData();
         if (uri != null && uri.toString().startsWith("db-" + mainWebViewContext.getString(R.string.APP_KEY))) {
@@ -269,6 +281,7 @@ public class DropboxRequestHandler implements RequestHandler {
     }
 
     private static void createDropboxClient(String accessToken) {
+        Log.d("DropboxRequestHandler", "createDropboxClient");
         if (accessToken != null) {
             dropboxConfig = new DbxRequestConfig("BirdBloxAndroid/1.0");
             dropboxClient = new DbxClientV2(dropboxConfig, accessToken);
