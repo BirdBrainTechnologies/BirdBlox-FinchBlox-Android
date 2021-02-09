@@ -1,6 +1,8 @@
 package com.birdbraintechnologies.birdblox.Sound;
 
 import android.media.MediaPlayer;
+import android.provider.MediaStore;
+import android.util.Log;
 
 import java.io.IOException;
 
@@ -9,12 +11,23 @@ import java.io.IOException;
  */
 
 public class CancelableMediaPlayer extends MediaPlayer {
-
+    private String TAG = this.getClass().getSimpleName();
     private boolean canceled;
 
     public CancelableMediaPlayer() {
         super();
         canceled = false;
+        this.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+
+            @Override
+            public boolean onError(MediaPlayer mp, int what, int extra) {
+                Log.e(TAG, what + ", " + extra);
+                mp.reset();
+
+                //True if the method handled the error, false if it didn't. Returning false, or not having an OnErrorListener at all, will cause the OnCompletionListener to be called.
+                return true;
+            }
+        });
     }
 
     public void cancel() {

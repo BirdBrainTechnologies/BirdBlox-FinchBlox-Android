@@ -38,7 +38,7 @@ public class NativeAndroidSession {
                 body = "";
             }
 
-            Log.d(TAG, "Parts: request='" + request + "' body='" + body + "' id='" + id + "' inBackground='" + inBackground + "'");
+            //Log.d(TAG, "Parts: request='" + request + "' body='" + body + "' id='" + id + "' inBackground='" + inBackground + "'");
 
             /*JSONObject newJSON = jsonObject.getJSONObject("stat");
             System.out.println(newJSON.toString());

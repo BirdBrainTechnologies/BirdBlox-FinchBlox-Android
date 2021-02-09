@@ -48,7 +48,8 @@ import static java.lang.Math.abs;
  *
  * @author Terence Sun (tsun1215)
  */
-public class HostDeviceHandler implements RequestHandler, LocationListener, SensorEventListener {
+//public class HostDeviceHandler implements RequestHandler, LocationListener, SensorEventListener {
+public class HostDeviceHandler implements RequestHandler, SensorEventListener {
 
     private final String TAG = this.getClass().getSimpleName();
 
@@ -89,6 +90,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
 
     private Context context;
 
+    private LocationManager locationManager;
+    private String provider;
+
     //public HostDeviceHandler(HttpService service) {
     //    this.service = service;
     public HostDeviceHandler(Context context) {
@@ -127,7 +131,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     private void initLocationListener() {
         //LocationManager locationManager =
         //        (LocationManager) service.getSystemService(Context.LOCATION_SERVICE);
-        LocationManager locationManager =
+        locationManager =
                 (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         //if (ActivityCompat.checkSelfPermission(service,
         //        Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -142,9 +146,9 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             criteria.setAccuracy(Criteria.ACCURACY_FINE);
             criteria.setAltitudeRequired(true);
             criteria.setPowerRequirement(Criteria.POWER_HIGH);
-            String provider = locationManager.getBestProvider(criteria, true);
-            locationManager.requestLocationUpdates(provider,
-                    LOCATION_UPDATE_MILLIS, LOCATION_UPDATE_THRESHOLD, this);
+            provider = locationManager.getBestProvider(criteria, true);
+            //locationManager.requestLocationUpdates(provider,
+              //      LOCATION_UPDATE_MILLIS, LOCATION_UPDATE_THRESHOLD, this);
         }
     }
 
@@ -254,6 +258,17 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         return NanoHTTPD.newFixedLengthResponse(
                 NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
                 */
+
+        if (provider != null) { //then location permissions have been granted
+            try {
+                Location location = locationManager.getLastKnownLocation(provider);
+                latitude = location.getLatitude();
+                longitude = location.getLongitude();
+            } catch (SecurityException e) {
+                Log.e(TAG, "SecurityException while attempting to get location: " + e.getMessage());
+            }
+        }
+
         //return NanoHTTPD.newFixedLengthResponse(
         //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(latitude) + " " + Double.toString(longitude));
         return new NativeAndroidResponse(Status.OK, Double.toString(latitude) + " " + Double.toString(longitude));
@@ -277,6 +292,16 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             return NanoHTTPD.newFixedLengthResponse(
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
         }*/
+
+        if (provider != null) { //then location permissions have been granted
+            try {
+                Location location = locationManager.getLastKnownLocation(provider);
+                altitude = location.getAltitude();
+            } catch (SecurityException e) {
+                Log.e(TAG, "SecurityException while attempting to get location: " + e.getMessage());
+            }
+        }
+
         Log.d(TAG, "altitude is " + altitude);
         //return NanoHTTPD.newFixedLengthResponse(
         //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, Double.toString(altitude));
@@ -481,6 +506,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
         LocalBroadcastManager.getInstance(context).sendBroadcast(showDialog);
     }
 
+    /* Location Listener methods
     @Override
     public void onLocationChanged(Location location) {
         latitude = location.getLatitude();
@@ -501,6 +527,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
     public void onProviderDisabled(String provider) {
 
     }
+    */
 
     @Override
     public void onSensorChanged(SensorEvent event) {
@@ -570,7 +597,7 @@ public class HostDeviceHandler implements RequestHandler, LocationListener, Sens
             sensorList.add("microphone");
         }
         String response = TextUtils.join("\n", sensorList);
-        Log.d("SENSORRESPONSE", response);
+        //Log.d("SENSORRESPONSE", response);
         //return NanoHTTPD.newFixedLengthResponse(
         //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, response);
         return new NativeAndroidResponse(Status.OK, response);

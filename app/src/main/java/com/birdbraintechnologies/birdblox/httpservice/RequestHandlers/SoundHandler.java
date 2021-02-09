@@ -182,6 +182,7 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
      *                "ui" if block sound, and an effect sound otherwise
      */
     private synchronized void playSound(final String soundId, final String type) {
+        Log.d(TAG, "MediaPlayer play sound " + soundId + " of type " + type);
         final String path;
         if (type.equals("recording")) {
             (new RecordingHandler()).playAudio(soundId);
@@ -198,6 +199,11 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
                         CancelableMediaPlayer mediaPlayer = new CancelableMediaPlayer();
                         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
                         mediaPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
+                        mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                            public void onCompletion(MediaPlayer mp) {
+                                mp.release();
+                            };
+                        });
                         mediaPlayer.prepare();
                         mediaPlayer.start();
                     } catch (IOException | IllegalStateException e) {
@@ -294,6 +300,7 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
 
     @Override
     public void onCompletion(MediaPlayer mp) {
+        Log.d(TAG, "MediaPlayer onCompletion");
         mp.release();
     }
 

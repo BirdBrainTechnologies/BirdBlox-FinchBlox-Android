@@ -109,7 +109,7 @@ public class RequestRouter {
                 for (int i = 1; i <= match.groupCount(); i++) {
                     args.add(match.group(i));
                 }
-                Log.d(TAG, "about to handle request for '" + session.getUri() + "' with args " + args.toString());
+                //Log.d(TAG, "about to handle request for '" + session.getUri() + "' with args " + args.toString());
                 return e.getValue().handleRequest(session, args);
             }
         }
