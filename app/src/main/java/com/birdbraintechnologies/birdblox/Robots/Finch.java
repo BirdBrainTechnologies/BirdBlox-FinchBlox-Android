@@ -16,6 +16,8 @@ import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotReque
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,99 +39,111 @@ import static io.reactivex.android.schedulers.AndroidSchedulers.from;
  * Represents a Hummingbit device and all of its functionality: Setting outputs, reading sensors
  * @author Zhendong Yuan (yzd1998111)
  */
-public class Finch extends Robot<FinchState> implements UARTConnection.RXDataListener {
+//public class Finch extends Robot<FinchState> implements UARTConnection.RXDataListener {
+public class Finch extends Robot<FinchState, FinchMotorState> {
 
-    private final String TAG = this.getClass().getSimpleName();
+    //private final String TAG = this.getClass().getSimpleName();
     /*
      * Command prefixes for the Hummingbit according to spec
      */
 
-    private static final byte READ_ALL_CMD = 'b';
-    private static final byte TERMINATE_CMD = (byte) 0xDF;
-    private static final byte RESET_ENCODER_CMD = (byte) 0xD5;
+    //private static final byte READ_ALL_CMD = 'b';
+    //private static final byte TERMINATE_CMD = (byte) 0xDF;
+    //private static final byte RESET_ENCODER_CMD = (byte) 0xD5;
     private static final int SYMBOL = 0;
     private static final int FLASH = 1;
-    private static final int SETALL_INTERVAL_IN_MILLIS = 32;
-    private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
-    private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 50;
-    private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
-    private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
-    private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 15000;
-    private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 3000;
+    //private static final int SETALL_INTERVAL_IN_MILLIS = 48;//32;//64;//32;
+    //private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
+    //private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 50;
+    //private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
+    //private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
+    //private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 15000;
+    //private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 3000;
+
     private static final double FINCH_RAW_TO_VOLTAGE = 0.00937;
     private static final double FINCH_BATTERY_CONSTANT = 320;
     private static final double FINCH_GREEN_THRESHOLD = 3.51375;
     private static final double FINCH_YELLOW_THRESHOLD = 3.3732;
-    private static byte[] FIRMWARECOMMAND = new byte[1];
-    private static byte[] RESETENCODERSCOMMAND = new byte[1];
-    private static byte[] CALIBRATECOMMAND = new byte[4];
+    private static final double FINCH_BATTERY_INDEX = 6;
+
+    private static final int FINCH_COMPASS_INDEX = 16;
+
+    private static final byte[] FIRMWARECOMMAND = new byte[]{(byte) 0xD4};
+    private static final byte[] RESETENCODERSCOMMAND = new byte[]{(byte) 0xD5};
+    private static final byte[] CALIBRATECOMMAND = new byte[]{(byte) 0xCE, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
+    private static final byte[] STARTPOLLCOMMAND = new byte[]{(byte) 'b', (byte) 'g'};
+    private static final byte[] STOPPOLLCOMMAND = new byte[]{(byte) 'b', (byte) 's'};
+    private static final byte[] TERMINATECOMMAND = new byte[]{(byte) 0xDF};
+
     private static final byte latestMicroBitVersion = 0x01;
     private static final byte latestSMDVersion = 0x01;
-    private static int microBitVersion = 0;
-    private static int SMDVersion = 0;
+    //private static int microBitVersion = 0;
+    //private static int SMDVersion = 0;
 
-    private AtomicBoolean cf;
+    /*private AtomicBoolean cf;
     private AtomicLong cf_sent;
     private AtomicLong last_sent;
-    private AtomicLong last_successfully_sent;
+    private AtomicLong last_successfully_sent;*/
 
 
-    private UARTConnection conn;
-    private byte[] rawSensorValues;
-    private Object rawSensorValuesLock = new Object();
+    //private UARTConnection conn;
+    //private byte[] rawSensorValues;
+    //private Object rawSensorValuesLock = new Object();
 
-    private final ReentrantLock lock;
-    private final Condition doneSending;
+    //private final ReentrantLock lock;
+    //private final Condition doneSending;
 
-    private final HandlerThread sendThread;
-    private final HandlerThread monitorThread;
+    //private final HandlerThread sendThread;
+    //private final HandlerThread monitorThread;
 
-    private Disposable sendDisposable;
-    private Disposable monitorDisposable;
+    //private Disposable sendDisposable;
+    //private Disposable monitorDisposable;
 
-    private byte[] cfresponse;
-    private FinchMotorState oldFMState = new FinchMotorState();
-    private FinchMotorState newFMState = new FinchMotorState();
+    //private byte[] cfresponse;
+    //private FinchMotorState oldFMState = new FinchMotorState();
+    //private FinchMotorState newFMState = new FinchMotorState();
 
-    private boolean ATTEMPTED = false;
-    private boolean DISCONNECTED = false;
-    private String last_battery_status;
-    private boolean isCalibratingCompass = false;
+    //private boolean ATTEMPTED = false;
+    //private boolean DISCONNECTED = false;
+    //private String last_battery_status;
+    //private boolean isCalibratingCompass = false;
 
-    private AtomicBoolean FORCESEND = new AtomicBoolean(false);
+    /*private AtomicBoolean FORCESEND = new AtomicBoolean(false);
     private AtomicBoolean CALIBRATE = new AtomicBoolean(false);
-    private AtomicBoolean RESETENCODERS = new AtomicBoolean(false);
+    private AtomicBoolean RESETENCODERS = new AtomicBoolean(false);*/
 
 
     /**
-     * Initializes a Hummingbit device
+     * Initializes a Finch device
      *
      * @param conn Connection established with the Hummingbit device
      */
     public Finch(final UARTConnection conn) {
-        super();
+        super(conn, RobotType.Finch);
         Log.d(TAG, "about to set up finch.");
-        this.conn = conn;
+        //this.conn = conn;
 
-        oldState = new FinchState();
-        newState = new FinchState();
+        oldPrimaryState = new FinchState();
+        newPrimaryState = new FinchState();
+        oldSecondaryState = new FinchMotorState();
+        newSecondaryState = new FinchMotorState();
 
-        FIRMWARECOMMAND[0] = (byte) 0xD4;
+        /*FIRMWARECOMMAND[0] = (byte) 0xD4;
         CALIBRATECOMMAND[0] = (byte) 0xCE;
         CALIBRATECOMMAND[1] = (byte) 0xFF;
         CALIBRATECOMMAND[2] = (byte) 0xFF;
         CALIBRATECOMMAND[3] = (byte) 0xFF;
-        RESETENCODERSCOMMAND[0] = (byte) 0xD5;
+        RESETENCODERSCOMMAND[0] = (byte) 0xD5;*/
 
-        cf = new AtomicBoolean(true);
+        /*cf = new AtomicBoolean(true);
         last_sent = new AtomicLong(System.currentTimeMillis());
-        last_successfully_sent = new AtomicLong(System.currentTimeMillis());
-        last_battery_status = "";
+        last_successfully_sent = new AtomicLong(System.currentTimeMillis());*/
+        //last_battery_status = "";
 
-        lock = new ReentrantLock();
-        doneSending = lock.newCondition();
+        //lock = new ReentrantLock();
+        //doneSending = lock.newCondition();
 
-        sendThread = new HandlerThread("SendThread");
+        /*sendThread = new HandlerThread("SendThread");
         if (!sendThread.isAlive())
             sendThread.start();
         from(sendThread.getLooper());
@@ -194,17 +208,67 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
         };
         monitorDisposable = AndroidSchedulers.from(monitorThread.getLooper()).schedulePeriodicallyDirect(monitorRunnable,
                 START_SENDING_INTERVAL_IN_MILLIS, MONITOR_CONNECTION_INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
-
+*/
         Log.d(TAG, "Done setting up finch");
     }
 
+    @Override
+    public byte[] getFirmwareCommand() {
+        return FIRMWARECOMMAND;
+    }
+
+    @Override
+    public byte[] getCalibrateCommand() {
+        return CALIBRATECOMMAND;
+    }
+
+    @Override
+    public byte[] getResetEncodersCommand() {
+        return RESETENCODERSCOMMAND;
+    }
+
+    @Override
+    public byte[] getStartPollCommand() {
+        return STARTPOLLCOMMAND;
+    }
+
+    @Override
+    public byte[] getStopPollCommand() {
+        return STOPPOLLCOMMAND;
+    }
+
+    @Override
+    public byte[] getTerminateCommand() {
+        return TERMINATECOMMAND;
+    }
+
+    @Override
+    public byte[] getStopAllCommand() {
+        return getTerminateCommand();
+    }
+
+    @Override
+    public double[] getBatteryConstantsArray() {
+        return new double[]{
+                FINCH_BATTERY_INDEX,
+                FINCH_BATTERY_CONSTANT,
+                FINCH_RAW_TO_VOLTAGE,
+                FINCH_GREEN_THRESHOLD,
+                FINCH_YELLOW_THRESHOLD};
+    }
+
+    @Override
+    public int getCompassIndex() {
+        return FINCH_COMPASS_INDEX;
+    }
 
     /**
      * Actually sends the commands to the physical Finch,
      * based on certain conditions.
      */
-    public synchronized void sendToRobot() {
+  /*  public synchronized void sendToRobot() {
         long currentTime = System.currentTimeMillis();
+        boolean fmSent = false;
         if (cf.get()) {
             if (cf_sent == null) {
                 // Send here
@@ -257,6 +321,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
         }
         // Not CF
         if (isCurrentlySending()) {
+            Log.d(TAG,"Currently sending...");
             // do nothing in this case
             return;
         }
@@ -294,17 +359,18 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
             return;
         }
 
+        //if (!setAllPending && (!newFMState.equals(oldFMState) || FORCESEND.get())) {
         if (!newFMState.equals(oldFMState) || FORCESEND.get()) {
             setSendingTrue();
 
             //Determine what needs to be sent
-            if(!newFMState.getMotors().equals(oldFMState.getMotors())) {
+            if (!newFMState.getMotors().equals(oldFMState.getMotors())) {
                 newFMState.setSendMotors(true);
             }
-            if(!newFMState.getLedArray().equals(oldFMState.getLedArray())) {
+            if (!newFMState.getLedArray().equals(oldFMState.getLedArray())) {
                 newFMState.setSendLEDArray(true);
             }
-
+            Log.d(TAG, "writing new fm state");
             if (conn.writeBytes(newFMState.setAll())) {
                 // Successfully sent Non-CF command
                 if (last_successfully_sent != null)
@@ -318,31 +384,64 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
             } else {
                 // Sending Non-CF command failed
+                Log.e(TAG, "Sending Non-CF (newFMState) command failed");
             }
 
             setSendingFalse();
             last_sent.set(currentTime);
             FORCESEND.set(false);
-        }
+            fmSent = true;
 
-        // Not currently sending s
+            //if (!statesEqual()) { setAllPending = true; }
+
+            // Not currently sending s
+            //} else if (!statesEqual()) {
+        }
         if (!statesEqual()) {
             // Not currently sending, but oldState and newState are different
             // Send here
-            setSendingTrue();
-
-            if (conn.writeBytes(newState.setAll())) {
-                // Successfully sent Non-CF command
-                if (last_successfully_sent != null)
-                    last_successfully_sent.set(currentTime);
+            if (fmSent) {
+                final byte[] pendingCommand = newState.setAll();
                 oldState.copy(newState);
-
-                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                Log.d(TAG, "Just set set all states equal. Will send command soon...");
+                new Timer().schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        long currentTime = System.currentTimeMillis();
+                        setSendingTrue();
+                        Log.d(TAG, "writing delayed new setall state");
+                        if (conn.writeBytes(pendingCommand)) {
+                            // Successfully sent Non-CF command
+                            if (last_successfully_sent != null)
+                                last_successfully_sent.set(currentTime);
+                            runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                        } else {
+                            // Sending Non-CF command failed
+                            Log.e(TAG, "Sending Non-CF command failed");
+                        }
+                        setSendingFalse();
+                        last_sent.set(currentTime);
+                        Log.d(TAG, "done writing delayed new setall state");
+                    }
+                }, SETALL_INTERVAL_IN_MILLIS/2);
             } else {
-                // Sending Non-CF command failed
+                setSendingTrue();
+                Log.d(TAG, "writing new setall state");
+                if (conn.writeBytes(newState.setAll())) {
+                    // Successfully sent Non-CF command
+                    if (last_successfully_sent != null)
+                        last_successfully_sent.set(currentTime);
+                    oldState.copy(newState);
+
+                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
+                } else {
+                    // Sending Non-CF command failed
+                    Log.e(TAG, "Sending Non-CF command failed");
+                }
+                setSendingFalse();
+                last_sent.set(currentTime);
             }
-            setSendingFalse();
-            last_sent.set(currentTime);
+            //setAllPending = false;
         } else {
             // Not currently sending, and oldState and newState are the same
             if (currentTime - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
@@ -359,8 +458,10 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 setSendingFalse();
                 last_sent.set(currentTime);
             }
+
+            //setAllPending = false; //??
         }
-    }
+    }*/
 
     /**
      * Sets the output of the given output type according to args
@@ -380,7 +481,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
         int port = 0;
         switch (outputType) {
             case "beak":
-                return setRbSOOutput(oldState.getTriLED(1), newState.getTriLED(1), Integer.parseInt(args.get("red").get(0)),
+                return setRbSOOutput(oldPrimaryState.getTriLED(1), newPrimaryState.getTriLED(1), Integer.parseInt(args.get("red").get(0)),
                         Integer.parseInt(args.get("green").get(0)), Integer.parseInt(args.get("blue").get(0)));
             case "tail":
                 String portText = args.get("port").get(0);
@@ -390,20 +491,20 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 if (portText.equals("all")) {
                     boolean success = true;
                     for (int i = 2; i < 6; i++) {
-                        if (!setRbSOOutput(oldState.getTriLED(i), newState.getTriLED(i), red, green, blue)) {
+                        if (!setRbSOOutput(oldPrimaryState.getTriLED(i), newPrimaryState.getTriLED(i), red, green, blue)) {
                             success = false;
                         }
                     }
                     return success;
                 } else {
                     port = Integer.parseInt(portText) + 1;
-                    return setRbSOOutput(oldState.getTriLED(port), newState.getTriLED(port), red, green, blue);
+                    return setRbSOOutput(oldPrimaryState.getTriLED(port), newPrimaryState.getTriLED(port), red, green, blue);
                 }
             case "buzzer":
                 int duration = Integer.parseInt(args.get("duration").get(0));
                 int note = Integer.parseInt(args.get("note").get(0));
                 if (duration != 0 && note != 0) {
-                    return setRbSOOutput(oldState.getBuzzer(), newState.getBuzzer(), note, duration);
+                    return setRbSOOutput(oldPrimaryState.getBuzzer(), newPrimaryState.getBuzzer(), note, duration);
                 } else {
                     return true;
                 }
@@ -413,7 +514,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 int speedR = Integer.parseInt(args.get("speedR").get(0));
                 int ticksR = Integer.parseInt(args.get("ticksR").get(0));
                 Log.d(TAG, "set motors " + speedL + ", " + ticksL + ", " + speedR + ", " + ticksR);
-                return setRbSOOutput(oldFMState.getMotors(), newFMState.getMotors(), speedL, ticksL, speedR, ticksR);
+                return setRbSOOutput(oldSecondaryState.getMotors(), newSecondaryState.getMotors(), speedL, ticksL, speedR, ticksR);
             case "ledArray":
                 String charactersInInts = args.get("ledArrayStatus").get(0);
                 int[] bitsInInt = new int[charactersInInts.length() + 1];
@@ -421,7 +522,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                     bitsInInt[i] = Integer.parseInt(charactersInInts.charAt(i) + "");
                 }
                 bitsInInt[bitsInInt.length - 1] = SYMBOL;
-                return setRbSOOutput(oldFMState.getLedArray(), newFMState.getLedArray(), bitsInInt);
+                return setRbSOOutput(oldSecondaryState.getLedArray(), newSecondaryState.getLedArray(), bitsInInt);
             case "printBlock":
                 FORCESEND.set(true);
                 String printString = args.get("printString").get(0);
@@ -434,7 +535,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                     }
                 }
                 ints[ints.length - 1] = FLASH;
-                return setRbSOOutput(oldFMState.getLedArray(), newFMState.getLedArray(), ints);
+                return setRbSOOutput(oldSecondaryState.getLedArray(), newSecondaryState.getLedArray(), ints);
             case "compassCalibrate":
                 CALIBRATE.set(true);
                 return true;
@@ -455,10 +556,12 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
      * @param axisString axis or position requested
      * @return A string representing the value of the sensor
      */
+    @Override
     public String readSensor(String sensorType, String portString, String axisString) {
 
         int[] rawDistance = new int[2];
         byte[] rawLight = new byte[2];
+        boolean isMoving = false;
         byte[] rawLine = new byte[2];
         byte rawBattery;
         byte[] rawEncoder = new byte[6];
@@ -472,6 +575,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
             rawDistance[1] = rawSensorValues[1] & 0xFF;
             rawLight[0] = rawSensorValues[2];
             rawLight[1] = rawSensorValues[3];
+            isMoving = (rawSensorValues[4] < 0);
             rawLine[0] = rawSensorValues[4];
             rawLine[1] = rawSensorValues[5];
             rawBattery = rawSensorValues[6];
@@ -490,10 +594,10 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
             rawMagnetometerValue[2] = rawSensorValues[19];
 
         }
-        Log.d(TAG, "read sensor raw values: " + Arrays.toString(rawSensorValues));
+        //Log.d(TAG, "read sensor raw values: " + Arrays.toString(rawSensorValues));
         switch (sensorType) {
             case "isMoving":
-                return ((rawSensorValues[4] < 0) ? "1" : "0");
+                return (isMoving ? "1" : "0");
             case "distance":
                 int num = (rawDistance[0] << 8) + rawDistance[1];
                 //int scaled = (int)Math.round((double)num * (117/100));
@@ -502,7 +606,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 return Integer.toString(num);
             case "light":
                 //compensate for the effect of the beak light on the light sensors
-                TriLED currentBeak = oldState.getTriLED(1);
+                TriLED currentBeak = oldPrimaryState.getTriLED(1);
                 long R = Math.round((currentBeak.getRed() & 0xFF) / 2.55); //using 0-100 rgb values
                 long G = Math.round((currentBeak.getGreen() & 0xFF) / 2.55);
                 long B = Math.round((currentBeak.getBlue() & 0xFF) / 2.55);
@@ -521,7 +625,7 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 if (axisString.equals("right")) {
                     return Integer.toString(rawLine[1]);
                 } else {
-                    int val = rawLine[0];
+                    int val = rawLine[0] & 0xFF;
                     if (val > 127) { val -= 128; } //To remove movement flag
                     return Integer.toString(val);
                 }
@@ -570,24 +674,50 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
         }
     }
 
-    private void startPollingSensors() { conn.writeBytes(new byte[]{READ_ALL_CMD, 'g'}); }
+    @Override
+    protected void sendSecondaryState(int delayInMillis) {
+        //Determine what needs to be sent
+        if (!newSecondaryState.getMotors().equals(oldSecondaryState.getMotors())) {
+            newSecondaryState.setSendMotors(true);
+        }
+        if (!newSecondaryState.getLedArray().equals(oldSecondaryState.getLedArray())) {
+            newSecondaryState.setSendLEDArray(true);
+        }
+        byte[] cmd = newSecondaryState.setAll();
+        //Log.d(TAG, "writing new fm state");
+        if (sendCommand(newSecondaryState.setAll())) {
+            if (newSecondaryState.getSendMotors()) {
+                newSecondaryState.resetMotors();
+                newSecondaryState.setSendMotors(false);
+            }
+            newSecondaryState.setSendLEDArray(false);
+            oldSecondaryState.copy(newSecondaryState);
+        }
+        //sendInFuture(cmd, delayInMillis);
+    }
+
+    /*private void startPollingSensors() { conn.writeBytes(new byte[]{READ_ALL_CMD, 'g'}); }
 
     private void stopPollingSensors() {
         conn.writeBytes(new byte[]{READ_ALL_CMD, 's'});
-    }
+    }*/
 
-    private boolean setRbSOOutput(RobotStateObject oldobj, RobotStateObject newobj, int... values) {
+    /*private boolean setRbSOOutput(RobotStateObject oldobj, RobotStateObject newobj, int... values) {
         try {
             lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
             AtomicInteger count = new AtomicInteger(0);
             while (!newobj.equals(oldobj)) {
-                if (count.incrementAndGet() > 1) break;
+                Log.d(TAG, "waiting for equal states...");
+                if (count.incrementAndGet() > 1) {
+                    Log.e(TAG, "Max wait exceeded!");
+                    break;
+                }
                 doneSending.await(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
             }
             if (newobj.equals(oldobj)) {
                 newobj.setValue(values);
                 if (lock.isHeldByCurrentThread()) {
-                    doneSending.signal();
+                    //doneSending.signal();
                     lock.unlock();
                 }
                 return true;
@@ -599,14 +729,14 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 lock.unlock();
         }
         return false;
-    }
+    }*/
 
     /**
      * Resets all finch peripherals to their default values.
      *
      * @return True if succeeded in changing state, false otherwise
      */
-    public boolean stopAll() {
+    /*public boolean stopAll() {
         try {
             lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
             while (!statesEqual()) {
@@ -628,25 +758,25 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 lock.unlock();
         }
         return false;
-    }
+    }*/
 
     /**
      * Returns whether or not this device is connected
      *
      * @return True if connected, false otherwise
      */
-    public boolean isConnected() {
+    /*public boolean isConnected() {
         return conn.isConnected();
-    }
+    }*/
 
-    public void setConnected() {
+    /*public void setConnected() {
         DISCONNECTED = false;
-    }
+    }*/
 
     /**
      * Disconnects the device
      */
-    public void disconnect() {
+    /*public void disconnect() {
         if (!DISCONNECTED) {
             if (ATTEMPTED) {
                 forceDisconnect();
@@ -682,13 +812,13 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
             ATTEMPTED = false;
             DISCONNECTED = true;
         }
-    }
+    }*/
 
-    public boolean getDisconnected() {
+    /*public boolean getDisconnected() {
         return DISCONNECTED;
-    }
+    }*/
 
-    public void forceDisconnect() {
+    /*public void forceDisconnect() {
         String macAddr = getMacAddress();
         if (!DISCONNECTED) {
             ATTEMPTED = false;
@@ -717,9 +847,9 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
             }
             DISCONNECTED = true;
         }
-    }
+    }*/
 
-    @Override
+    /*@Override
     public void onRXData(byte[] newData) {
         synchronized (rawSensorValuesLock) {
             if (cf.get()){
@@ -756,42 +886,52 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
                 }
             }
         }
-    }
+    }*/
 
-    public String getMacAddress() {
+    /*public String getMacAddress() {
         try {
             return conn.getBLEDevice().getAddress();
         } catch (NullPointerException e) {
             Log.e(TAG, "Error getting finch mac address: " + e.getMessage());
             return null;
         }
-    }
+    }*/
 
-    public String getName() {
+    /*public String getName() {
         try {
             return NamingHandler.GenerateName(mainWebViewContext, conn.getBLEDevice().getAddress());
         } catch (NullPointerException e) {
             Log.e(TAG, "Error getting finch name: " + e.getMessage());
             return null;
         }
-    }
+    }*/
 
-    public String getGAPName() {
+    /*public String getGAPName() {
         try {
             return conn.getBLEDevice().getName();
         } catch (NullPointerException e) {
             Log.e(TAG, "Error getting finch gap name: " + e.getMessage());
             return null;
         }
+    }*/
+
+    @Override
+    protected void notifyIncompatible() {
+        runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
     }
 
-    public String getHardwareVersion() {
+    private String getCFResponse(int index) {
         try {
-            return Byte.toString(cfresponse[0]);
+            return Byte.toString(cfresponse[index]);
         } catch (ArrayIndexOutOfBoundsException e) {
-            Log.e(TAG, "Finch hardware version: " + e.getMessage());
-            return null;
+            Log.e(TAG, "Finch cf version error: " + e.getMessage());
+            return "";
         }
+    }
+
+    @Override
+    public String getHardwareVersion() {
+        return getCFResponse(0);
     }
 
     public String getLatestMicroBitVersion() {
@@ -803,28 +943,31 @@ public class Finch extends Robot<FinchState> implements UARTConnection.RXDataLis
     }
 
     public String getMicroBitVersion() {
-        return Integer.toString(microBitVersion);
+        return getCFResponse(1);
     }
 
     public String getSMDVersion() {
-        return Integer.toString(SMDVersion);
+        return getCFResponse(2);
     }
 
+    @Override
     public boolean hasLatestFirmware() {
-        try {
-            microBitVersion = (int) cfresponse[1];
-            SMDVersion = (int) cfresponse[2];
+        return true;
+        /*try {
+            int microBitVersion = (int) cfresponse[1];
+            int SMDVersion = (int) cfresponse[2];
             if (microBitVersion >= (int) latestMicroBitVersion && SMDVersion >= (int) latestSMDVersion) {
                 return true;
             } else {
                 return false;
             }
         } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
-            Log.e(TAG, "Finch firmware version: " + e.getMessage());
+            Log.e(TAG, "Finch firmware version error: " + e.getMessage());
             return false;
-        }
+        }*/
     }
 
+    @Override
     public boolean hasMinFirmware() {
         return true;
     }
