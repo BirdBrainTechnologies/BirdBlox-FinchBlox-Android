@@ -48,7 +48,7 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
      * @param conn Connection established with the Hummingbit device
      */
     public Finch(final UARTConnection conn) {
-        super(conn, false);
+        super(conn, RobotType.Finch, false);
 
         oldPrimaryState = new FinchState();
         newPrimaryState = new FinchState();
@@ -395,9 +395,4 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
     public boolean hasMinFirmware() {
         return true;
     }
-
-    /*@Override
-    protected void addToReconnect() {
-        addToHashSet(finchesToConnect);
-    }*/
 }

@@ -11,7 +11,6 @@ import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.R
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
@@ -60,6 +59,7 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
     private final String fancyName;
     private final String macAddress;
     private final String gapName;
+    public final RobotType type;
     protected byte[] rawSensorValues;
     protected final Object rawSensorValuesLock = new Object();
     private String last_battery_status = "";
@@ -88,8 +88,9 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
 
 //TODO: Make sure no two commands are sent within 10ms of each other.
 
-    public Robot(final UARTConnection conn, boolean cfWithResponse) {
+    public Robot(final UARTConnection conn, RobotType type, boolean cfWithResponse) {
         this.conn = conn;
+        this.type = type;
         this.cfWithResponse = cfWithResponse;
 
         BluetoothDevice device = conn.getBLEDevice();

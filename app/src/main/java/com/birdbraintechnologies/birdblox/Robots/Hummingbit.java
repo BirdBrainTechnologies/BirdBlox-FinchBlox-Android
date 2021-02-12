@@ -50,7 +50,7 @@ public class Hummingbit extends Robot<HBitState, LedArrayState> {
      * @param conn Connection established with the Hummingbit device
      */
     public Hummingbit(final UARTConnection conn) {
-        super(conn, false);
+        super(conn, RobotType.Hummingbit, false);
 
         oldPrimaryState = new HBitState();
         newPrimaryState = new HBitState();
@@ -309,10 +309,5 @@ public class Hummingbit extends Robot<HBitState, LedArrayState> {
     public boolean hasMinFirmware() {
         return true;
     }
-
-    /*@Override
-    protected void addToReconnect() {
-        addToHashSet(hummingbitsToConnect);
-    }*/
 }
 

@@ -44,7 +44,7 @@ public class Microbit extends Robot<MBState, LedArrayState> {
      * @param conn Connection established with the Microbit device
      */
     public Microbit(final UARTConnection conn) {
-        super(conn, false);
+        super(conn, RobotType.Microbit, false);
 
         oldPrimaryState = new MBState();
         newPrimaryState = new MBState();
@@ -313,10 +313,5 @@ public class Microbit extends Robot<MBState, LedArrayState> {
     public boolean hasMinFirmware() {
         return true;
     }
-
-    /*@Override
-    protected void addToReconnect() {
-        addToHashSet(microbitsToConnect);
-    }*/
 }
 

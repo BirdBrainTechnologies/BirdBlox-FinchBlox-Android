@@ -12,7 +12,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Robots.RobotType;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
@@ -73,66 +72,19 @@ public class BluetoothHelper {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             synchronized (deviceList) {
-                Log.d(TAG, "onScanResult " + result.toString());
-                deviceList.put(result.getDevice().getAddress(), result.getDevice());
-                discoveredList.put(result.getDevice().getAddress(), result.getDevice());
-                deviceLastSeen.put(result.getDevice().getAddress(), new AtomicLong(System.currentTimeMillis()));
-                List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
-                /*if (hummingbirdsToConnect != null) {
-                    if (hummingbirdsToConnect.contains(result.getDevice().getAddress())) {
-                        if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
-                            hummingbirdsToConnect = new HashSet<>();
-                        } else {
-                            try {
-                                Thread.sleep(5000);
-                            } catch (InterruptedException e) {
-                            }
-                            connectToRobot(RobotType.Hummingbird, result.getDevice().getAddress());
-                        }
-                    }
-                }
-                if (hummingbitsToConnect != null) {
-                    if (hummingbitsToConnect.contains(result.getDevice().getAddress())) {
-                        if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
-                            hummingbitsToConnect = new HashSet<>();
-                        } else {
-                            try {
-                                Thread.sleep(5000);
-                            } catch (InterruptedException e) {
-                            }
+                //Log.d(TAG, "onScanResult " + result.toString());
 
-                            connectToRobot(RobotType.Hummingbit, result.getDevice().getAddress());
-                        }
-                    }
-                }
-                if (microbitsToConnect != null) {
-                    if (microbitsToConnect.contains(result.getDevice().getAddress())) {
-                        if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
-                            microbitsToConnect = new HashSet<>();
-                        } else {
-                            try {
-                                Thread.sleep(5000);
-                            } catch (InterruptedException e) {
-                            }
-                            connectToRobot(RobotType.Microbit, result.getDevice().getAddress());
-                        }
-                    }
-                }
-                if (finchesToConnect != null) {
-                    if (finchesToConnect.contains(result.getDevice().getAddress())) {
-                        if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
-                            finchesToConnect = new HashSet<>();
-                        } else {
-                            try {
-                                Thread.sleep(5000);
-                            } catch (InterruptedException e) {
-                            }
-                            connectToRobot(RobotType.Finch, result.getDevice().getAddress());
-                        }
-                    }
-                }*/
+                BluetoothDevice dev = result.getDevice();
+                String macAddress = dev.getAddress();
+                String gapName = dev.getName();
+                int currentRSSI = result.getRssi();
+
+                deviceList.put(macAddress, dev);
+                discoveredList.put(macAddress, dev);
+                deviceLastSeen.put(macAddress, new AtomicLong(System.currentTimeMillis()));
+                List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
+
                 if (robotsToConnect != null) {
-                    String gapName = result.getDevice().getName();
                     if (robotsToConnect.contains(gapName)) {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             robotsToConnect = new HashSet<>(); //TODO: Why?
@@ -142,7 +94,6 @@ public class BluetoothHelper {
                             } catch (InterruptedException e) {
                                 Log.e(TAG, "Sleep before autoreconnect interrupted: " + e.getMessage());
                             }
-                            String macAddress = result.getDevice().getAddress();
                             RobotType robotType = RobotType.robotTypeFromGAPName(gapName);
                             Log.d(TAG, "Reconnecting to " + macAddress + " with name " + gapName + " as type " + robotType.toString());
                             robotsToConnect.remove(gapName);
@@ -151,37 +102,20 @@ public class BluetoothHelper {
                     }
                 }
 
-                if (deviceRSSI.get(result.getDevice().getAddress()) == null ||
-                        Math.abs(result.getRssi() - deviceRSSI.get(result.getDevice().getAddress())) > THRESHOLD) {
-                    deviceRSSI.put(result.getDevice().getAddress(), result.getRssi());
+                if ((deviceRSSI.get(macAddress) == null) ||
+                        (Math.abs(result.getRssi() - deviceRSSI.get(macAddress)) > THRESHOLD)) {
+                    deviceRSSI.put(macAddress, currentRSSI);
                 }
+
                 if (System.currentTimeMillis() - last_sent.get() >= SEND_INTERVAL) {
                     last_sent.set(System.currentTimeMillis());
                     JSONArray robots = new JSONArray();
                     for (BluetoothDevice device : BLEDeviceList) {
                         //Make sure we have seen this device recently
                         if (System.currentTimeMillis() - deviceLastSeen.get(device.getAddress()).get() <= 2000) {
-
                             String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
-                            String prefix = "";
-
-                            switch (device.getName().substring(0, 2)) {
-                                case "HM":
-                                    prefix = "Duo";
-                                    break;
-                                case "HB":
-                                    prefix = "Duo";
-                                    break;
-                                case "FN":
-                                    prefix = "Finch";
-                                    break;
-                                case "BB":
-                                    prefix = "Bit";
-                                    break;
-                                case "MB":
-                                    prefix = "micro:bit";
-                                    break;
-                            }
+                            RobotType robotType = RobotType.robotTypeFromGAPName(device.getName());
+                            String prefix = (robotType != null) ? robotType.getPrefix() : "";
                             JSONObject robot = new JSONObject();
                             try {
                                 robot.put("id", device.getAddress());
