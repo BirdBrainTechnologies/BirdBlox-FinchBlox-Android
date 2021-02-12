@@ -29,10 +29,7 @@ import io.reactivex.disposables.Disposable;
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.finchesToConnect;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbirdsToConnect;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbitsToConnect;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.microbitsToConnect;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.robotsToConnect;
 import static io.reactivex.android.schedulers.AndroidSchedulers.from;
 
 /**
@@ -50,7 +47,7 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
     private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 15000;
     private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 3000;
     private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 2000; //Not sure we really need to send anyway at all...
-    private static final int MIN_COMMAND_INTERVAL = 20; //Since it is possible to need to send 3 commands in one setall interval, this value must be no more than 1/3 the setall interval.
+    private static final int MIN_COMMAND_INTERVAL = 15; //Since it is possible to need to send 3 commands in one setall interval, this value must be no more than 1/3 the setall interval.
 
     protected T1 oldPrimaryState;
     protected T1 newPrimaryState;
@@ -63,7 +60,6 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
     private final String fancyName;
     private final String macAddress;
     private final String gapName;
-    private final RobotType type;
     protected byte[] rawSensorValues;
     protected final Object rawSensorValuesLock = new Object();
     private String last_battery_status = "";
@@ -80,22 +76,21 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
     private AtomicBoolean cf; //do you need to check firmware?
     private AtomicLong cf_sent; //when was the check firmware command sent?
     protected byte[] cfresponse; //check firmware command response
-    private boolean cfWithResponse = false;
+    private final boolean cfWithResponse;
 
     private AtomicLong last_sent;
     private AtomicLong last_successfully_sent;
 
-    protected AtomicBoolean FORCESEND = new AtomicBoolean(false);
-    protected AtomicBoolean CALIBRATE = new AtomicBoolean(false);
+    protected AtomicBoolean FORCESEND = new AtomicBoolean(false); //Make sure the print string is sent (even if it is the same as the last one)
+    protected AtomicBoolean CALIBRATE = new AtomicBoolean(false); //Should start compass calibration
     protected AtomicBoolean RESETENCODERS = new AtomicBoolean(false);
 
 
 //TODO: Make sure no two commands are sent within 10ms of each other.
 
-    public Robot(final UARTConnection conn, final RobotType type) {
+    public Robot(final UARTConnection conn, boolean cfWithResponse) {
         this.conn = conn;
-        this.conn.addRxDataListener(this);
-        this.type = type;
+        this.cfWithResponse = cfWithResponse;
 
         BluetoothDevice device = conn.getBLEDevice();
         if (device != null) {
@@ -115,6 +110,8 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
         last_sent = new AtomicLong(System.currentTimeMillis());
         last_successfully_sent = new AtomicLong(System.currentTimeMillis());
 
+        this.conn.addRxDataListener(this);
+
         sendThread = new HandlerThread("SendThread");
         if (!sendThread.isAlive())
             sendThread.start();
@@ -128,9 +125,6 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
                         //Log.d(TAG, "Lock aquired");
                         sendToRobot();
                         doneSending.signal();
-                    }
-                    if (DISCONNECTED) {
-                        return;//TODO: This does nothing.
                     }
                 } catch (NullPointerException | InterruptedException | IllegalMonitorStateException e) {
                     Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
@@ -165,11 +159,9 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
                             public void run() {
                                 super.run();
                                 String macAddr = getMacAddress();
-                                RobotRequestHandler.disconnectFromRobot(type, macAddr);
+                                //RobotRequestHandler.disconnectFromRobot(type, macAddr);
+                                RobotRequestHandler.disconnectFromRobot(macAddr);
                                 addToReconnect();
-                                if (DISCONNECTED) {
-                                    return;
-                                }
                             }
                         }.start();
                     } catch (Exception e) {
@@ -183,17 +175,83 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
 
     }
 
-    public synchronized boolean isCurrentlySending() {
-        return sending;
-    }
+    // **** Abstract Methods ****
 
-    public synchronized void setSendingTrue() {
-        sending = true;
-    }
+    /**
+     * Notifiy the frontend that this robot is incompatible and should be disconnected. Should call
+     * CallbackManager.robot.disconnectIncompatible
+     */
+    protected abstract void notifyIncompatible();
 
-    public synchronized void setSendingFalse() {
-        sending = false;
-    }
+    /**
+     * Handle frontend requests to set outputs on this robot
+     * @param outputType - Defines which output to set
+     * @param args - Arguments defining how the output should be set
+     * @return - true if the output has been set successfully
+     */
+    public abstract boolean setOutput(String outputType, Map<String, List<String>> args);
+
+    /**
+     * Read the value of the sensor at the given port and returns the formatted value according to
+     * sensor type.
+     * @param sensorType - Defines what type of sensor is being read
+     * @param portString - Which port the sensor is connected to
+     * @param axisString - axis or position requested
+     * @return A string representing the value of the sensor
+     */
+    public abstract String readSensor(String sensorType, String portString, String axisString);
+
+    /**
+     * @return true if the current firmware version is at least the minimum
+     */
+    public abstract boolean hasMinFirmware();
+
+    /**
+     * @return true if the current firmware version is the latest.
+     */
+    public abstract boolean hasLatestFirmware();
+
+    /**
+     * @return current hardware version string
+     */
+    public abstract String getHardwareVersion();
+
+    /**
+     * @return the requested command specific to this robot type
+     */
+    public abstract byte[] getFirmwareCommand();
+    public abstract byte[] getCalibrateCommand();
+    public abstract byte[] getResetEncodersCommand();
+    public abstract byte[] getStartPollCommand();
+    public abstract byte[] getStopPollCommand();
+    public abstract byte[] getTerminateCommand();
+    public abstract byte[] getStopAllCommand();
+
+    /**
+     * Return constants required to set the battery values. May return null if battery monitoring
+     * is not enabled for this robot type.
+     * @return [index, offset, rawToVoltage, greenThresh, yellowThresh]
+     */
+    public abstract double[] getBatteryConstantsArray();
+
+    /**
+     * @return index of compass calibration flag
+     */
+    public abstract int getCompassIndex();
+
+    /**
+     * Send the secondary state to the robot if there is one. This should be the led array state
+     * for micro:bit based devices.
+     * @param delayInMillis
+     */
+    protected abstract void sendSecondaryState(int delayInMillis);
+
+    /**
+     * Add this robot to the appropriate autoreconnect list
+     */
+    //protected abstract void addToReconnect();
+
+    // **** Superclass Methods ****
 
     public synchronized boolean primaryStatesEqual() {
         return oldPrimaryState.equals(newPrimaryState);
@@ -206,14 +264,15 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
      * Actually sends the commands to the physical Robot,
      * based on certain conditions.
      */
-    //public abstract void sendToRobot();
     private synchronized void sendToRobot() {
 
         if (cf.get()) {
             if (cfWithResponse) {
                 cfresponse = sendCommandAndGetResponse(getFirmwareCommand());
+                if (cf_sent == null) { //Only record the time we first request firmware so we can time out if necessary
+                    cf_sent = new AtomicLong(System.currentTimeMillis());
+                }
             } else if (cf_sent == null) {
-                setSendingTrue();
                 boolean success = sendCommand(getFirmwareCommand());
                 Log.d(TAG, "write firmware bytes? " + success);
                 if (success) {
@@ -228,15 +287,15 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
                 cf.set(false);
 
                 if (rawSensorValues == null) {
-                    setSendingTrue();
                     if (cfWithResponse) {
+                        Log.d(TAG, "About to start sensor polling with response.");
                         rawSensorValues = sendCommandAndGetResponse(getStartPollCommand());
                     } else {
                         sendCommand(getStartPollCommand());
                     }
                 }
 
-                if (!hasLatestFirmware()) {
+                if (!hasMinFirmware()) {
                     cf.set(true);
                     notifyIncompatible();
                     disconnect();
@@ -252,89 +311,45 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
                 notifyIncompatible();
                 disconnect();
             }
-            setSendingFalse();
             return;
         }
+
         // Not CF
-        if (isCurrentlySending()) {//TODO: do we really need this whole sending system? We have the lock...
-            Log.e(TAG,"Currently sending...");
-            // do nothing in this case
-            return;
-        }
         if (CALIBRATE.get()) {
             CALIBRATE.set(false);
-            setSendingTrue();
             if (sendCommand(getCalibrateCommand())) {
                 SystemClock.sleep(200);//TODO: remove and set flag in future?
                 isCalibratingCompass = true;
             }
-            setSendingFalse();
             return;
         }
         if (RESETENCODERS.get()) {
             RESETENCODERS.set(false);
-            setSendingTrue();
             //if (sendCommand(getResetEncodersCommand())) {
                 //SystemClock.sleep(200);//TODO: what does this do to the whole setall thing? I think this can be removed because the block already sleeps in the frontend.
             //}
             sendInFuture(getResetEncodersCommand(), MIN_COMMAND_INTERVAL * 2);
-            setSendingFalse();
             //return;//TODO: if we return here, we can't signal doneSending because states aren't reset.
         }
 
-        //boolean secondarySent = false;
         if (!secondaryStatesEqual() || FORCESEND.get()) {
-            setSendingTrue();
+            Log.d(TAG, "sending secondary state...");
             sendSecondaryState(MIN_COMMAND_INTERVAL);
-            setSendingFalse();
             FORCESEND.set(false);
-            //secondarySent = true;
         }
 
         if (!primaryStatesEqual()) {
-            // Not currently sending, but oldState and newState are different
-            // Send here
-            /*if (secondarySent) {
-                final byte[] pendingCommand = newPrimaryState.setAll();
-                oldPrimaryState.copy(newPrimaryState);
-                Log.d(TAG, "Just set set all states equal. Will send command soon...");
-                new Timer().schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        setSendingTrue();
-                        try {
-                            lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
-                            Log.d(TAG, "writing delayed new setall state");
-                            sendCommand(pendingCommand);
-                        } catch (NullPointerException | InterruptedException | IllegalMonitorStateException e) {
-                            Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
-                        } finally {
-                            if (lock.isHeldByCurrentThread())
-                                lock.unlock();
-                        }
-                        setSendingFalse();
-                        Log.d(TAG, "done writing delayed new setall state");
-                    }
-                }, SETALL_INTERVAL_IN_MILLIS/2);
-            } else {*/
-                setSendingTrue();
-                Log.d(TAG, "writing new setall state");
-                byte[] cmd = newPrimaryState.setAll();
-                //if (sendCommand(newPrimaryState.setAll())) {
-                    oldPrimaryState.copy(newPrimaryState);
-                //}
-                sendInFuture(cmd, MIN_COMMAND_INTERVAL);
-                setSendingFalse();
-            //}
+            //Log.d(TAG, "writing new setall state");
+            byte[] cmd = newPrimaryState.setAll();
+            oldPrimaryState.copy(newPrimaryState);
+            sendInFuture(cmd, MIN_COMMAND_INTERVAL);
         } else {
             // Not currently sending, and oldState and newState are the same
             // TODO: This can probably be eliminated - but must modify monitor thread first
             if (System.currentTimeMillis() - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
-                setSendingTrue();
                 if (sendCommand(newPrimaryState.setAll())) {
                     oldPrimaryState.copy(newPrimaryState);
                 }
-                setSendingFalse();
             }
         }
     }
@@ -343,48 +358,18 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
         conn.writeBytes(getStopPollCommand());
     }
 
-    /**
-     * Notifiy the frontend that this robot is incompatible and should be disconnected. Should call
-     * CallbackManager.robot.disconnectIncompatible
-     */
-    protected abstract void notifyIncompatible();
-
-    /**
-     * @param outputType
-     * @param args
-     * @return
-     */
-    public abstract boolean setOutput(String outputType, Map<String, List<String>> args);
-
-    /**
-     * @param sensorType
-     * @param portString
-     * @return
-     */
-    public abstract String readSensor(String sensorType, String portString, String axisString);
-
-    //public abstract String getMacAddress();
     public String getMacAddress() {
         return macAddress;
     }
 
-    //public abstract String getName();
     public String getName() {
         return fancyName;
     }
 
-    //public abstract String getGAPName();
     public String getGAPName() {
         return gapName;
     }
 
-    public abstract boolean hasMinFirmware();
-
-    public abstract boolean hasLatestFirmware();
-
-    public abstract String getHardwareVersion();
-
-    //public abstract void setConnected();
     public void setConnected() {
         DISCONNECTED = false;
     }
@@ -392,7 +377,6 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
     /**
      * Disconnects the device
      */
-    //public abstract void disconnect();
     public void disconnect() {
         if (!DISCONNECTED) {
             if (ATTEMPTED) {
@@ -426,6 +410,7 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
+                    Log.e(TAG, "Sleep error: " + e.getMessage());
                 }
                 conn.disconnect();
             }
@@ -458,62 +443,20 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
             DISCONNECTED = true;
         }
     }
-    private void addToReconnect() {
-        switch (type) { //TODO: Why are there different reconnect lists?
-            case Microbit:
-                addToHashSet(microbitsToConnect);
-                break;
-            case Finch:
-                addToHashSet(finchesToConnect);
-                break;
-            case Hummingbit:
-                addToHashSet(hummingbitsToConnect);
-                break;
-            case Hummingbird:
-                addToHashSet(hummingbirdsToConnect);
-                cfWithResponse = true;
-                break;
-            default:
-                Log.e(TAG, "Robot created with undefined type " + type.toString());
-        }
 
-    }
-    private void addToHashSet(HashSet<String> set) {
-        synchronized (set) {
-            if (!set.contains(macAddress)) {
-                set.add(macAddress);
-            }
+    protected void addToReconnect() {
+        synchronized (robotsToConnect) {
+            robotsToConnect.add(gapName);
         }
     }
 
-    //public abstract boolean getDisconnected();
     public boolean getDisconnected() {
         return DISCONNECTED;
     }
 
-    //public abstract boolean isConnected();
     public boolean isConnected() {
         return conn.isConnected();
     }
-
-    public abstract byte[] getFirmwareCommand();
-    public abstract byte[] getCalibrateCommand();
-    public abstract byte[] getResetEncodersCommand();
-    public abstract byte[] getStartPollCommand();
-    public abstract byte[] getStopPollCommand();
-    public abstract byte[] getTerminateCommand();
-    public abstract byte[] getStopAllCommand();
-
-    /**
-     * Return constants required to set the battery values. May return null if battery monitoring
-     * is not enabled for this robot type.
-     * @return [index, offset, rawToVoltage, greenThresh, yellowThresh]
-     */
-    public abstract double[] getBatteryConstantsArray();
-
-    public abstract int getCompassIndex();
-
-    protected abstract void sendSecondaryState(int delayInMillis);
 
     protected boolean setRbSOOutput(RobotStateObject oldobj, RobotStateObject newobj, int... values) {
         try {
@@ -552,7 +495,7 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
         pauseIfNeeded();
 
         boolean success = conn.writeBytes(command);
-        logCommandSentTime(success);
+        logCommandSentTime(success, command);
         return success;
     }
 
@@ -561,7 +504,7 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
         pauseIfNeeded();
 
         byte[] response = conn.writeBytesWithResponse(command);
-        logCommandSentTime(response != null);
+        logCommandSentTime(response != null, command);
         return response;
     }
 
@@ -578,14 +521,14 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
         }
     }
 
-    private void logCommandSentTime(boolean success) {
+    private void logCommandSentTime(boolean success, byte[] cmd) {
         long currentTime = System.currentTimeMillis();
         if (success) {
             last_successfully_sent.set(currentTime);
             runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-            Log.d(TAG, "Command successfully sent");
+            //Log.d(TAG, "Command successfully sent: " + cmd[0]);
         } else {
-            Log.e(TAG, "Failed to send command to " + this.getName());
+            Log.e(TAG, "Failed to send command (" + cmd[0] + ") to " + this.getName());
         }
         last_sent.set(currentTime);
     }
@@ -594,6 +537,7 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
         new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
+                Log.d(TAG, "Sending delayed command " + command[0]);
                 sendCommand(command);
             }
         }, delayInMillis);
@@ -631,7 +575,7 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
         return false;
     }
 
-    // UARTConnection.RXDataListener Methods
+    // **** UARTConnection.RXDataListener Methods ****
 
     @Override
     public void onRXData(byte[] newData) {
@@ -641,7 +585,7 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
                 return;
             }
             this.rawSensorValues = newData;
-            Log.d(TAG, "motors rawData updated to " + (newData[4] < 0));
+            //Log.d(TAG, "motors rawData updated to " + (newData[4] < 0));
 
             double[] battArray = getBatteryConstantsArray();
             if (battArray != null) {

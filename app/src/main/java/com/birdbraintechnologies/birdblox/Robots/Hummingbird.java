@@ -1,33 +1,18 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
-import android.os.HandlerThread;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBState;
-import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
-import com.birdbraintechnologies.birdblox.Util.NamingHandler;
-import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
-
-import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.disposables.Disposable;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
-import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbirdsToConnect;
-import static io.reactivex.android.schedulers.AndroidSchedulers.from;
+
 
 /**
  * Represents a Hummingbird device and all of its functionality: Setting outputs, reading sensors
@@ -52,7 +37,7 @@ public class Hummingbird extends Robot<HBState, HBState> {
     private static final byte READ_SENSOR_CMD = 's';
     private static final byte READ_ALL_CMD = 'G';
     private static final byte STOP_PERIPH_CMD = 'X';
-    private static final byte TERMINATE_CMD = 'R'; //TODO: This should be sent in the disconnect case instead of X.
+    private static final byte TERMINATE_CMD = 'R';
     private static final byte PING_CMD = 'z';
     private static final String RENAME_CMD = "AT+GAPDEVNAME";
 
@@ -117,7 +102,7 @@ public class Hummingbird extends Robot<HBState, HBState> {
      * @param conn Connection established with the Hummingbird device
      */
     public Hummingbird(final UARTConnection conn) {
-        super(conn, RobotType.Hummingbird);
+        super(conn, true);
         //this.conn = conn;
 
         oldPrimaryState = new HBState();
@@ -574,32 +559,6 @@ public class Hummingbird extends Robot<HBState, HBState> {
     @Override
     protected void sendSecondaryState(int delayInMillis) { } //Hummingbird does not actually have a secondary state.
 
-    /*public String getMacAddress() {
-        try {
-            return conn.getBLEDevice().getAddress();
-        } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting hummingbird mac address: " + e.getMessage());
-            return null;
-        }
-    }*/
-
-    /*public String getName() {
-        try {
-            return NamingHandler.GenerateName(mainWebViewContext, conn.getBLEDevice().getAddress());
-        } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting hummingbird name: " + e.getMessage());
-            return null;
-        }
-    }*/
-
-    /*public String getGAPName() {
-        try {
-            return conn.getBLEDevice().getName();
-        } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting hummingbird gap name: " + e.getMessage());
-            return null;
-        }
-    }*/
 
     @Override
     public String getHardwareVersion() {
@@ -673,4 +632,9 @@ public class Hummingbird extends Robot<HBState, HBState> {
     public byte[] getFirmwareCommand() {
         return FIRMWARECOMMAND;
     }
+
+    /*@Override
+    protected void addToReconnect() {
+        addToHashSet(hummingbirdsToConnect);
+    }*/
 }

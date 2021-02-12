@@ -1,64 +1,27 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
-import android.os.HandlerThread;
-import android.os.SystemClock;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.FinchMotorState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.FinchState;
-import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.TriLED;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
-import com.birdbraintechnologies.birdblox.Util.NamingHandler;
-import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
-
-import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.disposables.Disposable;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
-import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.finchesToConnect;
-import static io.reactivex.android.schedulers.AndroidSchedulers.from;
 
 
 /**
- * Represents a Hummingbit device and all of its functionality: Setting outputs, reading sensors
- * @author Zhendong Yuan (yzd1998111)
+ * Represents a Finch device
  */
-//public class Finch extends Robot<FinchState> implements UARTConnection.RXDataListener {
 public class Finch extends Robot<FinchState, FinchMotorState> {
 
-    //private final String TAG = this.getClass().getSimpleName();
-    /*
-     * Command prefixes for the Hummingbit according to spec
-     */
-
-    //private static final byte READ_ALL_CMD = 'b';
-    //private static final byte TERMINATE_CMD = (byte) 0xDF;
-    //private static final byte RESET_ENCODER_CMD = (byte) 0xD5;
     private static final int SYMBOL = 0;
     private static final int FLASH = 1;
-    //private static final int SETALL_INTERVAL_IN_MILLIS = 48;//32;//64;//32;
-    //private static final int COMMAND_TIMEOUT_IN_MILLIS = 5000;
-    //private static final int SEND_ANYWAY_INTERVAL_IN_MILLIS = 50;
-    //private static final int START_SENDING_INTERVAL_IN_MILLIS = 0;
-    //private static final int MONITOR_CONNECTION_INTERVAL_IN_MILLIS = 1000;
-    //private static final int MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 15000;
-    //private static final int MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS = 3000;
 
     private static final double FINCH_RAW_TO_VOLTAGE = 0.00937;
     private static final double FINCH_BATTERY_CONSTANT = 320;
@@ -77,40 +40,6 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
 
     private static final byte latestMicroBitVersion = 0x01;
     private static final byte latestSMDVersion = 0x01;
-    //private static int microBitVersion = 0;
-    //private static int SMDVersion = 0;
-
-    /*private AtomicBoolean cf;
-    private AtomicLong cf_sent;
-    private AtomicLong last_sent;
-    private AtomicLong last_successfully_sent;*/
-
-
-    //private UARTConnection conn;
-    //private byte[] rawSensorValues;
-    //private Object rawSensorValuesLock = new Object();
-
-    //private final ReentrantLock lock;
-    //private final Condition doneSending;
-
-    //private final HandlerThread sendThread;
-    //private final HandlerThread monitorThread;
-
-    //private Disposable sendDisposable;
-    //private Disposable monitorDisposable;
-
-    //private byte[] cfresponse;
-    //private FinchMotorState oldFMState = new FinchMotorState();
-    //private FinchMotorState newFMState = new FinchMotorState();
-
-    //private boolean ATTEMPTED = false;
-    //private boolean DISCONNECTED = false;
-    //private String last_battery_status;
-    //private boolean isCalibratingCompass = false;
-
-    /*private AtomicBoolean FORCESEND = new AtomicBoolean(false);
-    private AtomicBoolean CALIBRATE = new AtomicBoolean(false);
-    private AtomicBoolean RESETENCODERS = new AtomicBoolean(false);*/
 
 
     /**
@@ -119,97 +48,12 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
      * @param conn Connection established with the Hummingbit device
      */
     public Finch(final UARTConnection conn) {
-        super(conn, RobotType.Finch);
-        Log.d(TAG, "about to set up finch.");
-        //this.conn = conn;
+        super(conn, false);
 
         oldPrimaryState = new FinchState();
         newPrimaryState = new FinchState();
         oldSecondaryState = new FinchMotorState();
         newSecondaryState = new FinchMotorState();
-
-        /*FIRMWARECOMMAND[0] = (byte) 0xD4;
-        CALIBRATECOMMAND[0] = (byte) 0xCE;
-        CALIBRATECOMMAND[1] = (byte) 0xFF;
-        CALIBRATECOMMAND[2] = (byte) 0xFF;
-        CALIBRATECOMMAND[3] = (byte) 0xFF;
-        RESETENCODERSCOMMAND[0] = (byte) 0xD5;*/
-
-        /*cf = new AtomicBoolean(true);
-        last_sent = new AtomicLong(System.currentTimeMillis());
-        last_successfully_sent = new AtomicLong(System.currentTimeMillis());*/
-        //last_battery_status = "";
-
-        //lock = new ReentrantLock();
-        //doneSending = lock.newCondition();
-
-        /*sendThread = new HandlerThread("SendThread");
-        if (!sendThread.isAlive())
-            sendThread.start();
-        from(sendThread.getLooper());
-        Runnable sendRunnable = new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
-                    sendToRobot();
-                    doneSending.signal();
-                    if (DISCONNECTED) {
-                        return;
-                    }
-                } catch (NullPointerException | InterruptedException | IllegalMonitorStateException e) {
-                    Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
-                } finally {
-                    if (lock.isHeldByCurrentThread())
-                        lock.unlock();
-                }
-            }
-        };
-        sendDisposable = from(sendThread.getLooper()).schedulePeriodicallyDirect(sendRunnable,
-                START_SENDING_INTERVAL_IN_MILLIS, SETALL_INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
-
-        monitorThread = new HandlerThread("SendThread");
-        if (!monitorThread.isAlive())
-            monitorThread.start();
-
-        Runnable monitorRunnable = new Runnable() {
-            @Override
-            public void run() {
-                final long timeOut = cf.get() ? MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
-                final long curSysTime = System.currentTimeMillis();
-                final long prevTime = last_successfully_sent.get();
-                final long passedTime = curSysTime - prevTime;
-                if (passedTime >= timeOut) {
-                    try {
-                        runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
-                        runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode("3") + "');");
-                        new Thread() {
-                            @Override
-                            public void run() {
-                                super.run();
-                                String macAddr = getMacAddress();
-                                //RobotRequestHandler.disconnectFromHummingbit(macAddr);
-                                RobotRequestHandler.disconnectFromRobot(RobotType.Finch, macAddr);
-                                synchronized (finchesToConnect) {
-                                    if (!finchesToConnect.contains(macAddr)) {
-                                        finchesToConnect.add(macAddr);
-                                    }
-                                }
-                                if (DISCONNECTED) {
-                                    return;
-                                }
-                            }
-                        }.start();
-                    } catch (Exception e) {
-                        Log.e(TAG, "Exception while auto-disconnecting: " + e.getMessage());
-                    }
-                }
-            }
-        };
-        monitorDisposable = AndroidSchedulers.from(monitorThread.getLooper()).schedulePeriodicallyDirect(monitorRunnable,
-                START_SENDING_INTERVAL_IN_MILLIS, MONITOR_CONNECTION_INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
-*/
-        Log.d(TAG, "Done setting up finch");
     }
 
     @Override
@@ -261,207 +105,6 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
     public int getCompassIndex() {
         return FINCH_COMPASS_INDEX;
     }
-
-    /**
-     * Actually sends the commands to the physical Finch,
-     * based on certain conditions.
-     */
-  /*  public synchronized void sendToRobot() {
-        long currentTime = System.currentTimeMillis();
-        boolean fmSent = false;
-        if (cf.get()) {
-            if (cf_sent == null) {
-                // Send here
-                setSendingTrue();
-                conn.addRxDataListener(this);
-                boolean success = conn.writeBytes(FIRMWARECOMMAND);
-                Log.d(TAG, "write firmware bytes? " + success);
-                if (success) {
-                    cf_sent = new AtomicLong(currentTime);
-                } else {
-                    return;
-                }
-            }
-
-            //while(cfresponse == null && currentTime+500 > System.currentTimeMillis() ) {
-            //    Log.d(TAG, "Waiting for firmware version...");
-            //}
-            if (cfresponse != null && cfresponse.length > 0) {
-                // Successfully sent CF command
-                if (last_successfully_sent != null)
-                    last_successfully_sent.set(currentTime);
-                cf.set(false);
-                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                try {
-                    if (rawSensorValues == null) {
-                        setSendingTrue();
-                        startPollingSensors();
-                    }
-                } catch (RuntimeException e) {
-                    Log.e(TAG, "Error getting FN sensor values: " + e.getMessage());
-                }
-
-                //if (!hasLatestFirmware()) {
-                //    cf.set(true);
-                //    runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
-                //    disconnect();
-                //}
-
-            } else if (cf_sent.get() + 2000 > currentTime) {
-                Log.d(TAG, "waiting for a cf response...");
-            } else {
-                Log.e(TAG, "Timed out waiting for firmware version.");
-                cf.set(true);
-                runJavascript("CallbackManager.robot.disconnectIncompatible('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(getMicroBitVersion()) + "', '" + bbxEncode(getLatestMicroBitVersion()) + "', '" + bbxEncode(getSMDVersion()) + "', '" + bbxEncode(getLatestSMDVersion()) + "')");
-                disconnect();
-            }
-            setSendingFalse();
-            last_sent.set(currentTime);
-            return;
-        }
-        // Not CF
-        if (isCurrentlySending()) {
-            Log.d(TAG,"Currently sending...");
-            // do nothing in this case
-            return;
-        }
-        if (CALIBRATE.get()) {
-            CALIBRATE.set(false);
-            setSendingTrue();
-            if (conn.writeBytes(CALIBRATECOMMAND)) {
-                // Successfully sent Non-CF command
-                if (last_successfully_sent != null)
-                    last_successfully_sent.set(currentTime);
-                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                SystemClock.sleep(200);
-                isCalibratingCompass = true;
-            } else {
-                // Sending Non-CF command failed
-            }
-            setSendingFalse();
-            last_sent.set(currentTime);
-            return;
-        }
-        if (RESETENCODERS.get()) {
-            RESETENCODERS.set(false);
-            setSendingTrue();
-            if (conn.writeBytes(RESETENCODERSCOMMAND)) {
-                // Successfully sent Non-CF command
-                if (last_successfully_sent != null)
-                    last_successfully_sent.set(currentTime);
-                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                SystemClock.sleep(200);
-            } else {
-                // Sending Non-CF command failed
-            }
-            setSendingFalse();
-            last_sent.set(currentTime);
-            return;
-        }
-
-        //if (!setAllPending && (!newFMState.equals(oldFMState) || FORCESEND.get())) {
-        if (!newFMState.equals(oldFMState) || FORCESEND.get()) {
-            setSendingTrue();
-
-            //Determine what needs to be sent
-            if (!newFMState.getMotors().equals(oldFMState.getMotors())) {
-                newFMState.setSendMotors(true);
-            }
-            if (!newFMState.getLedArray().equals(oldFMState.getLedArray())) {
-                newFMState.setSendLEDArray(true);
-            }
-            Log.d(TAG, "writing new fm state");
-            if (conn.writeBytes(newFMState.setAll())) {
-                // Successfully sent Non-CF command
-                if (last_successfully_sent != null)
-                    last_successfully_sent.set(currentTime);
-                if (newFMState.getSendMotors()) {
-                    newFMState.resetMotors();
-                    newFMState.setSendMotors(false);
-                }
-                newFMState.setSendLEDArray(false);
-                oldFMState.copy(newFMState);
-                runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-            } else {
-                // Sending Non-CF command failed
-                Log.e(TAG, "Sending Non-CF (newFMState) command failed");
-            }
-
-            setSendingFalse();
-            last_sent.set(currentTime);
-            FORCESEND.set(false);
-            fmSent = true;
-
-            //if (!statesEqual()) { setAllPending = true; }
-
-            // Not currently sending s
-            //} else if (!statesEqual()) {
-        }
-        if (!statesEqual()) {
-            // Not currently sending, but oldState and newState are different
-            // Send here
-            if (fmSent) {
-                final byte[] pendingCommand = newState.setAll();
-                oldState.copy(newState);
-                Log.d(TAG, "Just set set all states equal. Will send command soon...");
-                new Timer().schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        long currentTime = System.currentTimeMillis();
-                        setSendingTrue();
-                        Log.d(TAG, "writing delayed new setall state");
-                        if (conn.writeBytes(pendingCommand)) {
-                            // Successfully sent Non-CF command
-                            if (last_successfully_sent != null)
-                                last_successfully_sent.set(currentTime);
-                            runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                        } else {
-                            // Sending Non-CF command failed
-                            Log.e(TAG, "Sending Non-CF command failed");
-                        }
-                        setSendingFalse();
-                        last_sent.set(currentTime);
-                        Log.d(TAG, "done writing delayed new setall state");
-                    }
-                }, SETALL_INTERVAL_IN_MILLIS/2);
-            } else {
-                setSendingTrue();
-                Log.d(TAG, "writing new setall state");
-                if (conn.writeBytes(newState.setAll())) {
-                    // Successfully sent Non-CF command
-                    if (last_successfully_sent != null)
-                        last_successfully_sent.set(currentTime);
-                    oldState.copy(newState);
-
-                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                } else {
-                    // Sending Non-CF command failed
-                    Log.e(TAG, "Sending Non-CF command failed");
-                }
-                setSendingFalse();
-                last_sent.set(currentTime);
-            }
-            //setAllPending = false;
-        } else {
-            // Not currently sending, and oldState and newState are the same
-            if (currentTime - last_sent.get() >= SEND_ANYWAY_INTERVAL_IN_MILLIS) {
-                setSendingTrue();
-                if (conn.writeBytes(newState.setAll())) {
-                    // Successfully sent Non-G4 command
-                    if (last_successfully_sent != null)
-                        last_successfully_sent.set(currentTime);
-                    oldState.copy(newState);
-                    runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', true);");
-                } else {
-                    // Sending Non-G4 command failed
-                }
-                setSendingFalse();
-                last_sent.set(currentTime);
-            }
-
-            //setAllPending = false; //??
-        }
-    }*/
 
     /**
      * Sets the output of the given output type according to args
@@ -680,7 +323,7 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
         if (!newSecondaryState.getMotors().equals(oldSecondaryState.getMotors())) {
             newSecondaryState.setSendMotors(true);
         }
-        if (!newSecondaryState.getLedArray().equals(oldSecondaryState.getLedArray())) {
+        if (!newSecondaryState.getLedArray().equals(oldSecondaryState.getLedArray()) || FORCESEND.get()) {
             newSecondaryState.setSendLEDArray(true);
         }
         byte[] cmd = newSecondaryState.setAll();
@@ -695,225 +338,6 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
         }
         //sendInFuture(cmd, delayInMillis);
     }
-
-    /*private void startPollingSensors() { conn.writeBytes(new byte[]{READ_ALL_CMD, 'g'}); }
-
-    private void stopPollingSensors() {
-        conn.writeBytes(new byte[]{READ_ALL_CMD, 's'});
-    }*/
-
-    /*private boolean setRbSOOutput(RobotStateObject oldobj, RobotStateObject newobj, int... values) {
-        try {
-            lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
-            AtomicInteger count = new AtomicInteger(0);
-            while (!newobj.equals(oldobj)) {
-                Log.d(TAG, "waiting for equal states...");
-                if (count.incrementAndGet() > 1) {
-                    Log.e(TAG, "Max wait exceeded!");
-                    break;
-                }
-                doneSending.await(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
-            }
-            if (newobj.equals(oldobj)) {
-                newobj.setValue(values);
-                if (lock.isHeldByCurrentThread()) {
-                    //doneSending.signal();
-                    lock.unlock();
-                }
-                return true;
-            }
-        } catch (InterruptedException | IllegalMonitorStateException | IllegalStateException | IllegalThreadStateException e) {
-            Log.e(TAG, "Error setting finch output: " + e.getMessage());
-        } finally {
-            if (lock.isHeldByCurrentThread())
-                lock.unlock();
-        }
-        return false;
-    }*/
-
-    /**
-     * Resets all finch peripherals to their default values.
-     *
-     * @return True if succeeded in changing state, false otherwise
-     */
-    /*public boolean stopAll() {
-        try {
-            lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
-            while (!statesEqual()) {
-                doneSending.await(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS);
-            }
-            if (statesEqual()) {
-                conn.writeBytes(new byte[]{TERMINATE_CMD});
-                newState.resetAll();
-                newFMState.resetAll();
-                if (lock.isHeldByCurrentThread()) {
-                    doneSending.signal();
-                    lock.unlock();
-                }
-                return true;
-            }
-        } catch (InterruptedException | IllegalMonitorStateException | IllegalStateException | IllegalThreadStateException e) {
-        } finally {
-            if (lock.isHeldByCurrentThread())
-                lock.unlock();
-        }
-        return false;
-    }*/
-
-    /**
-     * Returns whether or not this device is connected
-     *
-     * @return True if connected, false otherwise
-     */
-    /*public boolean isConnected() {
-        return conn.isConnected();
-    }*/
-
-    /*public void setConnected() {
-        DISCONNECTED = false;
-    }*/
-
-    /**
-     * Disconnects the device
-     */
-    /*public void disconnect() {
-        if (!DISCONNECTED) {
-            if (ATTEMPTED) {
-                forceDisconnect();
-                return;
-            }
-            ATTEMPTED = true;
-            conn.writeBytes(new byte[]{TERMINATE_CMD});
-            newFMState.resetAll();
-
-            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
-            sendThread.getLooper().quit();
-            if (sendDisposable != null && !sendDisposable.isDisposed())
-                sendDisposable.dispose();
-            sendThread.interrupt();
-            sendThread.quit();
-
-            AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
-            monitorThread.getLooper().quit();
-            if (monitorDisposable != null && !monitorDisposable.isDisposed())
-                monitorDisposable.dispose();
-            monitorThread.interrupt();
-            monitorThread.quit();
-
-            if (conn != null) {
-                conn.removeRxDataListener(this);
-                stopPollingSensors();
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                }
-                conn.disconnect();
-            }
-            ATTEMPTED = false;
-            DISCONNECTED = true;
-        }
-    }*/
-
-    /*public boolean getDisconnected() {
-        return DISCONNECTED;
-    }*/
-
-    /*public void forceDisconnect() {
-        String macAddr = getMacAddress();
-        if (!DISCONNECTED) {
-            ATTEMPTED = false;
-            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
-            sendThread.getLooper().quit();
-            if (sendDisposable != null && !sendDisposable.isDisposed())
-                sendDisposable.dispose();
-            sendThread.interrupt();
-            sendThread.quit();
-
-            AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
-            monitorThread.getLooper().quit();
-            if (monitorDisposable != null && !monitorDisposable.isDisposed())
-                monitorDisposable.dispose();
-            monitorThread.interrupt();
-            monitorThread.quit();
-
-            if (conn != null) {
-                conn.removeRxDataListener(this);
-                conn.forceDisconnect();
-            }
-            synchronized (finchesToConnect) {
-                if (!finchesToConnect.contains(macAddr)) {
-                    finchesToConnect.add(macAddr);
-                }
-            }
-            DISCONNECTED = true;
-        }
-    }*/
-
-    /*@Override
-    public void onRXData(byte[] newData) {
-        synchronized (rawSensorValuesLock) {
-            if (cf.get()){
-                this.cfresponse = newData;
-                return;
-            }
-            this.rawSensorValues = newData;
-            String curBatteryStatus = "";
-            double batteryVoltage = ((newData[6] & 0xFF) + FINCH_BATTERY_CONSTANT) * FINCH_RAW_TO_VOLTAGE;
-            if (batteryVoltage > FINCH_GREEN_THRESHOLD) {
-                curBatteryStatus = "2";
-            } else if (batteryVoltage > FINCH_YELLOW_THRESHOLD) {
-                curBatteryStatus = "1";
-            } else {
-                curBatteryStatus = "0";
-            }
-            if (!curBatteryStatus.equals(last_battery_status)) {
-                last_battery_status = curBatteryStatus;
-                runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode(curBatteryStatus) + "');");
-            }
-            if (isCalibratingCompass) {
-                boolean success = ((newData[16] >> 2) & 0x1) == 0x1;
-                boolean failure = ((newData[16] >> 3) & 0x1) == 0x1;
-                if (success){
-                    Log.v(TAG, "Calibration success!");
-                    isCalibratingCompass = false;
-                    runJavascript("CallbackManager.robot.compassCalibrationResult('" + getMacAddress() + "', 'true');");
-                } else if (failure){
-                    Log.v(TAG, "Calibration failure");
-                    isCalibratingCompass = false;
-                    runJavascript("CallbackManager.robot.compassCalibrationResult('" + getMacAddress() + "', 'false');");
-                } else {
-                    Log.v(TAG, "Calibration unknown");
-                }
-            }
-        }
-    }*/
-
-    /*public String getMacAddress() {
-        try {
-            return conn.getBLEDevice().getAddress();
-        } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting finch mac address: " + e.getMessage());
-            return null;
-        }
-    }*/
-
-    /*public String getName() {
-        try {
-            return NamingHandler.GenerateName(mainWebViewContext, conn.getBLEDevice().getAddress());
-        } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting finch name: " + e.getMessage());
-            return null;
-        }
-    }*/
-
-    /*public String getGAPName() {
-        try {
-            return conn.getBLEDevice().getName();
-        } catch (NullPointerException e) {
-            Log.e(TAG, "Error getting finch gap name: " + e.getMessage());
-            return null;
-        }
-    }*/
 
     @Override
     protected void notifyIncompatible() {
@@ -971,4 +395,9 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
     public boolean hasMinFirmware() {
         return true;
     }
+
+    /*@Override
+    protected void addToReconnect() {
+        addToHashSet(finchesToConnect);
+    }*/
 }

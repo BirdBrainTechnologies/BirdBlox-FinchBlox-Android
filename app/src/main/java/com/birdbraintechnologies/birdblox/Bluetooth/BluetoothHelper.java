@@ -32,10 +32,7 @@ import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.connectToRobot;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.deviceGatt;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.finchesToConnect;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbirdsToConnect;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.hummingbitsToConnect;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.microbitsToConnect;
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.robotsToConnect;
 
 /**
  * Helper class for basic Bluetooth connectivity
@@ -81,7 +78,7 @@ public class BluetoothHelper {
                 discoveredList.put(result.getDevice().getAddress(), result.getDevice());
                 deviceLastSeen.put(result.getDevice().getAddress(), new AtomicLong(System.currentTimeMillis()));
                 List<BluetoothDevice> BLEDeviceList = (new ArrayList<>(deviceList.values()));
-                if (hummingbirdsToConnect != null) {
+                /*if (hummingbirdsToConnect != null) {
                     if (hummingbirdsToConnect.contains(result.getDevice().getAddress())) {
                         if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
                             hummingbirdsToConnect = new HashSet<>();
@@ -131,6 +128,25 @@ public class BluetoothHelper {
                             } catch (InterruptedException e) {
                             }
                             connectToRobot(RobotType.Finch, result.getDevice().getAddress());
+                        }
+                    }
+                }*/
+                if (robotsToConnect != null) {
+                    String gapName = result.getDevice().getName();
+                    if (robotsToConnect.contains(gapName)) {
+                        if (result.getRssi() < AUTOCONNECTION_THRESHOLD) {
+                            robotsToConnect = new HashSet<>(); //TODO: Why?
+                        } else {
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException e) {
+                                Log.e(TAG, "Sleep before autoreconnect interrupted: " + e.getMessage());
+                            }
+                            String macAddress = result.getDevice().getAddress();
+                            RobotType robotType = RobotType.robotTypeFromGAPName(gapName);
+                            Log.d(TAG, "Reconnecting to " + macAddress + " with name " + gapName + " as type " + robotType.toString());
+                            robotsToConnect.remove(gapName);
+                            connectToRobot(robotType, macAddress);
                         }
                     }
                 }

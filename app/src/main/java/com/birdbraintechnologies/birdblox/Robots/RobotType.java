@@ -25,7 +25,6 @@ public enum RobotType {
     }
 
     public static RobotType robotTypeFromString(String robotType) {
-
         switch (robotType.toLowerCase()) {
         case "hummingbird":
             return RobotType.Hummingbird;
@@ -36,10 +35,27 @@ public enum RobotType {
         case "finch":
             return RobotType.Finch;
         default:
-            Log.d("RobotType", "About to return null");
+            Log.e("RobotType", "Could not determine RobotType from String " + robotType);
             return null;
         }
 
+    }
+
+    public static RobotType robotTypeFromGAPName(String gapName) {
+        switch(gapName.substring(0,2)) {
+            case "HM":
+            case "HB":
+                return RobotType.Hummingbird;
+            case "BB":
+                return RobotType.Hummingbit;
+            case "MB":
+                return RobotType.Microbit;
+            case "FN":
+                return RobotType.Finch;
+            default:
+                Log.e("RobotType", "Could not determine RobotType from gap name " + gapName);
+                return null;
+        }
     }
 
 }
