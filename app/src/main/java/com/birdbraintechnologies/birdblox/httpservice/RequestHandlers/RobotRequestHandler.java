@@ -9,7 +9,6 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.ParcelUuid;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
@@ -20,27 +19,23 @@ import com.birdbraintechnologies.birdblox.Robots.Hummingbit;
 import com.birdbraintechnologies.birdblox.Robots.Microbit;
 import com.birdbraintechnologies.birdblox.Robots.Robot;
 import com.birdbraintechnologies.birdblox.Robots.RobotType;
-//import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidResponse;
 import com.birdbraintechnologies.birdblox.httpservice.NativeAndroidSession;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandler;
 import com.birdbraintechnologies.birdblox.httpservice.Status;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import fi.iki.elonen.NanoHTTPD;
-
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.Robots.RobotType.robotTypeFromString;
-import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
+
 
 /**
  * @author AppyFizz (Shreyan Bakshi)
@@ -53,23 +48,23 @@ public class RobotRequestHandler implements RequestHandler {
     private static final String FIRMWARE_UPDATE_URL = "http://www.hummingbirdkit.com/learning/installing-birdblox#BurnFirmware";
     /* UUIDs for different Hummingbird features */
     private static final String DEVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
-    private static final UUID HB_UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
-    private static final UUID HB_TX_UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
-    private static final UUID HB_RX_UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
-
-    // TODO: Remove this, it is the same across devices
+    private static final UUID UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+    private static final UUID TX_UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+    private static final UUID RX_UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+    // TODO: Remove this, it is the same across devices... but actually all these uuids are the same across devices
     private static final UUID RX_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
-    public static HashSet<String> hummingbirdsToConnect = new HashSet<>();
+    /*public static HashSet<String> hummingbirdsToConnect = new HashSet<>();
     public static HashSet<String> hummingbitsToConnect = new HashSet<>();
     public static HashSet<String> microbitsToConnect = new HashSet<>();
-    public static HashSet<String> finchesToConnect = new HashSet<>();
+    public static HashSet<String> finchesToConnect = new HashSet<>();*/
+    public static HashSet<String> robotsToConnect = new HashSet<>();
 
     //HttpService service;
     private static BluetoothHelper btHelper;
     private static HashMap<String, Thread> threadMap;
 
-    private static UARTSettings HBUARTSettings;
+    /*private static UARTSettings HBUARTSettings;
     private static HashMap<String, Hummingbird> connectedHummingbirds;
 
     private static UARTSettings HBitUARTSettings;
@@ -79,7 +74,10 @@ public class RobotRequestHandler implements RequestHandler {
     private static HashMap<String, Microbit> connectedMicrobits;
 
     private static UARTSettings FinchUARTSettings;
-    private static HashMap<String, Finch> connectedFinches;
+    private static HashMap<String, Finch> connectedFinches;*/
+
+    private static UARTSettings uartSettings;
+    private static HashMap<String, Robot> connectedRobots;
 
     private AlertDialog.Builder builder;
     private AlertDialog robotInfoDialog;
@@ -94,13 +92,15 @@ public class RobotRequestHandler implements RequestHandler {
         btHelper = btService;
         threadMap = new HashMap<>();
 
-        connectedHummingbirds = new HashMap<>();
+        /*connectedHummingbirds = new HashMap<>();
         connectedHummingbits = new HashMap<>();
         connectedMicrobits = new HashMap<>();
-        connectedFinches = new HashMap<>();
+        connectedFinches = new HashMap<>();*/
+        connectedRobots = new HashMap<>();
+
         deviceGatt = new HashMap<>();
         // Build Hummingbird UART settings
-        HBUARTSettings = (new UARTSettings.Builder())
+        /*HBUARTSettings = (new UARTSettings.Builder())
                 .setUARTServiceUUID(HB_UART_UUID)
                 .setRxCharacteristicUUID(HB_RX_UUID)
                 .setTxCharacteristicUUID(HB_TX_UUID)
@@ -124,8 +124,13 @@ public class RobotRequestHandler implements RequestHandler {
                 .setRxCharacteristicUUID(HB_RX_UUID)
                 .setTxCharacteristicUUID(HB_TX_UUID)
                 .setRxConfigUUID(RX_CONFIG_UUID)
-                .build();
-
+                .build();*/
+        uartSettings = (new UARTSettings.Builder())
+                        .setUARTServiceUUID(UART_UUID)
+                        .setRxCharacteristicUUID(RX_UUID)
+                        .setTxCharacteristicUUID(TX_UUID)
+                        .setRxConfigUUID(RX_CONFIG_UUID)
+                        .build();
     }
 
 
@@ -151,10 +156,13 @@ public class RobotRequestHandler implements RequestHandler {
                 responseBody = connectToRobot(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
                 break;
             case "disconnect":
-                responseBody = disconnectFromRobot(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                //responseBody = disconnectFromRobot(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                responseBody = disconnectFromRobot(m.get("id").get(0));
                 break;
             case "out":
-                robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                //Log.d(TAG, "setting output: " + path[1]);
+                //robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                robot = getRobotFromId(m.get("id").get(0));
                 if (robot == null) {
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
                     //return NanoHTTPD.newFixedLengthResponse(
@@ -171,9 +179,11 @@ public class RobotRequestHandler implements RequestHandler {
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', true);");
                     responseBody = "Sent to robot " + m.get("type").get(0) + " successfully.";
                 }
+                //Log.d(TAG, "successfully set output: " + path[1]);
                 break;
             case "in":
-                robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                //robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                robot = getRobotFromId(m.get("id").get(0));
                 if (robot == null) {
                     runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
                     //return NanoHTTPD.newFixedLengthResponse(
@@ -249,12 +259,12 @@ public class RobotRequestHandler implements RequestHandler {
     /**
      * Finds a robotId in the list of connected robots. Null if it does not exist.
      *
-     * @param robotType The type of the robot to be found. Must be 'hummingbird' or 'hummingbit' or 'microbit'.
      * @param robotId   Robot ID to find.
      * @return The connected Robot if it exists, null otherwise.
      */
-    private static Robot getRobotFromId(RobotType robotType, String robotId) {
-        if (robotType == RobotType.Hummingbird) {
+    //private static Robot getRobotFromId(RobotType robotType, String robotId) {
+    private static Robot getRobotFromId(String robotId) {
+        /*if (robotType == RobotType.Hummingbird) {
             return connectedHummingbirds.get(robotId);
         } else if (robotType == RobotType.Hummingbit) {
             return connectedHummingbits.get(robotId);
@@ -265,7 +275,8 @@ public class RobotRequestHandler implements RequestHandler {
         } else {
             Log.e(TAG, "getRobotFromId: unrecognized robotType");
             return null;
-        }
+        }*/
+        return connectedRobots.get(robotId);
     }
 
     /**
@@ -301,7 +312,7 @@ public class RobotRequestHandler implements RequestHandler {
         */
         Log.d(TAG, "connectToRobot " + robotType.toString() + " " + robotId);
 
-        final HashMap connected;
+        /*final HashMap connected;
         final UARTSettings settings;
         HashSet toConnect;
         switch (robotType) {
@@ -328,21 +339,27 @@ public class RobotRequestHandler implements RequestHandler {
             default:
                 Log.e(TAG, "Connect to unrecognized robot type.");
                 return "";
-        }
+        }*/
 
-        if (connected.containsKey(robotId)){
+        //if (connected.containsKey(robotId)){
+        if (connectedRobots.containsKey(robotId)) {
             Log.e(TAG, "Connect request for robot that is already connected: " + robotId);
             return "";
         }
 
-        if (toConnect.contains(robotId)) { toConnect.remove(robotId); }
+        //if (toConnect.contains(robotId)) { toConnect.remove(robotId); }
 
         try {
             Thread connectionThread = new Thread() {
                 @Override
                 public void run() {
-                    UARTConnection conn = btHelper.connectToDeviceUART(robotId, settings);
-                    if (conn != null && conn.isConnected() && connected != null) {
+                    //UARTConnection conn = btHelper.connectToDeviceUART(robotId, settings);
+                    UARTConnection conn = btHelper.connectToDeviceUART(robotId, uartSettings);
+                    //if (conn != null && conn.isConnected() && connected != null) {
+                    if (conn != null && conn.isConnected() && connectedRobots != null) {
+                        String gapName = conn.getBLEDevice().getName();
+                        if (robotsToConnect.contains(gapName)) { robotsToConnect.remove(gapName); }
+
                         Robot robot;
                         switch (robotType) {
                             case Hummingbird:
@@ -360,7 +377,8 @@ public class RobotRequestHandler implements RequestHandler {
                             default:
                                 robot = null;
                         }
-                        connected.put(robotId, robot);
+                        //connected.put(robotId, robot);
+                        connectedRobots.put(robotId, robot);
                         robot.setConnected();
                         Log.d(TAG, "connectToRobot connected set.");
                     } else {
@@ -493,11 +511,11 @@ public class RobotRequestHandler implements RequestHandler {
     */
 
     /**
-     * @param robotType
      * @param robotId
      * @return
      */
-    public static String disconnectFromRobot(RobotType robotType, final String robotId) {
+    //public static String disconnectFromRobot(RobotType robotType, final String robotId) {
+    public static String disconnectFromRobot(final String robotId) {
         new Thread() {
             @Override
             public void run() {
@@ -516,7 +534,7 @@ public class RobotRequestHandler implements RequestHandler {
             disconnectFromMicrobit(robotId);
         }*/
 
-        HashMap connected;
+        /*HashMap connected;
         switch (robotType) {
             case Hummingbird:
                 connected = connectedHummingbirds;
@@ -533,16 +551,19 @@ public class RobotRequestHandler implements RequestHandler {
             default:
                 Log.e(TAG, "disconnectFromRobot: Unrecognized robotType");
                 return "";
-        }
+        }*/
 
         try {
-            Robot robot = getRobotFromId(robotType, robotId);
+            //Robot robot = getRobotFromId(robotType, robotId);
+            Robot robot = getRobotFromId(robotId);
             if (robot != null) {
                 robot.disconnect();
                 if (robot.getDisconnected()) {
-                    connected.remove(robotId);
+                    //connected.remove(robotId);
+                    connectedRobots.remove(robotId);
                 }
-                Log.d("TotStat", "Removing " + robotType.toString() + ": " + robotId);
+                //Log.d("TotStat", "Removing " + robotType.toString() + ": " + robotId);
+                Log.d("TotStat", "Removing: " + robotId);
             } else {
                 BluetoothGatt curDeviceGatt = deviceGatt.get(robotId);
                 if (curDeviceGatt != null) {
@@ -555,23 +576,28 @@ public class RobotRequestHandler implements RequestHandler {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error while disconnecting " + robotType.toString() + ": " + e.getMessage());
+            //Log.e(TAG, "Error while disconnecting " + robotType.toString() + ": " + e.getMessage());
+            Log.e(TAG, "Error while disconnecting " + robotId + ": " + e.getMessage());
         }
 
 
-        hummingbirdsToConnect = new HashSet<>();
+        /*hummingbirdsToConnect = new HashSet<>();
         hummingbitsToConnect = new HashSet<>();
         microbitsToConnect = new HashSet<>();
-        finchesToConnect = new HashSet<>();
+        finchesToConnect = new HashSet<>();*/
+        robotsToConnect = new HashSet<>(); //TODO: Do we really want to reset this here?
         btHelper.stopScan();
 
         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(robotId) + "', false);");
 
-        Log.d("TotStat", "Connected Hummingbirds: " + connectedHummingbirds.toString());
+        /*Log.d("TotStat", "Connected Hummingbirds: " + connectedHummingbirds.toString());
         Log.d("TotStat", "Connected Hummingbits: " + connectedHummingbits.toString());
         Log.d("TotStat", "Connected Microbits: " + connectedMicrobits.toString());
-        Log.d("TotStat", "Connected Finches: " + connectedFinches.toString());
-        return robotType.toString() + " disconnected successfully.";
+        Log.d("TotStat", "Connected Finches: " + connectedFinches.toString());*/
+        Log.d("TotStat", "Connected Finches: " + connectedRobots.toString());
+        //return robotType.toString() + " disconnected successfully.";
+
+        return robotId + " disconnected successfully.";
     }
 
     /**
@@ -659,7 +685,7 @@ public class RobotRequestHandler implements RequestHandler {
     }*/
 
     public static void disconnectAll() {
-        hummingbirdsToConnect = null;
+        /*hummingbirdsToConnect = null;
         hummingbitsToConnect = null;
         microbitsToConnect = null;
         finchesToConnect = null;
@@ -688,8 +714,13 @@ public class RobotRequestHandler implements RequestHandler {
             for (String individualFinch: connectedFinches.keySet()) {
                 String s = disconnectFromRobot(RobotType.Finch, individualFinch);
             }
+        }*/
+        robotsToConnect = null;
+        if (connectedRobots != null) {
+            for (String individualRobot: connectedRobots.keySet()) {
+                String s = disconnectFromRobot(individualRobot);
+            }
         }
-
     }
 
     /**
@@ -706,7 +737,7 @@ public class RobotRequestHandler implements RequestHandler {
             return getTotalMBitStatus();
         }*/
 
-        HashMap connected;
+        /*HashMap connected;
         switch (robotType) {
             case Hummingbird:
                 connected = connectedHummingbirds;
@@ -723,13 +754,16 @@ public class RobotRequestHandler implements RequestHandler {
             default:
                 Log.e(TAG, "getTotalStatus: unrecognized robot type " + robotType.toString());
                 return "2";
-        }
+        }*/
 
-        Log.d("TotStat", "Connected " + robotType.toString() + ": " + connected.toString());
-        if (connected.size() == 0) {
+        //Log.d("TotStat", "Connected " + robotType.toString() + ": " + connected.toString());
+        Log.d("TotStat", "Connected " + robotType.toString() + ": " + connectedRobots.toString());
+        //if (connected.size() == 0) {
+        if (connectedRobots.size() == 0) {
             return "2";  // None connected
         }
-        for (Object robot: connected.values()){
+        //for (Object robot: connected.values()){
+        for (Object robot: connectedRobots.values()){
             if (!((Robot) robot).isConnected()){
                 return "0"; //Some robot of robotType is disconnected
             }
@@ -796,7 +830,8 @@ public class RobotRequestHandler implements RequestHandler {
         builder = new AlertDialog.Builder(mainWebViewContext);
 
         // Get details
-        Robot robot = getRobotFromId(robotType, robotId);
+        //Robot robot = getRobotFromId(robotType, robotId);
+        Robot robot = getRobotFromId(robotId);
         String name = robot.getName();
         String macAddress = robot.getMacAddress();
         String gapName = robot.getGAPName();
@@ -880,14 +915,16 @@ public class RobotRequestHandler implements RequestHandler {
      * and microbits and hummingbits to their default values.
      */
     private void stopAll() {
-        for (Hummingbird hummingbird : connectedHummingbirds.values())
+        /*for (Hummingbird hummingbird : connectedHummingbirds.values())
             hummingbird.stopAll();
         for (Hummingbit hummingbit : connectedHummingbits.values())
             hummingbit.stopAll();
         for (Microbit microbit : connectedMicrobits.values())
             microbit.stopAll();
         for (Finch finch : connectedFinches.values())
-            finch.stopAll();
+            finch.stopAll();*/
+        for (Robot robot : connectedRobots.values())
+            robot.stopAll();
     }
 
 }

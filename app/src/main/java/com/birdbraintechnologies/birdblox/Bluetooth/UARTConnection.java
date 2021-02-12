@@ -98,6 +98,7 @@ public class UARTConnection extends BluetoothGattCallback {
                 Log.e(TAG, "Error: " + e);
                 return false;
             }
+            //Log.d(TAG, "returning " + res);
             return res;
         } catch (Exception e) {
             Log.e(TAG, "Error writing: " + e.getMessage());
@@ -140,7 +141,12 @@ public class UARTConnection extends BluetoothGattCallback {
 
                 // Retrieve and return response
                 byte[] res = rx.getValue();
-                return Arrays.copyOf(res, res.length);
+                if (res != null) {
+                    return Arrays.copyOf(res, res.length);
+                } else {
+                    Log.e(TAG, "writeBytesWithResponse: no response received.");
+                    return new byte[]{};
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "writeBytesWithResponse " + e.getMessage());
