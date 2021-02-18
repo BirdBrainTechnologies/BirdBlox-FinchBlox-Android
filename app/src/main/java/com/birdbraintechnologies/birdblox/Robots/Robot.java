@@ -287,6 +287,11 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
                 // Successfully received check firmware response
                 cf.set(false);
 
+                if (hasV2Microbit()) {
+                    Log.d(TAG, "V2 microbit found!");
+                    runJavascript("CallbackManager.robot.updateHasV2Microbit('" + bbxEncode(getMacAddress()) + "', 'true')");
+                }
+
                 if (rawSensorValues == null) {
                     if (cfWithResponse) {
                         Log.d(TAG, "About to start sensor polling with response.");
@@ -373,6 +378,10 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
 
     public void setConnected() {
         DISCONNECTED = false;
+    }
+
+    public boolean hasV2Microbit() {
+        return (cfresponse != null && cfresponse.length > 3 && cfresponse[3] == 0x22);
     }
 
     /**
@@ -592,13 +601,18 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
             if (battArray != null) {
                 String curBatteryStatus = "";
                 int index = (int)battArray[0];
-                double batteryVoltage = ((newData[index] & 0xFF) + battArray[1]) * battArray[2];
-                if (batteryVoltage > battArray[3]) { //Green threshold
-                    curBatteryStatus = "2";
-                } else if (batteryVoltage > battArray[4]) { //Yellow threshold
-                    curBatteryStatus = "1";
+                if (hasV2Microbit()) {
+                    int status = newData[index] & 0x2;
+                    curBatteryStatus = Integer.toString(status);
                 } else {
-                    curBatteryStatus = "0";
+                    double batteryVoltage = ((newData[index] & 0xFF) + battArray[1]) * battArray[2];
+                    if (batteryVoltage > battArray[3]) { //Green threshold
+                        curBatteryStatus = "2";
+                    } else if (batteryVoltage > battArray[4]) { //Yellow threshold
+                        curBatteryStatus = "1";
+                    } else {
+                        curBatteryStatus = "0";
+                    }
                 }
                 if (!curBatteryStatus.equals(last_battery_status)) {
                     last_battery_status = curBatteryStatus;

@@ -35,6 +35,7 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
     private static final byte[] RESETENCODERSCOMMAND = new byte[]{(byte) 0xD5};
     private static final byte[] CALIBRATECOMMAND = new byte[]{(byte) 0xCE, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
     private static final byte[] STARTPOLLCOMMAND = new byte[]{(byte) 'b', (byte) 'g'};
+    private static final byte[] V2STARTPOLLCOMMAND = new byte[]{(byte) 'b', (byte) 'p'};
     private static final byte[] STOPPOLLCOMMAND = new byte[]{(byte) 'b', (byte) 's'};
     private static final byte[] TERMINATECOMMAND = new byte[]{(byte) 0xDF};
 
@@ -73,7 +74,11 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
 
     @Override
     public byte[] getStartPollCommand() {
-        return STARTPOLLCOMMAND;
+        if (hasV2Microbit()) {
+            return V2STARTPOLLCOMMAND;
+        } else {
+            return STARTPOLLCOMMAND;
+        }
     }
 
     @Override
@@ -201,7 +206,7 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
      */
     @Override
     public String readSensor(String sensorType, String portString, String axisString) {
-
+        boolean V2 = hasV2Microbit();
         int[] rawDistance = new int[2];
         byte[] rawLight = new byte[2];
         boolean isMoving = false;
@@ -211,17 +216,26 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
         byte[] rawAccelerometerValue = new byte[3];
         byte rawButtonShakeValue;
         byte[] rawMagnetometerValue = new byte[3];
+        byte rawSound = 0;
+        byte rawTemp = 0;
 
         synchronized (rawSensorValuesLock) {
+            if (V2) {
+                rawSound = rawSensorValues[0];
+                rawDistance[0] = rawSensorValues[1] & 0xFF;
+                rawTemp = (byte) (rawSensorValues[6] >> 2);
+                rawBattery = (byte) (rawSensorValues[6] & 0x2);
+            } else {
+                rawDistance[0] = rawSensorValues[0] & 0xFF;
+                rawDistance[1] = rawSensorValues[1] & 0xFF;
+                rawBattery = rawSensorValues[6];
+            }
 
-            rawDistance[0] = rawSensorValues[0] & 0xFF;
-            rawDistance[1] = rawSensorValues[1] & 0xFF;
             rawLight[0] = rawSensorValues[2];
             rawLight[1] = rawSensorValues[3];
             isMoving = (rawSensorValues[4] < 0);
             rawLine[0] = rawSensorValues[4];
             rawLine[1] = rawSensorValues[5];
-            rawBattery = rawSensorValues[6];
             rawEncoder[0] = rawSensorValues[7];
             rawEncoder[1] = rawSensorValues[8];
             rawEncoder[2] = rawSensorValues[9];
@@ -242,7 +256,12 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
             case "isMoving":
                 return (isMoving ? "1" : "0");
             case "distance":
-                int num = (rawDistance[0] << 8) + rawDistance[1];
+                int num;
+                if (V2) {
+                    num = rawDistance[0];
+                } else {
+                    num = (rawDistance[0] << 8) + rawDistance[1];
+                }
                 //int scaled = (int)Math.round((double)num * (117/100));
                 //Log.d(TAG, "returning distance " + Arrays.toString(rawDistance) + "; " + num + "; " + scaled);
                 //return Integer.toString(scaled);
@@ -312,6 +331,12 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
                 return DeviceUtil.RawToFinchAccl(rawAccelerometerValue, "y") < -51 ? "1" : "0";
             case "logoDown":
                 return DeviceUtil.RawToFinchAccl(rawAccelerometerValue, "y") > 51 ? "1" : "0";
+            case "V2sound":
+                return Integer.toString(rawSound & 0xFF);
+            case "V2temperature":
+                return Integer.toString(rawTemp & 0xFF);
+            case "V2touch":
+                return (((rawButtonShakeValue >> 1) & 0x1) == 0x0) ? "1" : "0";
             default:
                 return "";
         }

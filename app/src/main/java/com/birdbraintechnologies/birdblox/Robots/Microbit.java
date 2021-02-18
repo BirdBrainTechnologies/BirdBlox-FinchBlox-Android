@@ -34,6 +34,7 @@ public class Microbit extends Robot<MBState, LedArrayState> {
     private static final byte[] FIRMWARECOMMAND = new byte[]{(byte) 0xCF};
     private static final byte[] CALIBRATECOMMAND = new byte[]{(byte) 0xCE, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
     private static final byte[] STARTPOLLCOMMAND = new byte[]{(byte) 'b', (byte) 'g'};
+    private static final byte[] V2STARTPOLLCOMMAND = new byte[]{(byte) 'b', (byte) 'p'};
     private static final byte[] STOPPOLLCOMMAND = new byte[]{(byte) 'b', (byte) 's'};
     private static final byte[] TERMINATECOMMAND = new byte[]{(byte) 0xCB};
 
@@ -70,7 +71,11 @@ public class Microbit extends Robot<MBState, LedArrayState> {
 
     @Override
     public byte[] getStartPollCommand() {
-        return STARTPOLLCOMMAND;
+        if (hasV2Microbit()) {
+            return V2STARTPOLLCOMMAND;
+        } else {
+            return STARTPOLLCOMMAND;
+        }
     }
 
     @Override
@@ -165,10 +170,13 @@ public class Microbit extends Robot<MBState, LedArrayState> {
      */
     @Override
     public String readSensor(String sensorType, String portString, String axisString) {
+        boolean V2 = hasV2Microbit();
         byte[] rawMagnetometerValue = new byte[6];
         byte[] rawAccelerometerValue = new byte[3];
         byte[] rawButtonShakeValue = new byte[1];
         byte[] rawPadValue = new byte[3];
+        byte rawSound = 0;
+        byte rawTemp = 0;
         synchronized (rawSensorValuesLock) {
             rawAccelerometerValue[0] = rawSensorValues[4];
             rawAccelerometerValue[1] = rawSensorValues[5];
@@ -183,6 +191,10 @@ public class Microbit extends Robot<MBState, LedArrayState> {
             rawPadValue[0] = rawSensorValues[0];
             rawPadValue[1] = rawSensorValues[1];
             rawPadValue[2] = rawSensorValues[2];
+            if (V2) {
+                rawSound = rawSensorValues[14];
+                rawTemp = rawSensorValues[15];
+            }
         }
         switch (sensorType) {
             case "magnetometer":
@@ -227,6 +239,12 @@ public class Microbit extends Robot<MBState, LedArrayState> {
                 } else {
                     return DeviceUtil.RawToPad(rawPadValue[padNum]);
                 }
+            case "V2sound":
+                return Integer.toString(rawSound & 0xFF);
+            case "V2temperature":
+                return Integer.toString(rawTemp & 0xFF);
+            case "V2touch":
+                return (((rawButtonShakeValue[0] >> 1) & 0x1) == 0x0) ? "1" : "0";
             default:
                 return "";
         }

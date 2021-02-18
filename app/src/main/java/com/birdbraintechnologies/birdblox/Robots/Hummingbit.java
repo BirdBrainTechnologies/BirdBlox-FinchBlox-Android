@@ -40,6 +40,7 @@ public class Hummingbit extends Robot<HBitState, LedArrayState> {
     private static final byte[] FIRMWARECOMMAND = new byte[]{(byte) 0xCF};
     private static final byte[] CALIBRATECOMMAND = new byte[]{(byte) 0xCE, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
     private static final byte[] STARTPOLLCOMMAND = new byte[]{(byte) 'b', (byte) 'g'};
+    private static final byte[] V2STARTPOLLCOMMAND = new byte[]{(byte) 'b', (byte) 'p'};
     private static final byte[] STOPPOLLCOMMAND = new byte[]{(byte) 'b', (byte) 's'};
     private static final byte[] TERMINATECOMMAND = new byte[]{(byte) 0xCB};
 
@@ -76,7 +77,11 @@ public class Hummingbit extends Robot<HBitState, LedArrayState> {
 
     @Override
     public byte[] getStartPollCommand() {
-        return STARTPOLLCOMMAND;
+        if (hasV2Microbit()) {
+            return V2STARTPOLLCOMMAND;
+        } else {
+            return STARTPOLLCOMMAND;
+        }
     }
 
     @Override
@@ -187,10 +192,13 @@ public class Hummingbit extends Robot<HBitState, LedArrayState> {
      */
     @Override
     public String readSensor(String sensorType, String portString, String axisString) {
+        boolean V2 = hasV2Microbit();
         int rawSensorValue = 0;
         byte[] rawMagnetometerValue = new byte[6];
         byte[] rawAccelerometerValue = new byte[3];
         byte[] rawButtonShakeValue = new byte[1];
+        byte rawSound = 0;
+        byte rawTemp = 0;
 
         synchronized (rawSensorValuesLock) {
             if (portString != null) {
@@ -207,6 +215,10 @@ public class Hummingbit extends Robot<HBitState, LedArrayState> {
                 rawMagnetometerValue[3] = rawSensorValues[11];
                 rawMagnetometerValue[4] = rawSensorValues[12];
                 rawMagnetometerValue[5] = rawSensorValues[13];
+                if (V2) {
+                    rawSound = rawSensorValues[14];
+                    rawTemp = rawSensorValues[15];
+                }
             }
         }
 
@@ -243,6 +255,12 @@ public class Hummingbit extends Robot<HBitState, LedArrayState> {
                 return rawAccelerometerValue[1] > 51 ? "1" : "0";
             case "dial":
                 return Double.toString(DeviceUtil.RawToKnob(rawSensorValue));
+            case "V2sound":
+                return Integer.toString(rawSound & 0xFF);
+            case "V2temperature":
+                return Integer.toString(rawTemp & 0xFF);
+            case "V2touch":
+                return (((rawButtonShakeValue[0] >> 1) & 0x1) == 0x0) ? "1" : "0";
             default:
                 return Double.toString(DeviceUtil.RawToVoltage(rawSensorValue));
         }
