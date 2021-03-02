@@ -1,5 +1,7 @@
 package com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects;
 
+import android.util.Log;
+
 import java.util.Arrays;
 
 public class HBitBuzzer extends RobotStateObject {
@@ -52,6 +54,8 @@ public class HBitBuzzer extends RobotStateObject {
                 short noteToHertz = (short) (1000.0 / ((Math.pow(2.0, ((short) values[0] * 1.0 - 69.0) / 12.0) * 440.0)) * 1000.0);
                 setFD(noteToHertz, (short) values[1]);
             }
+        } else {
+            Log.e("HBitBuzzer", "setValue incorrect arg number " + values.length);
         }
     }
 

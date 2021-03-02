@@ -33,7 +33,7 @@ public class MBState extends RobotState<MBState> {
     }
 
     public HBitBuzzer getHBBuzzer() {
-        Log.d("TEST", "Getting the buzzer. " + hbitbuzzers.length);
+        //Log.d(TAG, "Getting the buzzer. " + hbitbuzzers.length);
         return hbitbuzzers[0];
     }
 
@@ -118,11 +118,11 @@ public class MBState extends RobotState<MBState> {
             all[5] = (byte) (hbitbuzzers[0].getDuration() & 0xFF);
             resetHBitBuzzer();
         }
-        String logString = "";
+        /*String logString = "";
         for (int i = 0; i < 8; i++){
             logString += Integer.toString(all[i]  & 0xFF) + " ";
         }
-        Log.d(TAG, logString);
+        Log.d(TAG, logString);*/
         return all;
     }
     private synchronized void resetHBitBuzzer() {

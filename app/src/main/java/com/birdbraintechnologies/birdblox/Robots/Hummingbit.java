@@ -5,6 +5,7 @@ import android.util.Log;
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBitState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.LedArrayState;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 
 import java.util.List;
@@ -180,6 +181,9 @@ public class Hummingbit extends Robot<HBitState, LedArrayState> {
         }
         return false;
     }
+
+    @Override
+    protected void setOutputHelper(RobotStateObject newobj) {}
 
     /**
      * Reads the value of the sensor at the given port and returns the formatted value according to

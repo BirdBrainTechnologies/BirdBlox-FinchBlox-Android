@@ -6,6 +6,9 @@ import android.util.Log;
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.LedArrayState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.MBState;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.HBitBuzzer;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.Pad;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 
 import java.util.List;
@@ -149,6 +152,7 @@ public class Microbit extends Robot<MBState, LedArrayState> {
                 int duration = Integer.parseInt(args.get("duration").get(0));
                 int note = Integer.parseInt(args.get("note").get(0));
                 if (duration != 0 && note != 0) {
+                    Log.d(TAG, "setting buzzer to " + note + " for " + duration);
                     return setRbSOOutput(oldPrimaryState.getHBBuzzer(), newPrimaryState.getHBBuzzer(), note, duration);
                 } else {
                     return true;
@@ -156,6 +160,19 @@ public class Microbit extends Robot<MBState, LedArrayState> {
         }
 
         return false;
+    }
+
+    @Override
+    protected void setOutputHelper(RobotStateObject newobj) {
+        if (newobj.getClass() == HBitBuzzer.class){
+            newPrimaryState.mode[2] = true;
+            newPrimaryState.mode[3] = false;
+        } else if (newobj.getClass() == Pad.class) {
+            Pad p = (Pad) newobj;
+            int pNum = p.getPadNum();
+            newPrimaryState.mode[(pNum+1)*2] = false;
+            newPrimaryState.mode[(pNum+1)*2+1] = false;
+        }
     }
 
     /**

@@ -60,7 +60,8 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
     private final String macAddress;
     private final String gapName;
     public final RobotType type;
-    protected byte[] rawSensorValues;
+    //protected byte[] rawSensorValues;
+    protected byte[] rawSensorValues = new byte[20];
     protected final Object rawSensorValuesLock = new Object();
     private String last_battery_status = "";
     protected boolean sending = false;
@@ -154,7 +155,7 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
                 if (passedTime >= timeOut) {
                     try {
                         runJavascript("CallbackManager.robot.updateStatus('" + bbxEncode(getMacAddress()) + "', false);");
-                        runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode("3") + "');");
+                        runJavascript("CallbackManager.robot.updateBatteryStatus('" + bbxEncode(getMacAddress()) + "', '" + bbxEncode("4") + "');");
                         new Thread() {
                             @Override
                             public void run() {
@@ -191,6 +192,12 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
      * @return - true if the output has been set successfully
      */
     public abstract boolean setOutput(String outputType, Map<String, List<String>> args);
+
+    /**
+     * Do any cleanup that needs to be done when a new output value is set.
+     * @param newobj RobotStateObject being set
+     */
+    protected abstract void setOutputHelper(RobotStateObject newobj);
 
     /**
      * Read the value of the sensor at the given port and returns the formatted value according to
@@ -290,15 +297,16 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
                 if (hasV2Microbit()) {
                     Log.d(TAG, "V2 microbit found!");
                     runJavascript("CallbackManager.robot.updateHasV2Microbit('" + bbxEncode(getMacAddress()) + "', 'true')");
+                } else {
+                    Log.d(TAG, "NO V2 microbit found!");
+                    runJavascript("CallbackManager.robot.updateHasV2Microbit('" + bbxEncode(getMacAddress()) + "', 'false')");
                 }
 
-                if (rawSensorValues == null) {
-                    if (cfWithResponse) {
-                        Log.d(TAG, "About to start sensor polling with response.");
-                        rawSensorValues = sendCommandAndGetResponse(getStartPollCommand());
-                    } else {
-                        sendCommand(getStartPollCommand());
-                    }
+                if (cfWithResponse) {
+                    Log.d(TAG, "About to start sensor polling with response.");
+                    rawSensorValues = sendCommandAndGetResponse(getStartPollCommand());
+                } else {
+                    sendCommand(getStartPollCommand());
                 }
 
                 if (!hasMinFirmware()) {
@@ -482,6 +490,8 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
                 }
                 if (newobj.equals(oldobj)) {
                     newobj.setValue(values);
+                    setOutputHelper(newobj);
+
                     if (lock.isHeldByCurrentThread()) {
                         //doneSending.signal();  //TODO: do we need this or not?
                         lock.unlock();
@@ -596,14 +606,16 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
             }
             this.rawSensorValues = newData;
             //Log.d(TAG, "motors rawData updated to " + (newData[4] < 0));
+            //Log.d(TAG, "rawData updated to " + newData);
 
             double[] battArray = getBatteryConstantsArray();
             if (battArray != null) {
                 String curBatteryStatus = "";
                 int index = (int)battArray[0];
-                if (hasV2Microbit()) {
-                    int status = newData[index] & 0x2;
+                if (hasV2Microbit() && type == RobotType.Finch) {
+                    int status = newData[index] & 0x3;
                     curBatteryStatus = Integer.toString(status);
+                    //Log.d(TAG, "battery status " + curBatteryStatus + " from " + newData[index]);
                 } else {
                     double batteryVoltage = ((newData[index] & 0xFF) + battArray[1]) * battArray[2];
                     if (batteryVoltage > battArray[3]) { //Green threshold

@@ -51,11 +51,22 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
     //private HttpService service;
     private CancelableMediaPlayer mediaPlayer;
     private Context context;
+    private MediaPlayer clickPlayer;
 
     //public SoundHandler(HttpService service) {
         //this.service = service;
     public SoundHandler(Context context) {
         this.context = context;
+        AssetManager assets = context.getAssets();
+        try {
+            AssetFileDescriptor fd = assets.openFd(BLOCK_SOUNDS_DIR + "/click2.wav");
+            clickPlayer = new MediaPlayer();
+            clickPlayer.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
+            clickPlayer.prepare();
+        } catch (IOException e) {
+            Log.e(TAG, "Failed while setting up click player: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -188,6 +199,10 @@ public class SoundHandler implements RequestHandler, CancelableMediaPlayer.OnPre
             (new RecordingHandler()).playAudio(soundId);
             return;
         } else if (type.equals("ui")) {
+            if (soundId.equals("click2")) {
+                clickPlayer.start();
+                return;
+            }
             path = BLOCK_SOUNDS_DIR + "/%s.wav";
             new Thread() {
                 @Override

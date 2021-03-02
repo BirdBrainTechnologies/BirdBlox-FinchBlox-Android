@@ -5,6 +5,7 @@ import android.util.Log;
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.FinchMotorState;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.FinchState;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.TriLED;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 
@@ -193,6 +194,9 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
         }
         return false;
     }
+
+    @Override
+    protected void setOutputHelper(RobotStateObject newobj) {}
 
     /**
      * Reads the value of the sensor at the given port and returns the formatted value according to

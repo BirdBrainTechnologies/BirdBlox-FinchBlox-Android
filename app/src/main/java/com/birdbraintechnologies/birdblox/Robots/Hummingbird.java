@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.HBState;
+import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.RobotStateObject;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 
 import java.io.UnsupportedEncodingException;
@@ -117,6 +118,9 @@ public class Hummingbird extends Robot<HBState, HBState> {
         }
         return false;
     }
+
+    @Override
+    protected void setOutputHelper(RobotStateObject newobj) {}
 
     /**
      * Reads the value of the sensor at the given port and returns the formatted value according to
