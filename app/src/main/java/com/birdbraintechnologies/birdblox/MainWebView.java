@@ -313,7 +313,8 @@ public class MainWebView extends AppCompatActivity {
                     //runJavascript("CallbackManager.tablet.setFile('" + bbxEncode(getIntent().getData().toString()) + "');");
                 }
                 //runJavascript(" CallbackManager.tablet.changeDeviceLimit('" + bbxEncode("2") + "');");
-
+                Log.d(TAG, "setting focus");
+                webView.requestFocus(View.FOCUS_DOWN);
             }
         });
     }
