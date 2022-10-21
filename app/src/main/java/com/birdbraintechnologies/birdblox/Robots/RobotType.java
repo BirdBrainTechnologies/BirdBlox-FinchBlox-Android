@@ -1,6 +1,6 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.util.Log;
 
 public enum RobotType {

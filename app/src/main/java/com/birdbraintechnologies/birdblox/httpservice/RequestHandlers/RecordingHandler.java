@@ -8,8 +8,8 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.os.Handler;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.LocalBroadcastManager;
+import androidx.core.app.ActivityCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.MainWebView;
@@ -28,7 +28,6 @@ import com.googlecode.mp4parser.authoring.tracks.AppendTrack;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.lang.annotation.Native;
 import java.nio.channels.FileChannel;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -39,14 +38,11 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import fi.iki.elonen.NanoHTTPD;
-
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.CURRENT_PREFS_KEY;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.filesPrefs;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.getBirdbloxDir;
-import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
  * Handler for handling recording and playback of (recorded) sounds,

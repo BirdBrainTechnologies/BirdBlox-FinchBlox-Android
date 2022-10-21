@@ -1,11 +1,14 @@
 package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.le.ScanFilter;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.ParcelUuid;
 import android.util.Log;
@@ -35,6 +38,8 @@ import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.Robots.RobotType.robotTypeFromString;
+
+import androidx.core.app.ActivityCompat;
 
 
 /**
@@ -81,11 +86,11 @@ public class RobotRequestHandler implements RequestHandler {
         deviceGatt = new HashMap<>();
         // Build Robot UART settings
         uartSettings = (new UARTSettings.Builder())
-                        .setUARTServiceUUID(UART_UUID)
-                        .setRxCharacteristicUUID(RX_UUID)
-                        .setTxCharacteristicUUID(TX_UUID)
-                        .setRxConfigUUID(RX_CONFIG_UUID)
-                        .build();
+                .setUARTServiceUUID(UART_UUID)
+                .setRxCharacteristicUUID(RX_UUID)
+                .setTxCharacteristicUUID(TX_UUID)
+                .setRxConfigUUID(RX_CONFIG_UUID)
+                .build();
     }
 
 
@@ -153,7 +158,7 @@ public class RobotRequestHandler implements RequestHandler {
                     if (m.get("axis") != null) {
                         sensorAxis = m.get("axis").get(0);
                     }
-                    if (m.get("position") != null){
+                    if (m.get("position") != null) {
                         sensorAxis = m.get("position").get(0);
                     }
 
@@ -239,10 +244,18 @@ public class RobotRequestHandler implements RequestHandler {
             Thread connectionThread = new Thread() {
                 @Override
                 public void run() {
+                    if ((ActivityCompat.checkSelfPermission(btHelper.context,
+                            Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED)
+                            && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
+                        Log.e(TAG, "Error connecting to robot - no connect permissions");
+                        return;
+                    }
                     UARTConnection conn = btHelper.connectToDeviceUART(robotId, uartSettings);
                     if (conn != null && conn.isConnected() && connectedRobots != null) {
                         String gapName = conn.getBLEDevice().getName();
-                        if (robotsToConnect.contains(gapName)) { robotsToConnect.remove(gapName); }
+                        if (robotsToConnect.contains(gapName)) {
+                            robotsToConnect.remove(gapName);
+                        }
 
                         Robot robot;
                         switch (robotType) {
@@ -292,6 +305,12 @@ public class RobotRequestHandler implements RequestHandler {
      * @return
      */
     public static String disconnectFromRobot(final String robotId) {
+        if (ActivityCompat.checkSelfPermission(btHelper.context, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
+            Log.e(TAG, "Trying to disconnect from robot without bluetooth connect permissions");
+            return robotId + " failed to disconnected.";
+        }
+
         new Thread() {
             @Override
             public void run() {

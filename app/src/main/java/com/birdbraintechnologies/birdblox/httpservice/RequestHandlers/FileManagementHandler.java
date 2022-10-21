@@ -4,7 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Environment;
-import android.support.v4.content.LocalBroadcastManager;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.MainWebView;
@@ -22,21 +22,14 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.annotation.Native;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import fi.iki.elonen.NanoHTTPD;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxSignInInfo;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxSignedIn;
-import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
  * Request handler for managing files on the device.
@@ -798,7 +791,7 @@ public class FileManagementHandler implements RequestHandler {
         if (!file.exists()) {
             try {
                 file.mkdirs();
-                Log.d(TAG, "Created BirdBlocks save directory: " + file.getPath());
+                Log.d(TAG, "Created BirdBlox save directory: " + file.getPath());
             } catch (SecurityException e) {
                 Log.e("Save Directory", "" + e);
             }

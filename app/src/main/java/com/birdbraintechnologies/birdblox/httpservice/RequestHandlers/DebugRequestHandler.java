@@ -2,7 +2,7 @@ package com.birdbraintechnologies.birdblox.httpservice.RequestHandlers;
 
 import android.content.Context;
 import android.content.Intent;
-import android.support.v4.content.LocalBroadcastManager;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.birdbraintechnologies.birdblox.MainWebView;
@@ -18,14 +18,9 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import fi.iki.elonen.NanoHTTPD;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
-import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 
 /**
  * @author Shreyan Bakshi (AppyFizz)

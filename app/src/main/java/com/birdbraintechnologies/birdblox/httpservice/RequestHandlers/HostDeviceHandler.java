@@ -12,18 +12,16 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Criteria;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.Bundle;
-import android.os.Handler;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.LocalBroadcastManager;
+
+import androidx.core.app.ActivityCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.text.TextUtils;
 import android.util.Log;
-import android.widget.Toast;
 
+import com.birdbraintechnologies.birdblox.BuildConfig;
 import com.birdbraintechnologies.birdblox.Dialogs.DialogType;
 import com.birdbraintechnologies.birdblox.MainWebView;
 //import com.birdbraintechnologies.birdblox.httpservice.HttpService;
@@ -36,11 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import fi.iki.elonen.NanoHTTPD;
-
 import static android.content.Context.SENSOR_SERVICE;
-import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
-import static fi.iki.elonen.NanoHTTPD.MIME_PLAINTEXT;
 import static java.lang.Math.abs;
 
 /**
@@ -97,7 +91,11 @@ public class HostDeviceHandler implements RequestHandler, SensorEventListener {
     //    this.service = service;
     public HostDeviceHandler(Context context) {
         this.context = context;
-        initLocationListener();
+        Log.d(TAG, "HostDeviceHandler");
+        if (!BuildConfig.IS_FINCHBLOX) {
+            Log.d(TAG, "HostDeviceHandler not FINCHBLOX");
+            initLocationListener();
+        }
         initSensors();
         initBroadcastManager();
     }
@@ -188,7 +186,11 @@ public class HostDeviceHandler implements RequestHandler, SensorEventListener {
                 showDialog(title, question, placeholder, prefill, selectAll, okText, cancelText);
                 break;
             case "choice":
-                showChoice(m.get("title").get(0), m.get("question").get(0), m.get("button1").get(0), m.get("button2").get(0));
+                String choiceTitle = (m.get("title") == null ? "" : m.get("title").get(0));
+                String choiceQ = (m.get("question") == null ? "" : m.get("question").get(0));
+                String button1 = (m.get("button1") == null ? "" : m.get("button1").get(0));
+                String button2 = (m.get("button2") == null ? "" : m.get("button2").get(0));
+                showChoice(choiceTitle, choiceQ, button1, button2);
                 break;
             case "dialog_response":
                 responseBody = getDialogResponse();
@@ -259,7 +261,7 @@ public class HostDeviceHandler implements RequestHandler, SensorEventListener {
                 NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
                 */
 
-        if (provider != null) { //then location permissions have been granted
+        if (provider != null && !BuildConfig.IS_FINCHBLOX) { //then location permissions have been granted
             try {
                 Location location = locationManager.getLastKnownLocation(provider);
                 latitude = location.getLatitude();
@@ -293,7 +295,7 @@ public class HostDeviceHandler implements RequestHandler, SensorEventListener {
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
         }*/
 
-        if (provider != null) { //then location permissions have been granted
+        if (provider != null && !BuildConfig.IS_FINCHBLOX) { //then location permissions have been granted
             try {
                 Location location = locationManager.getLastKnownLocation(provider);
                 altitude = location.getAltitude();

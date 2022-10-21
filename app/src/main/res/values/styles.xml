@@ -12,10 +12,24 @@
     </style>
 
     <!-- Splash Application theme. -->
-    <style name="SplashTheme" parent="Theme.AppCompat.Light.NoActionBar">
+    <!--<style name="SplashTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowBackground">@drawable/background_splash</item>
+    </style>-->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Set the splash screen background, animated icon, and animation duration.-->
+        <item name="windowSplashScreenBackground">@color/white</item>
+
+        <!-- Use windowSplashScreenAnimatedIcon to add either a drawable or an
+             animated drawable. One of these is required.-->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_hummingbird_only_logo</item>
+        <!-- Required for animated icons
+        <item name="windowSplashScreenAnimationDuration">200</item>-->
+
+        <!-- Set the theme of the Activity that directly follows your splash screen. -->
+        <!-- Required -->
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
     </style>
 
     <!-- For alert dialogs such as the edit text dialog -->

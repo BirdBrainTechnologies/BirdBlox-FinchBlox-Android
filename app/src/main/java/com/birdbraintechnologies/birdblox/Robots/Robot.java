@@ -1,6 +1,9 @@
 package com.birdbraintechnologies.birdblox.Robots;
 
+import android.Manifest;
 import android.bluetooth.BluetoothDevice;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.HandlerThread;
 import android.os.SystemClock;
 import android.util.Log;
@@ -30,6 +33,8 @@ import static com.birdbraintechnologies.birdblox.MainWebView.mainWebViewContext;
 import static com.birdbraintechnologies.birdblox.MainWebView.runJavascript;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.robotsToConnect;
 import static io.reactivex.android.schedulers.AndroidSchedulers.from;
+
+import androidx.core.app.ActivityCompat;
 
 /**
  * @author Shreyan Bakshi (AppyFizz).
@@ -98,7 +103,14 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
         if (device != null) {
             macAddress = device.getAddress();
             fancyName = NamingHandler.GenerateName(mainWebViewContext, macAddress);
-            gapName = device.getName();
+            if (ActivityCompat.checkSelfPermission(conn.context,
+                    Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                    || (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R)) {
+                gapName = device.getName();
+            } else {
+                Log.e(TAG, "Creating a Robot object without bluetooth connect permission");
+                gapName = "";
+            }
         } else {
             macAddress = "";
             fancyName = "";

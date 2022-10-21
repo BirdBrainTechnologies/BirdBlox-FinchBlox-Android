@@ -9,7 +9,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -23,13 +22,18 @@ import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.FileProvider;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v7.app.AppCompatActivity;
+
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.FileProvider;
+import androidx.core.splashscreen.SplashScreen;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.appcompat.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewTreeObserver;
+import android.view.WindowInsetsAnimationController;
 import android.webkit.ConsoleMessage;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -44,8 +48,6 @@ import com.birdbraintechnologies.birdblox.Project.ImportUnzipTask;
 import com.birdbraintechnologies.birdblox.Sound.CancelableMediaPlayer;
 //import com.birdbraintechnologies.birdblox.httpservice.HttpService;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RecordingHandler;
-import com.dropbox.core.DbxRequestConfig;
-import com.dropbox.core.v2.DbxClientV2;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -56,14 +58,11 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.DB_PREFS_KEY;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxAppOAuth;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxClient;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxConfig;
-import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.DropboxRequestHandler.dropboxWebOAuth;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.findAvailableName;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.getBirdbloxDir;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.sanitizeName;
@@ -86,10 +85,13 @@ public class MainWebView extends AppCompatActivity {
 //    private static final String PAGE_URL = "http://rawgit.com/TomWildenhain/HummingbirdDragAndDrop-/dev/HummingbirdDragAndDrop.html";
 
     /* Permission request codes */
+    public static final int MY_PERMISSIONS_REQUEST_ALL = 0;
     public static final int MY_PERMISSIONS_REQUEST_LOCATION = 1;
     public static final int MY_PERMISSIONS_REQUEST_MICROPHONE = 2;
     public static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 3;
     public static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 4;
+    public static final int MY_PERMISSIONS_BLUETOOTH_SCANNING = 5;
+    public static final int MY_PERMISSIONS_BLUETOOTH_CONNECTING = 6;
 
     /* Broadcast receiver for displaying Dialogs */
     public static final String SHOW_DIALOG = "com.birdbraintechnologies.birdblox.DIALOG";
@@ -100,6 +102,8 @@ public class MainWebView extends AppCompatActivity {
     public static final String MICROPHONE_PERMISSION = "com.birdbraintechnologies.birdblox.REQUEST_MICROPHONE_PERMISSION";
     public static final String READ_EXTERNAL_STORAGE_PERMISSION = "com.birdbraintechnologies.birdblox.REQUEST_READ_EXTERNAL_STORAGE_PERMISSION";
     public static final String WRITE_EXTERNAL_STORAGE_PERMISSION = "com.birdbraintechnologies.birdblox.REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION";
+    public static final String BLUETOOTH_PERMISSION = "com.birdbraintechnologies.birdblox.REQUEST_BLUETOOTH_PERMISSION";
+    public static final String BTCONNECT_PERMISSION = "com.birdbraintechnologies.birdblox.REQUEST_BTCONNECT_PERMISSION";
 
     private static final String BIRDBLOX_UNZIP_DIR = "Unzipped";
     private static final String BIRDBLOX_ZIP_DIR = "Zipped";
@@ -129,31 +133,34 @@ public class MainWebView extends AppCompatActivity {
 
     LocalBroadcastManager bManager;
     private static WebView webView;
+    private boolean webViewReady = false;
     private long back_pressed;
 
-    private static final int REQUEST_PERMISSIONS = 1;
-    private static String[] APP_PERMISSIONS = {
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-    };
 
+    public static void verifyPermissions(Activity activity) {
 
-    public static void verifyStoragePermissions(Activity activity) {
-        // Check if we have write permission
-        int permission = ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        int permission2 = ActivityCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO);
-        int permission3 = ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION);
-        if (permission != PackageManager.PERMISSION_GRANTED || permission2 != PackageManager.PERMISSION_GRANTED
-                || permission3 != PackageManager.PERMISSION_GRANTED) {
-            // We don't have permission so prompt the user
-            ActivityCompat.requestPermissions(
-                    activity,
-                    APP_PERMISSIONS,
-                    REQUEST_PERMISSIONS
-            );
+        List<String> APP_PERMISSIONS = new ArrayList<String>();
+        APP_PERMISSIONS.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+        APP_PERMISSIONS.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        APP_PERMISSIONS.add(Manifest.permission.RECORD_AUDIO);
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
+            APP_PERMISSIONS.add(Manifest.permission.BLUETOOTH_SCAN);
+            APP_PERMISSIONS.add(Manifest.permission.BLUETOOTH_CONNECT);
+        } else {
+            APP_PERMISSIONS.add(Manifest.permission.BLUETOOTH);
         }
+        Log.d("MainWebView", "finchblox? " + BuildConfig.IS_FINCHBLOX + "; SDK " + Build.VERSION.SDK_INT);
+        if (!BuildConfig.IS_FINCHBLOX ||
+                ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) &&
+                        (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R))) {
+            Log.d("MainWebView", "adding fine location permission");
+            APP_PERMISSIONS.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+        String[] permissions = new String[APP_PERMISSIONS.size()];
+        APP_PERMISSIONS.toArray(permissions);
+
+        //Will only ask for permission if permission has not already been granted.
+        ActivityCompat.requestPermissions(activity, permissions, MY_PERMISSIONS_REQUEST_ALL);
     }
 
 
@@ -193,6 +200,15 @@ public class MainWebView extends AppCompatActivity {
                     // Handles requesting the user for (reading and) writing external storage permissions
                     requestWriteExternalStoragePermission();
                     break;
+                case BLUETOOTH_PERMISSION:
+
+                    //Also need connect permission, but will request when user has accepted scan
+                    // since only one permission can be requested at a time.
+                    requestBluetoothScanPermission();
+                    break;
+                case BTCONNECT_PERMISSION:
+                    requestBluetoothConnectPermission();
+                    break;
                 default:
                     Log.e(TAG, "Received unknown intent broadcast.");
                     break;
@@ -209,7 +225,7 @@ public class MainWebView extends AppCompatActivity {
 
         mainWebViewContext = MainWebView.this;
 
-        verifyStoragePermissions(this);
+        verifyPermissions(this);
         // Hide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
         // We should never show the action bar if the status bar
@@ -240,16 +256,37 @@ public class MainWebView extends AppCompatActivity {
 //        } catch (IOException | SecurityException e) {
 //            Log.e("LocFile", "Problem: " + e.getMessage());
 //        }
+        // Handle the splash screen transition.
+        SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
 
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main_web_view);
+
+        // Set up an OnPreDrawListener to the root view.
+        final View content = findViewById(android.R.id.content);
+        content.getViewTreeObserver().addOnPreDrawListener(
+                new ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        // Check if the initial data is ready.
+                        if (webViewReady) {
+                            // The content is ready; start drawing.
+                            content.getViewTreeObserver().removeOnPreDrawListener(this);
+                            return true;
+                        } else {
+                            // The content is not ready; suspend.
+                            return false;
+                        }
+                    }
+                });
 
         // Start service
         //startService(new Intent(this, HttpService.class));
 
         // Create webview
         webView = (WebView) findViewById(R.id.main_webview);
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
@@ -271,6 +308,7 @@ public class MainWebView extends AppCompatActivity {
         setUiVis();
 
         WebSettings webSettings = webView.getSettings();
+        Log.d(TAG, "user agent: " + webSettings.getUserAgentString());
         webSettings.setJavaScriptEnabled(true);
         final JavascriptInterface myJavaScriptInterface
                 = new JavascriptInterface(this);
@@ -290,6 +328,8 @@ public class MainWebView extends AppCompatActivity {
         intentFilter.addAction(MICROPHONE_PERMISSION);
         intentFilter.addAction(READ_EXTERNAL_STORAGE_PERMISSION);
         intentFilter.addAction(WRITE_EXTERNAL_STORAGE_PERMISSION);
+        intentFilter.addAction(BLUETOOTH_PERMISSION);
+        intentFilter.addAction(BTCONNECT_PERMISSION);
         bManager.registerReceiver(bReceiver, intentFilter);
 
         //Dropbox use discontinued September 2020
@@ -315,6 +355,7 @@ public class MainWebView extends AppCompatActivity {
                 //runJavascript(" CallbackManager.tablet.changeDeviceLimit('" + bbxEncode("2") + "');");
                 Log.d(TAG, "setting focus");
                 webView.requestFocus(View.FOCUS_DOWN);
+                webViewReady = true;
             }
         });
     }
@@ -361,9 +402,13 @@ public class MainWebView extends AppCompatActivity {
         webView.resumeTimers();
         //dropboxAppOAuth(); //Dropbox use discontinued September 2020
         //importFromIntent(getIntent());
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+        /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
             requestLocationPermission();
-        }
+        }*/
+        //requestBluetoothScanPermission();
+        //requestBluetoothConnectPermission();
     }
 
     /**
@@ -459,8 +504,13 @@ public class MainWebView extends AppCompatActivity {
                 try {
                     cursor = getContentResolver().query(data, null, null, null, null);
                     if (cursor != null && cursor.moveToFirst()) {
-                        displayName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
-                        Log.d(TAG, "FILE NAME = " + displayName);
+                        int columnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                        if (columnIndex >= 0) {
+                            displayName = cursor.getString(columnIndex);
+                            Log.d(TAG, "FILE NAME = " + displayName);
+                        } else {
+                            Log.e(TAG, "Could not retrieve file name");
+                        }
                     }
                 } finally {
                     cursor.close();
@@ -703,142 +753,85 @@ public class MainWebView extends AppCompatActivity {
         return "";
     }
 
+    private boolean requestPermission(String perm, String title, String message, int requestCode) {
+        Log.d(TAG, "requesting permission: " + perm);
 
+        //check to see if permission has already been granted.
+        if (ActivityCompat.checkSelfPermission(this, perm)
+                == PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "permission already granted for " + perm);
+            return true;
+        }
+
+        // Should we show an explanation?
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, perm)) {
+            Log.d(TAG, "Special dialog being created for premission " + perm);
+            // Show an explanation to the user *asynchronously* -- don't block this thread waiting
+            // for the user's response! After the user sees the explanation, try again to request
+            // the permission.
+            new AlertDialog.Builder(this).setTitle(title).setMessage(message)
+                    .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            //Prompt the user once explanation has been shown
+                            ActivityCompat.requestPermissions(MainWebView.this,
+                                    new String[]{perm}, requestCode);
+                        }
+                    })
+                    .create()
+                    .show();
+        } else {
+            Log.d(TAG, "Default request for premission " + perm);
+            // No explanation needed, we can request the permission.
+            ActivityCompat.requestPermissions(this,
+                    new String[]{perm}, requestCode);
+        }
+        return false;
+
+    }
+
+    private boolean requestBluetoothScanPermission() {
+        return requestPermission(Manifest.permission.BLUETOOTH_SCAN,
+                "Bluetooth Scanning",
+                "To scan for devices, this app requires bluetooth scanning permission",
+                MY_PERMISSIONS_BLUETOOTH_SCANNING);
+    }
+
+    private boolean requestBluetoothConnectPermission() {
+        return requestPermission(Manifest.permission.BLUETOOTH_CONNECT,
+                "Bluetooth Connection",
+                "To connect to devices, this app requires bluetooth connect permission",
+                MY_PERMISSIONS_BLUETOOTH_CONNECTING);
+    }
 
     //region Request Permission
     private boolean requestLocationPermission() {
-        if (ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.ACCESS_FINE_LOCATION)) {
-                // Show an explanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
-                String message;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    message = "BirdBlox requires location permission in order to perform " +
-                            "Bluetooth scans and get user location.";
-                } else {
-                    message = "BirdBlox requires location permission in order to get user location.";
-                }
-                new AlertDialog.Builder(this)
-                        .setTitle("Location Permission")
-                        .setMessage(message)
-                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                //Prompt the user once explanation has been shown
-                                ActivityCompat.requestPermissions(MainWebView.this,
-                                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                                        MY_PERMISSIONS_REQUEST_LOCATION);
-                            }
-                        })
-                        .create()
-                        .show();
-            } else {
-                // No explanation needed, we can request the permission.
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                        MY_PERMISSIONS_REQUEST_LOCATION);
-            }
-            return false;
-        } else {
-            return true;
-        }
+        return requestPermission(Manifest.permission.ACCESS_FINE_LOCATION,
+                "Location Permission",
+                "BirdBlox requires location permission for its location blocks.",
+                MY_PERMISSIONS_REQUEST_LOCATION);
     }
 
     private boolean requestMicrophonePermission() {
-        if (ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
-            // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.RECORD_AUDIO)) {
-                new AlertDialog.Builder(this)
-                        .setTitle("Microphone Permission")
-                        .setMessage("BirdBlox requires microphone permissions in order to record audio.")
-                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                ActivityCompat.requestPermissions(MainWebView.this,
-                                        new String[]{Manifest.permission.RECORD_AUDIO},
-                                        MY_PERMISSIONS_REQUEST_MICROPHONE);
-                            }
-                        })
-                        .create()
-                        .show();
-            } else {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.RECORD_AUDIO},
-                        MY_PERMISSIONS_REQUEST_MICROPHONE);
-            }
-            return false;
-        } else {
-            return true;
-        }
+        return requestPermission(Manifest.permission.RECORD_AUDIO,
+                "Microphone Permission",
+                "This app requires microphone permissions to record audio.",
+                MY_PERMISSIONS_REQUEST_MICROPHONE);
     }
 
     private boolean requestReadExternalStoragePermission() {
-        if (ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.READ_EXTERNAL_STORAGE)) {
-                new AlertDialog.Builder(this)
-                        .setTitle("Read External Storage Permission")
-                        .setMessage("BirdBlox requires permission to read external storage, in order to " +
-                                "import certain files from external storage.")
-                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                ActivityCompat.requestPermissions(MainWebView.this,
-                                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                                        MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
-                            }
-                        })
-                        .create()
-                        .show();
-            } else {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                        MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
-            }
-            return false;
-        } else {
-            return true;
-        }
+        return requestPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
+                "Read External Storage Permission",
+                "This app requires permission to read external storage, in order to " +
+                        "import certain files from external storage.",
+                MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
     }
 
     private boolean requestWriteExternalStoragePermission() {
-        if (ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                new AlertDialog.Builder(this)
-                        .setTitle("Write External Storage Permission")
-                        .setMessage("BirdBlox requires permission to (read and) write external storage, in order to ... not required as of yet.")
-                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialogInterface, int i) {
-                                ActivityCompat.requestPermissions(MainWebView.this,
-                                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                                        MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
-                            }
-                        })
-                        .create()
-                        .show();
-            } else {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                        MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
-            }
-            return false;
-        } else {
-            return true;
-        }
+        return requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                "Write External Storage Permission",
+                "This app requires permission to (read and) write external storage, in order to ... not required as of yet.",
+                MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
     }
 
     /**
@@ -849,8 +842,25 @@ public class MainWebView extends AppCompatActivity {
     @Override
     @TargetApi(23)
     public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
+                                           @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        Log.d(TAG, "onRequestPermissionsResult code " + requestCode);
         switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_ALL:
+                Log.d(TAG, "onRequestPermissionsResult permissions " +
+                        Arrays.toString(permissions) + "; results " + Arrays.toString(grantResults));
+                break;
+            case MY_PERMISSIONS_BLUETOOTH_SCANNING:
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "User has accepted bluetooth scan permission. Now request connect permission.");
+                    requestBluetoothConnectPermission();
+                } else {
+                    Log.d(TAG, "User rejected bluetooth scanning permission");
+                }
+                break;
+            case MY_PERMISSIONS_BLUETOOTH_CONNECTING:
+                break;
             case MY_PERMISSIONS_REQUEST_LOCATION: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0

@@ -1,11 +1,14 @@
 package com.birdbraintechnologies.birdblox.Bluetooth;
 
+import android.Manifest;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -16,6 +19,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.deviceGatt;
+
+import androidx.core.app.ActivityCompat;
 
 /**
  * Represents a UART connection established via Bluetooth Low Energy. Communicates using the RX and
@@ -42,6 +47,7 @@ public class UARTConnection extends BluetoothGattCallback {
     private BluetoothGattCharacteristic tx;
     private BluetoothGattCharacteristic rx;
 
+    public Context context;
     private BluetoothDevice bluetoothDevice;
 
     /**
@@ -58,6 +64,7 @@ public class UARTConnection extends BluetoothGattCallback {
         this.rxUUID = settings.getRxCharacteristicUUID();
         this.rxConfigUUID = settings.getRxConfig();
 
+        this.context = context;
         this.bluetoothDevice = device;
 
         if (!establishUARTConnection(context, device)) {
@@ -74,6 +81,11 @@ public class UARTConnection extends BluetoothGattCallback {
      */
     synchronized public boolean writeBytes(byte[] bytes) {
         //Log.d(TAG, "writing value " + bytes[0]);
+        if ((ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
+            Log.e(TAG, "Trying to write bytes without bluetooth connect permissions");
+            return false;
+        }
         try {
             startLatch = new CountDownLatch(1);
             doneLatch = new CountDownLatch(1);
@@ -113,6 +125,11 @@ public class UARTConnection extends BluetoothGattCallback {
      * @return Response from the device
      */
     synchronized public byte[] writeBytesWithResponse(byte[] bytes) {
+        if ((ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
+            Log.e(TAG, "Trying to write bytes with response without bluetooth connect permissions");
+            return new byte[]{};
+        }
         try {
             startLatch = new CountDownLatch(1);
             doneLatch = new CountDownLatch(1);
@@ -164,6 +181,11 @@ public class UARTConnection extends BluetoothGattCallback {
      * @return True if a connection was successfully established, false otherwise
      */
     private boolean establishUARTConnection(Context context, final BluetoothDevice device) {
+        if ((ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
+            Log.e(TAG, "Trying to connect without bluetooth connect permissions");
+            return false;
+        }
         // Connect to device
 
         if (deviceGatt.get(device.getAddress()) == null) {
@@ -205,6 +227,11 @@ public class UARTConnection extends BluetoothGattCallback {
         connectionState = newState;
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (newState == BluetoothGatt.STATE_CONNECTED) {
+                if ((ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
+                        != PackageManager.PERMISSION_GRANTED) && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
+                    Log.e(TAG, "Recieved STATE_CONNECTED without bluetooth connect permissions");
+                    return;
+                }
                 gatt.discoverServices();
             }
         }
@@ -216,6 +243,11 @@ public class UARTConnection extends BluetoothGattCallback {
             tx = gatt.getService(uartUUID).getCharacteristic(txUUID);
             rx = gatt.getService(uartUUID).getCharacteristic(rxUUID);
             // Notify that the setup process is completed
+            if ((ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
+                    != PackageManager.PERMISSION_GRANTED) && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
+                Log.e(TAG, "Discovered services without bluetooth connect permissions");
+                return;
+            }
             gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_BALANCED);
             doneLatch.countDown();
         }
@@ -276,8 +308,13 @@ public class UARTConnection extends BluetoothGattCallback {
      * Disconnects and closes the connection with the device
      */
     public void disconnect() {
-        btGatt.disconnect();
-        btGatt.close();
+        if ((ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
+            Log.e(TAG, "Trying to disconnect without bluetooth connect permissions");
+        } else {
+            btGatt.disconnect();
+            btGatt.close();
+        }
         btGatt = null;
         this.bluetoothDevice = null;
     }
@@ -286,8 +323,13 @@ public class UARTConnection extends BluetoothGattCallback {
      * Disconnects and closes the connection with the device
      */
     public void forceDisconnect() {
-        btGatt.disconnect();
-        btGatt.close();
+        if ((ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
+            Log.e(TAG, "Trying to force disconnect without bluetooth connect permissions");
+        } else {
+            btGatt.disconnect();
+            btGatt.close();
+        }
         this.bluetoothDevice = null;
     }
 

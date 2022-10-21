@@ -1,5 +1,6 @@
 package com.birdbraintechnologies.birdblox.Bluetooth;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -10,9 +11,13 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Handler;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblox.BuildConfig;
+import com.birdbraintechnologies.birdblox.MainWebView;
 import com.birdbraintechnologies.birdblox.Robots.RobotType;
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 
@@ -33,6 +38,9 @@ import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.Rob
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.deviceGatt;
 import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler.robotsToConnect;
 
+import androidx.core.app.ActivityCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 /**
  * Helper class for basic Bluetooth connectivity
  *
@@ -47,7 +55,7 @@ public class BluetoothHelper {
     public static boolean currentlyScanning;
     private BluetoothAdapter btAdapter;
     private Handler handler;
-    private Context context;
+    public Context context;
     public static HashMap<String, BluetoothDevice> deviceList;
     private static HashMap<String, BluetoothDevice> discoveredList;
     private BluetoothLeScanner scanner;
@@ -76,7 +84,11 @@ public class BluetoothHelper {
 
                 BluetoothDevice dev = result.getDevice();
                 String macAddress = dev.getAddress();
-                String gapName = dev.getName();
+                String gapName = "UNKNOWN";
+                if ((ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED)
+                    || (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R)) {
+                    gapName = dev.getName();
+                }
                 int currentRSSI = result.getRssi();
 
                 deviceList.put(macAddress, dev);
@@ -114,7 +126,11 @@ public class BluetoothHelper {
                         //Make sure we have seen this device recently
                         if (System.currentTimeMillis() - deviceLastSeen.get(device.getAddress()).get() <= 2000) {
                             String name = NamingHandler.GenerateName(mainWebViewContext.getApplicationContext(), device.getAddress());
-                            RobotType robotType = RobotType.robotTypeFromGAPName(device.getName());
+                            RobotType robotType = null;
+                            if ((ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED)
+                                    || (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R)) {
+                                robotType = RobotType.robotTypeFromGAPName(device.getName());
+                            }
                             String prefix = (robotType != null) ? robotType.getPrefix() : "";
                             JSONObject robot = new JSONObject();
                             try {
@@ -132,10 +148,10 @@ public class BluetoothHelper {
                     runJavascript("CallbackManager.robot.discovered('" + bbxEncode(robots.toString()) + "');");
                 }
 
-               // if (System.currentTimeMillis() - last_clear.get() >= CLEAR_INTERVAL) {
-               //     last_clear.set(System.currentTimeMillis());
-               //     deviceList.clear();
-               // }
+                // if (System.currentTimeMillis() - last_clear.get() >= CLEAR_INTERVAL) {
+                //     last_clear.set(System.currentTimeMillis());
+                //     deviceList.clear();
+                // }
             }
         }
     };
@@ -146,6 +162,7 @@ public class BluetoothHelper {
      * @param context Context that Bluetooth is being used by
      */
     public BluetoothHelper(Context context) {
+        Log.e(TAG, "should check bt permissions");
         this.context = context;
         this.handler = new Handler();
         deviceList = new HashMap<>();
@@ -155,11 +172,11 @@ public class BluetoothHelper {
                 (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         this.btAdapter = btManager.getAdapter();
         // Ask to enable Bluetooth if disabled
-        if (btAdapter != null && !btAdapter.isEnabled()) {
+        /*if (btAdapter != null && !btAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             enableBtIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(enableBtIntent);
-        }
+        }*/
     }
 
     /**
@@ -173,11 +190,34 @@ public class BluetoothHelper {
             Log.d("BLEScan", "Scan already running.");
             return;
         }
-        if (scanner == null && btAdapter.isEnabled()) {
 
+        int btPerm = ActivityCompat.checkSelfPermission(context,
+                Manifest.permission.BLUETOOTH);
+        int btScanPerm = ActivityCompat.checkSelfPermission(context,
+                Manifest.permission.BLUETOOTH_SCAN);
+        Log.d(TAG, "About to scan. bluetooth " + btPerm + " scan " + btScanPerm + " granted " + PackageManager.PERMISSION_GRANTED);
+        if (((Build.VERSION.SDK_INT > Build.VERSION_CODES.R) && (btScanPerm != PackageManager.PERMISSION_GRANTED)) ||
+                ((Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) && (btPerm != PackageManager.PERMISSION_GRANTED))) {
+            Log.d(TAG, "Bluetooth permission not granted. SDK " + Build.VERSION.SDK_INT);
+            Intent getBTPerm = new Intent(MainWebView.BLUETOOTH_PERMISSION);
+            LocalBroadcastManager.getInstance(context).sendBroadcast(getBTPerm);
+            return;
+        }
+
+        if (btAdapter == null) {
+            Log.e(TAG, "No bluetooth adapter?");
+            return;
+        }
+        if (!btAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            enableBtIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(enableBtIntent);
+            return;
+        }
+        if (scanner == null && btAdapter.isEnabled()) {
+            Log.d("BLEScan", "No scan running, starting now");
             // Start scanning for devices
             scanner = btAdapter.getBluetoothLeScanner();
-
 
             // Build scan settings (scan as fast as possible)
             currentlyScanning = true;
@@ -187,8 +227,14 @@ public class BluetoothHelper {
                 @Override
                 public void run() {
                     if (scanner != null) {
-                        scanner.stopScan(populateDevices);
-                        Log.d("BLEScan", "Stopped scan (timeout).");
+                        if ((ActivityCompat.checkSelfPermission(context,
+                                Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED)
+                                && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
+                            Log.e("BLEScan", "Attempting to stop a scan when bluetooth scanning permission has not been granted?");
+                        } else {
+                            scanner.stopScan(populateDevices);
+                            Log.d("BLEScan", "Stopped scan (timeout).");
+                        }
                         scanner = null;
                     }
                     currentlyScanning = false;
@@ -235,7 +281,13 @@ public class BluetoothHelper {
      */
     public void stopScan() {
         if (scanner != null) {
-            scanner.stopScan(populateDevices);
+            if ((ActivityCompat.checkSelfPermission(context,
+                    Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED)
+                    && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
+                Log.e("BLEScan", "Attempting to stop a scan when bluetooth scanning permission has not been granted?");
+            } else {
+                scanner.stopScan(populateDevices);
+            }
             scanner = null;
             Log.d("BLEScan", "Stopped scan.");
         }

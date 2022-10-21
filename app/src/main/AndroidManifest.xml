@@ -4,13 +4,20 @@
 
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:required="false"/>
+    <!--<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:required="false"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:required="false"/>-->
+    <!--<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30"/>-->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
+<!--    <uses-permission android:name="android.permission.WRITE_SETTINGS"/> -->
 
     <uses-feature android:name="android.hardware.location" android:required="false"/>
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false"/>
@@ -28,13 +35,14 @@
         android:icon="@mipmap/ic_launcher"
         android:label="${appLabel}"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme"
+        android:theme="@style/Theme.App.Starting"
         android:resizeableActivity="true">
-        <activity
+        <!--<activity
             android:name="com.birdbraintechnologies.birdblox.MainWebView"
             android:screenOrientation="${orientation}"
             android:configChanges="orientation|screenSize"
-            android:launchMode="singleInstance">
+            android:launchMode="singleInstance"
+            android:exported="true">
 
             <intent-filter>
                 <data android:scheme="file" />
@@ -45,7 +53,7 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
-        </activity>
+        </activity>-->
 <!--
         <service
             android:name="com.birdbraintechnologies.birdblox.httpservice.HttpService"
@@ -53,11 +61,16 @@
             android:exported="true"
             android:stopWithTask="false"/>
 -->
+        <!--<activity
+            android:name="com.birdbraintechnologies.birdblox.SplashScreen"-->
         <activity
-            android:name="com.birdbraintechnologies.birdblox.SplashScreen"
+            android:name="com.birdbraintechnologies.birdblox.MainWebView"
             android:label="${appLabel}"
-            android:theme="@style/SplashTheme"
-            android:launchMode="singleInstance">
+            android:theme="@style/Theme.App.Starting"
+            android:screenOrientation="${orientation}"
+            android:configChanges="orientation|screenSize"
+            android:launchMode="singleInstance"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -75,11 +88,13 @@
                 <data android:mimeType="application/zip"/>
                 <data android:mimeType="application/octet-stream" />
                 <data android:pathPattern=".*\\.bbx" />
+                <data android:scheme="content" />
             </intent-filter>
         </activity>
 
+
         <provider
-            android:name="android.support.v4.content.FileProvider"
+            android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}"
             android:exported="false"
             android:grantUriPermissions="true">
