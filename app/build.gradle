@@ -21,16 +21,16 @@ android {
             buildConfigField "boolean", "IS_FINCHBLOX", "false"
             dimension "mode"
             manifestPlaceholders = [appLabel:"BirdBlox", orientation:"unspecified"]
-            versionCode 16
-            versionName "1.3.4"
+            versionCode 17
+            versionName "1.4.0"
         }
         finchblox {
             buildConfigField "boolean", "IS_FINCHBLOX", "true"
             dimension "mode"
             applicationIdSuffix ".finchblox"
             manifestPlaceholders = [appLabel:"FinchBlox", orientation:"landscape"]
-            versionCode 6
-            versionName "1.2"
+            versionCode 7
+            versionName "1.2.1"
         }
     }
 }

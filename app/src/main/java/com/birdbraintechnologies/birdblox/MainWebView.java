@@ -142,7 +142,9 @@ public class MainWebView extends AppCompatActivity {
         List<String> APP_PERMISSIONS = new ArrayList<String>();
         APP_PERMISSIONS.add(Manifest.permission.READ_EXTERNAL_STORAGE);
         APP_PERMISSIONS.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        APP_PERMISSIONS.add(Manifest.permission.RECORD_AUDIO);
+        if (!BuildConfig.IS_FINCHBLOX) {
+            APP_PERMISSIONS.add(Manifest.permission.RECORD_AUDIO);
+        }
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
             APP_PERMISSIONS.add(Manifest.permission.BLUETOOTH_SCAN);
             APP_PERMISSIONS.add(Manifest.permission.BLUETOOTH_CONNECT);
