@@ -20,9 +20,15 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.ParcelFileDescriptor;
+import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.FileProvider;
@@ -47,12 +53,15 @@ import com.birdbraintechnologies.birdblox.JSInterface.JavascriptInterface;
 import com.birdbraintechnologies.birdblox.Project.ImportUnzipTask;
 import com.birdbraintechnologies.birdblox.Sound.CancelableMediaPlayer;
 //import com.birdbraintechnologies.birdblox.httpservice.HttpService;
+import com.birdbraintechnologies.birdblox.Util.ZipUtility;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RecordingHandler;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -135,13 +144,13 @@ public class MainWebView extends AppCompatActivity {
     private static WebView webView;
     private boolean webViewReady = false;
     private long back_pressed;
-
+    private String fileNowExporting;
 
     public static void verifyPermissions(Activity activity) {
 
         List<String> APP_PERMISSIONS = new ArrayList<String>();
-        APP_PERMISSIONS.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-        APP_PERMISSIONS.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        //APP_PERMISSIONS.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+        //APP_PERMISSIONS.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
         if (!BuildConfig.IS_FINCHBLOX) {
             APP_PERMISSIONS.add(Manifest.permission.RECORD_AUDIO);
         }
@@ -525,17 +534,19 @@ public class MainWebView extends AppCompatActivity {
             //    sanitizeAndGetContent(data);
             //} else if (type.equals("file")) {
             if (type.equals("file") || type.equals("content")) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     Log.d(TAG, "about to request read external storage permission");
                     lastFileUriData = data;
                     requestReadExternalStoragePermission();
-                }
-                if (FilenameUtils.getExtension(data.toString()).equals("bbx") || displayName.endsWith(".bbx")) {
+                }*/
+                /*if (FilenameUtils.getExtension(data.toString()).equals("bbx") || displayName.endsWith(".bbx")) {
                     Log.d(TAG, "about to sanitize and copy file " + data.toString());
                     sanitizeAndCopyFile(data, type, displayName);
                 } else {
                     Log.e(TAG, "Could not open file " + data.toString());
-                }
+                }*/
+                Log.d(TAG, "about to sanitize and copy file " + displayName + " of type " + type + " at " + data.toString());
+                sanitizeAndCopyFile(data, type, displayName);
             } else {
                 Log.e(TAG, "importFromIntent: unknown type " + type);
             }
@@ -670,7 +681,8 @@ public class MainWebView extends AppCompatActivity {
      * @param b
      */
     private void showShareDialog(Bundle b) {
-        try {
+        Log.d(TAG, "showShareDialog");
+        /*try {
             String filename = b.getString("file_name");
             File filelocation = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), filename);
             Uri path = Uri.fromFile(filelocation);
@@ -682,9 +694,80 @@ public class MainWebView extends AppCompatActivity {
             startActivity(Intent.createChooser(sendIntent, null)); //title not necessary
         } catch (Exception e) {
             Log.e("FileProvider", e.getMessage());
+        }*/
+        if(fileNowExporting != null) {
+            Log.e(TAG, "There is already a file being shared.");
+            return;
         }
-    }
 
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        //intent.setType("application/zip");
+        intent.setType("application/bbx");
+        //String zipName = b.getString("file_name");
+        //intent.putExtra(Intent.EXTRA_TITLE, zipName);
+        fileNowExporting = b.getString("base_name");
+        intent.putExtra(Intent.EXTRA_TITLE, fileNowExporting);
+        //intent.putExtra("base_name", fileNowExporting);
+        Log.d(TAG, "Sharing " + fileNowExporting);
+
+        // Optionally, specify a URI for the directory that should be opened in
+        // the system file picker when your app creates the document.
+        //intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, pickerInitialUri);
+
+        //startActivityForResult(intent, CREATE_FILE);
+        /*ActivityResultLauncher<String> mGetContent = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("application/zip"),
+                new ActivityResultCallback<Uri>() {
+                    @Override
+                    public void onActivityResult(Uri uri) {
+                        // Handle the returned Uri
+                    }
+                });*/
+
+        shareDialogLauncher.launch(intent);
+    }
+    ActivityResultLauncher<Intent> shareDialogLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            new ActivityResultCallback<ActivityResult>() {
+                @Override
+                public void onActivityResult(ActivityResult result) {
+                    Log.d(TAG, "got result code " + result.getResultCode());
+                    if (result.getResultCode() == RESULT_OK) {
+
+                        Uri uri = result.getData().getData();
+                        Log.d(TAG, "uri is " + uri.toString());
+
+                        try {
+                            ParcelFileDescriptor bbx = mainWebViewContext.getContentResolver().
+                                    openFileDescriptor(uri, "w");
+                            FileOutputStream fileOutputStream =
+                                    new FileOutputStream(bbx.getFileDescriptor());
+                            //fileOutputStream.write(("Overwritten at " + System.currentTimeMillis() +
+                            //        "\n").getBytes());
+
+                            ZipUtility.exportZipDir(fileNowExporting, fileOutputStream);
+
+                            // Let the document provider know you're done by closing the stream.
+                            fileOutputStream.close();
+                            bbx.close();
+                        } catch (FileNotFoundException e) {
+                            e.printStackTrace();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        /*try {
+                            FileOutputStream fileOutputStream = (FileOutputStream) getContentResolver().openOutputStream(uri);
+                            fileOutputStream.flush();
+                            fileOutputStream.close();
+
+                        } catch (Exception e) {
+                            Log.e(TAG, "File Sharing: " + e.getMessage());
+                        }*/
+                    }
+                }
+            }
+    );
     /**
      * Shows a dialog when the user wishes to share log files.
      * @param b

@@ -48,19 +48,14 @@ public class FileManagementHandler implements RequestHandler {
     public static final String CURRENT_PREFS_KEY = "com.birdbraintechnologies.birdblox.CURRENT_PROJECT";
     public static final String LAST_PROJECT_KEY = "com.birdbraintechnologies.birdblox.LAST_PROJECT";
 
-    //private HttpService service;
-
     private Context context;
 
     public FileManagementHandler(Context context) {
-        //this.service = service;
-        //filesPrefs = service.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
         this.context = context;
         filesPrefs = context.getSharedPreferences(FILES_PREFS_KEY, Context.MODE_PRIVATE);
     }
 
     @Override
-    //public NanoHTTPD.Response handleRequest(NanoHTTPD.IHTTPSession session, List<String> args) {
     public NativeAndroidResponse handleRequest(NativeAndroidSession session, List<String> args) {
         Log.d(TAG, "handleRequest " + args.toString());
         String[] path = args.get(0).split("/");
@@ -98,8 +93,6 @@ public class FileManagementHandler implements RequestHandler {
             case "markAsNamed":
                 return markNamed();
         }
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Bad Request");
         return new NativeAndroidResponse(Status.BAD_REQUEST, "Bad Request");
     }
 
@@ -112,32 +105,16 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if opening was successful,
      * and an 'ERROR' response otherwise.
      */
-    //private NanoHTTPD.Response openProject(String name) {
     private NativeAndroidResponse openProject(String name) {
         Log.d(TAG, "openProject " + name);
         File program = null;
-        //if (name.startsWith("file:///")) {
-        //    try {
-        //        program = new File(new URI(name));
-                //program = new File(name);
-        //        name = name.substring(name.lastIndexOf('/') + 1, name.length() - 4);
-        //    } catch (URISyntaxException e) {
-            //} catch (NullPointerException e) {
-        //        Log.e(TAG, "openProject: " + e.toString());
-        //    }
+        if (!isNameSanitized(name)) {
+            return new NativeAndroidResponse(Status.BAD_REQUEST, name + " is not a valid project name!");
+        }
+        program = new File(getBirdbloxDir(), name + "/program.xml");
 
-        //} else {
-            if (!isNameSanitized(name)) {
-                //return NanoHTTPD.newFixedLengthResponse(
-                //        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, name + " is not a valid project name!");
-                return new NativeAndroidResponse(Status.BAD_REQUEST, name + " is not a valid project name!");
-            }
-            program = new File(getBirdbloxDir(), name + "/program.xml");
-        //}
         if (program == null || !program.exists()) {
             Log.e(TAG, "project not found " + program.getPath());
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " was not found!");
             return new NativeAndroidResponse(Status.NOT_FOUND, "Project " + name + " was not found!");
         }
         try {
@@ -149,16 +126,12 @@ public class FileManagementHandler implements RequestHandler {
                 runJavascript("CallbackManager.data.open('" + encodedName + "', \"" + encodedXML + "\");");
                 filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
                 runJavascript("SaveManager.autoSave();");
-                //return NanoHTTPD.newFixedLengthResponse(
-                //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, name + " successfully opened.");
                 return new NativeAndroidResponse(Status.OK, name + " successfully opened.");
             }
         } catch (SecurityException | IOException e) {
             Log.e(TAG, "Open: " + e.getMessage());
         }
 
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while opening " + name);
         return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while opening " + name);
     }
 
@@ -171,16 +144,11 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if opening was successful,
      * and an 'ERROR' response otherwise.
      */
-    //private NanoHTTPD.Response renameProject(String oldName, String newName) {
     private NativeAndroidResponse renameProject(String oldName, String newName) {
         // Not a recording
         if (!projectExists(oldName) || !isNameSanitized(newName)) {
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Given name(s) invalid, or project " + oldName + " doesn't exist.");
             return new NativeAndroidResponse(Status.BAD_REQUEST, "Given name(s) invalid, or project " + oldName + " doesn't exist.");
         } else if (!oldName.equals(newName) && projectExists(newName)) {
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.CONFLICT, MIME_PLAINTEXT, "Project called " + newName + " already exists");
             return new NativeAndroidResponse(Status.CONFLICT, "Project called " + newName + " already exists");
         } else if (oldName.equals(filesPrefs.getString(CURRENT_PREFS_KEY, ""))) {
             runJavascript("CallbackManager.data.setName('" + bbxEncode(newName) + "');");
@@ -189,15 +157,11 @@ public class FileManagementHandler implements RequestHandler {
         try {
             File file = new File(getBirdbloxDir(), oldName);
             if (file.renameTo(new File(getBirdbloxDir(), newName))) {
-                //return NanoHTTPD.newFixedLengthResponse(
-                //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Project " + oldName + " renamed to " + newName + " successfully");
                 return new NativeAndroidResponse(Status.OK, "Project " + oldName + " renamed to " + newName + " successfully");
             }
         } catch (SecurityException | NullPointerException e) {
             Log.e("TAG", "Error while renaming " + oldName + " to " + newName + ": " + e.getMessage());
         }
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while renaming " + oldName + " to " + newName + ".");
         return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while renaming " + oldName + " to " + newName + ".");
     }
 
@@ -209,11 +173,8 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if renaming was successful,
      * and an 'ERROR' response otherwise.
      */
-    //private NanoHTTPD.Response renameRecording(String oldName, String newName) {
     private NativeAndroidResponse renameRecording(String oldName, String newName) {
         if (!isNameSanitized(newName)) {
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Given newName is invalid.");
             return new NativeAndroidResponse(Status.BAD_REQUEST, "Given newName is invalid.");
         }
         String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
@@ -225,25 +186,17 @@ public class FileManagementHandler implements RequestHandler {
                 if (oldFile.exists()) {
                     if (!newFile.exists()) {
                         if (oldFile.renameTo(newFile)) {
-                            //return NanoHTTPD.newFixedLengthResponse(
-                            //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Recording " + oldName + " renamed to " + newName + " successfully");
                             return new NativeAndroidResponse(Status.OK, "Recording " + oldName + " renamed to " + newName + " successfully");
                         } else {
-                            //return NanoHTTPD.newFixedLengthResponse(
-                            //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while renaming " + oldName + " to " + newName + ".");
                             return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while renaming " + oldName + " to " + newName + ".");
                         }
                     } else {
-                        //return NanoHTTPD.newFixedLengthResponse(
-                        //        NanoHTTPD.Response.Status.CONFLICT, MIME_PLAINTEXT, "Recording called " + newName + " already exists");
                         return new NativeAndroidResponse(Status.CONFLICT, "Recording called " + newName + " already exists");
                     }
                 }
             }
         }
         Log.e(TAG, "recording not found " + oldName);
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "File " + oldName + " was not found.");
         return new NativeAndroidResponse(Status.NOT_FOUND, "File " + oldName + " was not found.");
     }
 
@@ -252,13 +205,10 @@ public class FileManagementHandler implements RequestHandler {
      *
      * @return A 'OK' response.
      */
-    //private NanoHTTPD.Response closeProject() {
     private NativeAndroidResponse closeProject() {
         String filename = filesPrefs.getString(CURRENT_PREFS_KEY, null);
         filesPrefs.edit().putString(LAST_PROJECT_KEY, filename).apply();
         filesPrefs.edit().putString(CURRENT_PREFS_KEY, null).apply();
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Current project closed successfully");
         return new NativeAndroidResponse(Status.OK, "Current project closed successfully");
     }
 
@@ -270,16 +220,11 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if deletion was successful,
      * and an 'ERROR' response otherwise.
      */
-    //private NanoHTTPD.Response deleteProject(String name) {
     private NativeAndroidResponse deleteProject(String name) {
         if (!isNameSanitized(name)) {
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Given name invalid.");
             return new NativeAndroidResponse(Status.BAD_REQUEST, "Given name invalid.");
         } else if (!projectExists(name)) {
             Log.e(TAG, "could not delete project " + name + " (not found)");
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " was not found!");
             return new NativeAndroidResponse(Status.NOT_FOUND, "Project " + name + " was not found!");
         } else if (filesPrefs.getString(CURRENT_PREFS_KEY, "").equals(name)) {
             filesPrefs.edit().putString(CURRENT_PREFS_KEY, null).apply();
@@ -287,14 +232,10 @@ public class FileManagementHandler implements RequestHandler {
         }
         try {
             deleteRecursive(new File(getBirdbloxDir(), name));
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, name + " successfully deleted.");
             return new NativeAndroidResponse(Status.OK, name + " successfully deleted.");
         } catch (SecurityException e) {
             Log.e(TAG, "Error while deleting " + name + ": " + e.getMessage());
         }
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while deleting " + name);
         return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while deleting " + name);
     }
 
@@ -305,26 +246,19 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if deletion was successful,
      * and an 'ERROR' response otherwise.
      */
-    //private NanoHTTPD.Response deleteRecording(String name) {
     private NativeAndroidResponse deleteRecording(String name) {
         String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
         if (currProj != null) {
             File rec = new File(getBirdbloxDir(), currProj + "/recordings/" + name + ".m4a");
             if (rec.exists()) {
                 if (rec.delete()) {
-                    //return NanoHTTPD.newFixedLengthResponse(
-                     //       NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, name + " successfully deleted.");
                     return new NativeAndroidResponse(Status.OK, name + " successfully deleted.");
                 } else {
-                    //return NanoHTTPD.newFixedLengthResponse(
-                    //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while deleting " + name);
                     return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while deleting " + name);
                 }
             }
         }
         Log.e(TAG, "could not delete recording " + name + " (not found)");
-        //return NanoHTTPD.newFixedLengthResponse(
-         //       NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Recording " + name + " was not found!");
         return new NativeAndroidResponse(Status.NOT_FOUND, "Recording " + name + " was not found!");
     }
 
@@ -334,7 +268,6 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if listing was successful,
      * and an 'ERROR' response otherwise.
      */
-    //private NanoHTTPD.Response listProjects() {
     private NativeAndroidResponse listProjects() {
         try {
             File[] files = getBirdbloxDir().listFiles();
@@ -351,15 +284,11 @@ public class FileManagementHandler implements RequestHandler {
                     sendObj.put("signedIn", true);
                     sendObj.put("account", dropboxSignInInfo);
                 }
-                //return NanoHTTPD.newFixedLengthResponse(
-                //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, sendObj.toString());
                 return new NativeAndroidResponse(Status.OK, sendObj.toString());
             }
         } catch (JSONException | SecurityException | NullPointerException e) {
             Log.e(TAG, "List Projects: " + e.getMessage());
         }
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while listing projects.");
         return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while listing projects.");
     }
 
@@ -371,17 +300,23 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if exporting was successful,
      * and an 'ERROR' response otherwise.
      */
-    //private NanoHTTPD.Response exportProject(String name) {
     private NativeAndroidResponse exportProject(String name) {
+        Log.d(TAG, "exportProject");
         if (!projectExists(name)) {
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " doesn't exist.");
             return new NativeAndroidResponse(Status.NOT_FOUND, "Project " + name + " doesn't exist.");
         }
-        try {
-            File dir = new File(getBirdbloxDir(), name);
+        /*try {
+            File dir = new File(getBirdbloxDir(), name);*/
             String zipName = name + ".bbx";
-            File zip = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), zipName);
+            Intent showDialog = new Intent(MainWebView.SHARE_FILE);
+            showDialog.putExtra("file_name", zipName);
+            showDialog.putExtra("base_name", name);
+            LocalBroadcastManager.getInstance(context).sendBroadcast(showDialog);
+            return new NativeAndroidResponse(Status.OK, "Successfully exported project " + name);
+
+
+
+            /*File zip = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), zipName);
             ZipUtility.zipDirectory(dir, zip);
             if (zip.exists()) {
                 Intent showDialog = new Intent(MainWebView.SHARE_FILE);
@@ -395,10 +330,10 @@ public class FileManagementHandler implements RequestHandler {
             //TODO: remove zip file once transfer is complete? Consider using a different directory for the temp file.
         } catch (SecurityException | IOException e) {
             Log.e(TAG, "Export: " + e.getMessage());
-        }
+        }*/
         //return NanoHTTPD.newFixedLengthResponse(
         //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while exporting project " + name);
-        return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while exporting project " + name);
+        //return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while exporting project " + name);
     }
 
 
@@ -409,15 +344,7 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if autosaving was successful,
      * and an 'ERROR' response otherwise.
      */
-    //private static NanoHTTPD.Response autosaveProject(NanoHTTPD.IHTTPSession session) {
     private static NativeAndroidResponse autosaveProject(NativeAndroidSession session) {
-        //if (session.getMethod() != NanoHTTPD.Method.POST) {
-        //    Log.d(TAG, "Autosave: Save must be done via POST request");
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Please send a POST request.");
-        //    return new NativeAndroidResponse(Status.BAD_REQUEST, "Please send a POST request.");
-        //}
-        //Map<String, String> postFiles = new HashMap<>();
         String projectContent = session.getBody();
         if (projectContent.equals("")) {
             return new NativeAndroidResponse(Status.BAD_REQUEST, "Project is empty.");
@@ -431,65 +358,14 @@ public class FileManagementHandler implements RequestHandler {
                     newFile.getParentFile().mkdirs();
                     newFile.createNewFile();
                 }
-                // Parse POST body to get parameters
-                //session.parseBody(postFiles);
-                // Write POST["data"] to file
-                //FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8", false);
                 FileUtils.writeStringToFile(newFile, projectContent, "utf-8", false);
-                //return NanoHTTPD.newFixedLengthResponse(
-                //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully saved project: " + name);
                 return new NativeAndroidResponse(Status.OK, "Successfully saved project: " + name);
-            //} catch (IOException | NanoHTTPD.ResponseException e) {
             } catch (IOException e) {
                 Log.e(TAG, e.getMessage());
             }
         }
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while autosaving project " + name);
         return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while autosaving project " + name);
     }
-
-    /**
-     * Creates a new project, with the default temporary name 'new program'.
-     *
-     * @param session HttpRequest to get the POST body of.
-     * @return A 'OK' response if creating new project was successful,
-     * and an 'ERROR' response otherwise.
-     *//*
-    private NanoHTTPD.Response newProject(NanoHTTPD.IHTTPSession session) {
-        if (session.getMethod() != NanoHTTPD.Method.POST) {
-            Log.d(TAG, "New: Save must be done via POST request");
-            return NanoHTTPD.newFixedLengthResponse(
-                    NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Please send a POST request.");
-        }
-        Map<String, String> postFiles = new HashMap<>();
-        String name = findAvailableName(getBirdbloxDir(), "new program", "");
-        if (name != null) {
-            // actually create project here
-            File newFile = new File(getBirdbloxDir(), name + "/program.xml");
-            try {
-                if (!newFile.exists()) {
-                    newFile.getParentFile().mkdirs();
-                    newFile.createNewFile();
-                }
-                // Parse POST body to get parameters
-                session.parseBody(postFiles);
-                FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8", false);
-                filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
-                runJavascript("CallbackManager.data.setName('" + bbxEncode(name) + "');");
-                return NanoHTTPD.newFixedLengthResponse(
-                        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully created new project: " + name);
-            } catch (IOException e) {
-                if (newFile.exists())
-                    newFile.delete();
-                Log.e(TAG, e.getMessage());
-            } catch (NanoHTTPD.ResponseException e) {
-                Log.e(TAG, e.getMessage());
-            }
-        }
-        return NanoHTTPD.newFixedLengthResponse(
-                NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while making new project");
-    }*/
 
     /**
      * Creates a new project, with the name provided.
@@ -499,27 +375,15 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if creating new project was successful,
      * and an 'ERROR' response otherwise.
      */
-    //private NanoHTTPD.Response newProjectWithName(String name, NanoHTTPD.IHTTPSession session) {
     private NativeAndroidResponse newProjectWithName(String name, NativeAndroidSession session) {
-        //if (session.getMethod() != NanoHTTPD.Method.POST) {
-        //    Log.d(TAG, "New: Save must be done via POST request");
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Please send a POST request.");
-        //    return new NativeAndroidResponse(Status.BAD_REQUEST, "Please send a POST request.");
-        //}
-        //Map<String, String> postFiles = new HashMap<>();
         String projectContent = session.getBody();
         if (projectContent.equals("")) {
             return new NativeAndroidResponse(Status.BAD_REQUEST, "Project is empty.");
         }
         if (!isNameSanitized(name)) {
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Given name is invalid.");
             return new NativeAndroidResponse(Status.BAD_REQUEST, "Given name is invalid.");
         }
         if (projectExists(name)) {
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.CONFLICT, MIME_PLAINTEXT, "Project " + name + " already exists.");
             return new NativeAndroidResponse(Status.CONFLICT, "Project " + name + " already exists.");
         }
         if (name != null) {
@@ -530,25 +394,16 @@ public class FileManagementHandler implements RequestHandler {
                     newFile.getParentFile().mkdirs();
                     newFile.createNewFile();
                 }
-                // Parse POST body to get parameters
-                //session.parseBody(postFiles);
-                //FileUtils.writeStringToFile(newFile, postFiles.get("postData"), "utf-8", false);
                 FileUtils.writeStringToFile(newFile, projectContent, "utf-8", false);
                 filesPrefs.edit().putString(CURRENT_PREFS_KEY, name).apply();
                 runJavascript("CallbackManager.data.setName('" + bbxEncode(name) + "');");
-                //return NanoHTTPD.newFixedLengthResponse(
-                //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully created new project: " + name);
                 return new NativeAndroidResponse(Status.OK, "Successfully created new project: " + name);
             } catch (IOException e) {
                 if (newFile.exists())
                     newFile.delete();
                 Log.e(TAG, e.getMessage());
-            //} catch (NanoHTTPD.ResponseException e) {
-            //    Log.e(TAG, e.getMessage());
             }
         }
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error while making new project " + name);
         return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error while making new project " + name);
     }
 
@@ -560,20 +415,15 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response containing an available name for 'name',
      * if successful, and an 'ERROR' response otherwise.
      */
-    //private NanoHTTPD.Response getProjectName(String name) {
     private NativeAndroidResponse getProjectName(String name) {
         try {
             JSONObject nameObject = new JSONObject();
             nameObject.put("availableName", findAvailableName(getBirdbloxDir(), name, ""));
             nameObject.put("alreadySanitized", isNameSanitized(name));
             nameObject.put("alreadyAvailable", isNameAvailable(getBirdbloxDir(), name, ""));
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, nameObject.toString());
             return new NativeAndroidResponse(Status.OK, nameObject.toString());
         } catch (JSONException | NullPointerException e) {
             Log.e("AvailableName", e.getMessage());
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error getting available project name for: " + name);
             return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error getting available project name for: " + name);
         }
     }
@@ -586,7 +436,6 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response containing an available name for 'name',
      * if successful, and an 'ERROR' response otherwise.
      */
-    //private NanoHTTPD.Response getRecordingName(String name) {
     private NativeAndroidResponse getRecordingName(String name) {
         String currProj = filesPrefs.getString(CURRENT_PREFS_KEY, null);
         if (currProj != null) {
@@ -597,15 +446,11 @@ public class FileManagementHandler implements RequestHandler {
                 nameObject.put("availableName", findAvailableName(dir, name, ".m4a"));
                 nameObject.put("alreadySanitized", isNameSanitized(name));
                 nameObject.put("alreadyAvailable", isNameAvailable(dir, name, ".m4a"));
-                //return NanoHTTPD.newFixedLengthResponse(
-                //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, nameObject.toString());
                 return new NativeAndroidResponse(Status.OK, nameObject.toString());
             } catch (JSONException | NullPointerException | SecurityException e) {
                 Log.e("AvailableName", e.getMessage());
             }
         }
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error getting available project name for: " + name);
         return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error getting available project name for: " + name);
     }
 
@@ -617,19 +462,12 @@ public class FileManagementHandler implements RequestHandler {
      * @return A 'OK' response if duplicating was successful,
      * and an 'ERROR' response otherwise.
      */
-    //private NanoHTTPD.Response duplicateProject(String name, String newName) {
     private NativeAndroidResponse duplicateProject(String name, String newName) {
         if (!projectExists(name)) {
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Project " + name + " doesn't exist.");
             return new NativeAndroidResponse(Status.NOT_FOUND, "Project " + name + " doesn't exist.");
         } else if (!isNameSanitized(newName)) {
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.FORBIDDEN, MIME_PLAINTEXT, newName + " is not a valid project name.");
             return new NativeAndroidResponse(Status.FORBIDDEN, newName + " is not a valid project name.");
         } else if (!isNameAvailable(getBirdbloxDir(), newName, "")) {
-            //return NanoHTTPD.newFixedLengthResponse(
-            //        NanoHTTPD.Response.Status.CONFLICT, MIME_PLAINTEXT, "Project " + newName + " already exists.");
             return new NativeAndroidResponse(Status.CONFLICT, "Project " + newName + " already exists.");
         }
         try {
@@ -637,15 +475,11 @@ public class FileManagementHandler implements RequestHandler {
             File destDir = new File(getBirdbloxDir(), newName);
             if (destDir.mkdirs()) {
                 FileUtils.copyDirectory(srcDir, destDir);
-                //return NanoHTTPD.newFixedLengthResponse(
-                //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully duplicated project " + name + " to " + newName);
                 return new NativeAndroidResponse(Status.OK, "Successfully duplicated project " + name + " to " + newName);
             }
         } catch (SecurityException | IOException e) {
             Log.e(TAG, "Duplicate: " + e.getMessage());
         }
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error duplicating project " + name + " to " + newName);
         return new NativeAndroidResponse(Status.INTERNAL_ERROR, "Error duplicating project " + name + " to " + newName);
     }
 
@@ -654,10 +488,7 @@ public class FileManagementHandler implements RequestHandler {
      *
      * @return A 'OK' response
      */
-    //private NanoHTTPD.Response markNamed() {
     private NativeAndroidResponse markNamed() {
-        //return NanoHTTPD.newFixedLengthResponse(
-        //        NanoHTTPD.Response.Status.OK, MIME_PLAINTEXT, "Successfully marked named");
         return new NativeAndroidResponse(Status.OK, "Successfully marked named");
     }
 
@@ -785,8 +616,6 @@ public class FileManagementHandler implements RequestHandler {
      * @return File object for the save directory
      */
     public static File getBirdbloxDir() {
-        //File file = new File(Environment.getExternalStoragePublicDirectory(
-        //        Environment.DIRECTORY_DOCUMENTS), BIRDBLOCKS_SAVE_DIR);
         File file = new File(mainWebViewContext.getFilesDir(), BIRDBLOCKS_SAVE_DIR);
         if (!file.exists()) {
             try {

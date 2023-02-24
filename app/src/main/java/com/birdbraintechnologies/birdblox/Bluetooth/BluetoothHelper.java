@@ -162,7 +162,7 @@ public class BluetoothHelper {
      * @param context Context that Bluetooth is being used by
      */
     public BluetoothHelper(Context context) {
-        Log.e(TAG, "should check bt permissions");
+
         this.context = context;
         this.handler = new Handler();
         deviceList = new HashMap<>();

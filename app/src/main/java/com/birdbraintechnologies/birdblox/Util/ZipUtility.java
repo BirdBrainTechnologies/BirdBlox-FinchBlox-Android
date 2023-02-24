@@ -6,6 +6,11 @@ package com.birdbraintechnologies.birdblox.Util;
  * SOURCE: https://stackoverflow.com/questions/20774525/is-it-possible-to-convert-a-folder-into-a-file
  */
 
+import static com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.FileManagementHandler.getBirdbloxDir;
+
+import android.content.Intent;
+import android.net.Uri;
+import android.provider.DocumentsContract;
 import android.util.Log;
 
 import org.apache.commons.io.FileUtils;
@@ -67,6 +72,22 @@ public class ZipUtility {
     }
 
     /**
+     * Zip up a directory
+     * @param projectName - The name of the project directory to be zipped.
+     * @param destination - The destination file.
+     * @throws IOException
+     */
+    public static final void exportZipDir(String projectName, FileOutputStream destination) throws IOException {
+        File directory = new File(getBirdbloxDir(), projectName);
+
+        ZipOutputStream zos = new ZipOutputStream(destination);
+        // Set compression level to uncompressed.
+        zos.setLevel(Deflater.NO_COMPRESSION);
+        zip(directory, directory, zos);
+        zos.close();
+    }
+
+    /**
      * Recursive function to zip the contents of a directory
      * @param directory - to be zipped
      * @param base - top level directory
@@ -75,13 +96,16 @@ public class ZipUtility {
      */
     private static final void zip(File directory, File base,
                                   ZipOutputStream zos) throws IOException {
+        Log.d(TAG, "zipping " + directory.getAbsolutePath());
         File[] files = directory.listFiles();
         byte[] buffer = new byte[8192];
         int read = 0;
         for (int i = 0, n = files.length; i < n; i++) {
             if (files[i].isDirectory()) {
+                Log.d(TAG, "zipping dir");
                 zip(files[i], base, zos);
             } else {
+                Log.d(TAG, "zipping file");
                 FileInputStream in = new FileInputStream(files[i]);
                 ZipEntry entry = new ZipEntry(files[i].getPath().substring(
                         base.getPath().length() + 1));
@@ -92,6 +116,7 @@ public class ZipUtility {
                 in.close();
             }
         }
+        Log.d(TAG, "zipping complete");
     }
 
     /**
