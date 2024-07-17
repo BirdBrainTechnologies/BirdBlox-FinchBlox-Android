@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 android {
-    compileSdkVersion 32
+    compileSdk 34
     defaultConfig {
         applicationId "com.birdbraintechnologies.birdblox"
         minSdkVersion 21
-        targetSdkVersion 32
+        targetSdkVersion 34
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField "boolean", "IS_FINCHBLOX", "false"
     }
@@ -15,24 +15,27 @@ android {
         }
     }
 
-    flavorDimensions "mode"
+    flavorDimensions = ["mode"]
     productFlavors {
         birdblox {
             buildConfigField "boolean", "IS_FINCHBLOX", "false"
             dimension "mode"
-            manifestPlaceholders = [appLabel:"BirdBlox", orientation:"unspecified"]
-            versionCode 18
-            versionName "1.4.1"
+            manifestPlaceholders["appLabel"] = "BirdBlox"
+            manifestPlaceholders["orientation"] = "unspecified"
+            versionCode 19
+            versionName "1.4.2"
         }
         finchblox {
             buildConfigField "boolean", "IS_FINCHBLOX", "true"
             dimension "mode"
             applicationIdSuffix ".finchblox"
-            manifestPlaceholders = [appLabel:"FinchBlox", orientation:"landscape"]
-            versionCode 8
-            versionName "1.2.2"
+            manifestPlaceholders["appLabel"] = "FinchBlox"
+            manifestPlaceholders["orientation"] = "landscape"
+            versionCode 9
+            versionName "1.2.3"
         }
     }
+    namespace 'com.birdbraintechnologies.birdblox'
 }
 
 dependencies {
@@ -48,8 +51,8 @@ dependencies {
     implementation 'com.dropbox.core:dropbox-core-sdk:2.1.1'
     implementation 'com.squareup.okhttp3:okhttp:3.10.0'
     implementation 'io.reactivex.rxjava2:rxandroid:2.0.1'
-    implementation 'commons-io:commons-io:2.5'
+    implementation 'commons-io:commons-io:2.7'
     testImplementation 'junit:junit:4.12'
-    compileOnly 'com.google.android.things:androidthings:+'
-    implementation 'androidx.core:core-splashscreen:1.0.0'
+    compileOnly 'com.google.android.things:androidthings:1.0'
+    implementation 'androidx.core:core-splashscreen:1.0.1'
 }
