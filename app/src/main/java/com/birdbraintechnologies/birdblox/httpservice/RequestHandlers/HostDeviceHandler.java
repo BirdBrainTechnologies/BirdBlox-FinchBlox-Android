@@ -92,8 +92,8 @@ public class HostDeviceHandler implements RequestHandler, SensorEventListener {
     public HostDeviceHandler(Context context) {
         this.context = context;
         Log.d(TAG, "HostDeviceHandler");
-        if (!BuildConfig.IS_FINCHBLOX) {
-            Log.d(TAG, "HostDeviceHandler not FINCHBLOX");
+        if (!BuildConfig.IS_FINCHBLOX && !BuildConfig.IS_HATCHLING) {
+            Log.d(TAG, "HostDeviceHandler not FINCHBLOX or HATCHLING");
             initLocationListener();
         }
         initSensors();
@@ -261,7 +261,7 @@ public class HostDeviceHandler implements RequestHandler, SensorEventListener {
                 NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
                 */
 
-        if (provider != null && !BuildConfig.IS_FINCHBLOX) { //then location permissions have been granted
+        if (provider != null && !BuildConfig.IS_FINCHBLOX && !BuildConfig.IS_HATCHLING) { //then location permissions have been granted
             try {
                 Location location = locationManager.getLastKnownLocation(provider);
                 latitude = location.getLatitude();
@@ -295,7 +295,7 @@ public class HostDeviceHandler implements RequestHandler, SensorEventListener {
                     NanoHTTPD.Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "Location services disabled");
         }*/
 
-        if (provider != null && !BuildConfig.IS_FINCHBLOX) { //then location permissions have been granted
+        if (provider != null && !BuildConfig.IS_FINCHBLOX && !BuildConfig.IS_HATCHLING) { //then location permissions have been granted
             try {
                 Location location = locationManager.getLastKnownLocation(provider);
                 altitude = location.getAltitude();

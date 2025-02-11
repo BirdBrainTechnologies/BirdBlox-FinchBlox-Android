@@ -76,7 +76,7 @@ public class BluetoothHelper {
        The deviceList is cleared for every SEND_INTERVAL to ensure that the user cannot find a device
        that is connected by other users.
     */
-    private ScanCallback populateDevices = new ScanCallback() {
+    private final ScanCallback populateDevices = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             synchronized (deviceList) {
@@ -138,6 +138,7 @@ public class BluetoothHelper {
                                 robot.put("device", prefix);
                                 robot.put("name", name);
                                 robot.put("RSSI", deviceRSSI.get(device.getAddress()));
+                                robot.put("advertisedName", device.getName());
                             } catch (JSONException e) {
                                 Log.e("JSON", "JSONException while discovering devices");
                             }

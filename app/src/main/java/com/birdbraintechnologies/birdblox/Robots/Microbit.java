@@ -48,7 +48,7 @@ public class Microbit extends Robot<MBState, LedArrayState> {
      * @param conn Connection established with the Microbit device
      */
     public Microbit(final UARTConnection conn) {
-        super(conn, RobotType.Microbit, false);
+        super(conn, RobotType.Microbit, false, true);
 
         oldPrimaryState = new MBState();
         newPrimaryState = new MBState();

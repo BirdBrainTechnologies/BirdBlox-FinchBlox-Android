@@ -47,10 +47,10 @@ public class Finch extends Robot<FinchState, FinchMotorState> {
     /**
      * Initializes a Finch device
      *
-     * @param conn Connection established with the Hummingbit device
+     * @param conn Connection established with the Finch device
      */
     public Finch(final UARTConnection conn) {
-        super(conn, RobotType.Finch, false);
+        super(conn, RobotType.Finch, false, true);
 
         oldPrimaryState = new FinchState();
         newPrimaryState = new FinchState();

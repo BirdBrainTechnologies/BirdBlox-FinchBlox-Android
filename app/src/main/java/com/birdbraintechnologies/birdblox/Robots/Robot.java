@@ -91,13 +91,18 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
     protected AtomicBoolean CALIBRATE = new AtomicBoolean(false); //Should start compass calibration
     protected AtomicBoolean RESETENCODERS = new AtomicBoolean(false);
 
+    //Hatchling
+    private final boolean useSetAll;
+    protected AtomicLong last_received;
+
 
 //TODO: Make sure no two commands are sent within 10ms of each other.
 
-    public Robot(final UARTConnection conn, RobotType type, boolean cfWithResponse) {
+    public Robot(final UARTConnection conn, RobotType type, boolean cfWithResponse, boolean useSetAll) {
         this.conn = conn;
         this.type = type;
         this.cfWithResponse = cfWithResponse;
+        this.useSetAll = useSetAll;
 
         BluetoothDevice device = conn.getBLEDevice();
         if (device != null) {
@@ -123,36 +128,41 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
         cf = new AtomicBoolean(true);
         last_sent = new AtomicLong(System.currentTimeMillis());
         last_successfully_sent = new AtomicLong(System.currentTimeMillis());
+        //Hatchling
+        last_received = new AtomicLong(System.currentTimeMillis());
 
         this.conn.addRxDataListener(this);
 
+
         sendThread = new HandlerThread("SendThread");
-        if (!sendThread.isAlive())
-            sendThread.start();
-        from(sendThread.getLooper());
-        Runnable sendRunnable = new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    //Log.d(TAG, "Attempting to aquire lock...");
-                    if( lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS) ) {
-                        //Log.d(TAG, "Lock aquired");
-                        sendToRobot();
-                        doneSending.signal();
-                    }
-                } catch (NullPointerException | InterruptedException | IllegalMonitorStateException e) {
-                    Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
-                } finally {
-                    if (lock.isHeldByCurrentThread()) {
-                        lock.unlock();
-                        //Log.d(TAG, "Lock released");
+        if (this.useSetAll) {
+            if (!sendThread.isAlive())
+                sendThread.start();
+            from(sendThread.getLooper());
+            Runnable sendRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        //Log.d(TAG, "Attempting to aquire lock...");
+                        if (lock.tryLock(COMMAND_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS)) {
+                            //Log.d(TAG, "Lock aquired");
+                            sendToRobot();
+                            doneSending.signal();
+                        }
+                    } catch (NullPointerException | InterruptedException |
+                             IllegalMonitorStateException e) {
+                        Log.e("SENDHBSIG", "Signalling failed " + e.getMessage());
+                    } finally {
+                        if (lock.isHeldByCurrentThread()) {
+                            lock.unlock();
+                            //Log.d(TAG, "Lock released");
+                        }
                     }
                 }
-            }
-        };
-        sendDisposable = from(sendThread.getLooper()).schedulePeriodicallyDirect(sendRunnable,
-                START_SENDING_INTERVAL_IN_MILLIS, SETALL_INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
-
+            };
+            sendDisposable = from(sendThread.getLooper()).schedulePeriodicallyDirect(sendRunnable,
+                    START_SENDING_INTERVAL_IN_MILLIS, SETALL_INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
+        }
 
         monitorThread = new HandlerThread("MonitorThread");
         if (!monitorThread.isAlive())
@@ -162,7 +172,7 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
             public void run() {
                 final long timeOut = cf.get() ? MAX_NO_CF_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS : MAX_NO_NORMAL_RESPONSE_BEFORE_DISCONNECT_IN_MILLIS;
                 final long curSysTime = System.currentTimeMillis();
-                final long prevTime = last_successfully_sent.get();
+                final long prevTime = useSetAll ? last_successfully_sent.get() : last_received.get();
                 final long passedTime = curSysTime - prevTime;
                 if (passedTime >= timeOut) {
                     try {
@@ -415,17 +425,19 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
             }
             ATTEMPTED = true;
 
-            //TODO: aquire lock?
-            newPrimaryState.resetAll();
-            newSecondaryState.resetAll();
-            sendCommand(getTerminateCommand());
+            if (this.useSetAll) {
+                //TODO: aquire lock?
+                newPrimaryState.resetAll();
+                newSecondaryState.resetAll();
+                sendCommand(getTerminateCommand());
 
-            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
-            sendThread.getLooper().quit();
-            if (sendDisposable != null && !sendDisposable.isDisposed())
-                sendDisposable.dispose();
-            sendThread.interrupt();
-            sendThread.quit();
+                AndroidSchedulers.from(sendThread.getLooper()).shutdown();
+                sendThread.getLooper().quit();
+                if (sendDisposable != null && !sendDisposable.isDisposed())
+                    sendDisposable.dispose();
+                sendThread.interrupt();
+                sendThread.quit();
+            }
 
             AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
             monitorThread.getLooper().quit();
@@ -451,12 +463,14 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
     public void forceDisconnect() {  //TODO: Why do we need this? What problem were they trying to solve?
         if (!DISCONNECTED) {
             ATTEMPTED = false;
-            AndroidSchedulers.from(sendThread.getLooper()).shutdown();
-            sendThread.getLooper().quit();
-            if (sendDisposable != null && !sendDisposable.isDisposed())
-                sendDisposable.dispose();
-            sendThread.interrupt();
-            sendThread.quit();
+            if (this.useSetAll) {
+                AndroidSchedulers.from(sendThread.getLooper()).shutdown();
+                sendThread.getLooper().quit();
+                if (sendDisposable != null && !sendDisposable.isDisposed())
+                    sendDisposable.dispose();
+                sendThread.interrupt();
+                sendThread.quit();
+            }
 
             AndroidSchedulers.from(monitorThread.getLooper()).shutdown();
             monitorThread.getLooper().quit();

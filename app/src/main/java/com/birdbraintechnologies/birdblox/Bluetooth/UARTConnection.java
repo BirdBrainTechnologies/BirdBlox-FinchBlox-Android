@@ -80,7 +80,7 @@ public class UARTConnection extends BluetoothGattCallback {
      * @return True on success, false otherwise
      */
     synchronized public boolean writeBytes(byte[] bytes) {
-        //Log.d(TAG, "writing value " + bytes[0]);
+        //Log.d(TAG, "writing value " + Arrays.toString(bytes)); //bytes[0]);
         if ((ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT)
                 != PackageManager.PERMISSION_GRANTED) && (Build.VERSION.SDK_INT > Build.VERSION_CODES.R)) {
             Log.e(TAG, "Trying to write bytes without bluetooth connect permissions");

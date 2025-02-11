@@ -151,7 +151,7 @@ public class MainWebView extends AppCompatActivity {
         List<String> APP_PERMISSIONS = new ArrayList<String>();
         //APP_PERMISSIONS.add(Manifest.permission.READ_EXTERNAL_STORAGE);
         //APP_PERMISSIONS.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        if (!BuildConfig.IS_FINCHBLOX) {
+        if (!BuildConfig.IS_FINCHBLOX && !BuildConfig.IS_HATCHLING) {
             APP_PERMISSIONS.add(Manifest.permission.RECORD_AUDIO);
         }
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
@@ -161,7 +161,7 @@ public class MainWebView extends AppCompatActivity {
             APP_PERMISSIONS.add(Manifest.permission.BLUETOOTH);
         }
         Log.d("MainWebView", "finchblox? " + BuildConfig.IS_FINCHBLOX + "; SDK " + Build.VERSION.SDK_INT);
-        if (!BuildConfig.IS_FINCHBLOX ||
+        if ((!BuildConfig.IS_FINCHBLOX && !BuildConfig.IS_HATCHLING) ||
                 ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) &&
                         (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R))) {
             Log.d("MainWebView", "adding fine location permission");
@@ -805,6 +805,7 @@ public class MainWebView extends AppCompatActivity {
      * @param script The required js, with all user inputs PERCENT-ENCODED using bbxEncode.
      */
     public static void runJavascript(final String script) {
+        //Log.d("Robot", "running js: " + script);
         // TODO: Send JavaScript commands as broadcasts instead of making webview static
         Handler mainHandler = new Handler(mainWebViewContext.getMainLooper());
         Runnable myRunnable = new Runnable() {

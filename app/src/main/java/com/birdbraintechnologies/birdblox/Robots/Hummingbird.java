@@ -74,7 +74,7 @@ public class Hummingbird extends Robot<HBState, HBState> {
      * @param conn Connection established with the Hummingbird device
      */
     public Hummingbird(final UARTConnection conn) {
-        super(conn, RobotType.Hummingbird, true);
+        super(conn, RobotType.Hummingbird, true, true);
 
         oldPrimaryState = new HBState();
         newPrimaryState = new HBState();

@@ -3,12 +3,15 @@ package com.birdbraintechnologies.birdblox.Robots;
 import androidx.annotation.NonNull;
 import android.util.Log;
 
+import com.birdbraintechnologies.birdblox.BuildConfig;
+
 public enum RobotType {
 
     Hummingbird("Hummingbird", "Duo"),
     Hummingbit("Hummingbirdbit", "Bit"),
     Microbit("Microbit", "micro:bit"),
-    Finch("Finch", "Finch");
+    Finch("Finch", "Finch"),
+    Hatchling("Hatchling", "Hatch");
 
 
     private final String name;
@@ -40,6 +43,8 @@ public enum RobotType {
             return RobotType.Microbit;
         case "finch":
             return RobotType.Finch;
+        case "hatchling":
+            return RobotType.Hatchling;
         default:
             Log.e("RobotType", "Could not determine RobotType from String " + robotType);
             return null;
@@ -48,6 +53,10 @@ public enum RobotType {
     }
 
     public static RobotType robotTypeFromGAPName(String gapName) {
+        if (BuildConfig.IS_HATCHLING) {
+            return RobotType.Hatchling;
+        }
+
         switch(gapName.substring(0,2)) {
             case "HM":
             case "HB":

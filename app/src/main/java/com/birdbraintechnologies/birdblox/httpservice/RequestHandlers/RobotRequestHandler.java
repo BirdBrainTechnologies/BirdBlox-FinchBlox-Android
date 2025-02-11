@@ -16,7 +16,9 @@ import android.util.Log;
 import com.birdbraintechnologies.birdblox.Bluetooth.BluetoothHelper;
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTConnection;
 import com.birdbraintechnologies.birdblox.Bluetooth.UARTSettings;
+import com.birdbraintechnologies.birdblox.BuildConfig;
 import com.birdbraintechnologies.birdblox.Robots.Finch;
+import com.birdbraintechnologies.birdblox.Robots.Hatchling;
 import com.birdbraintechnologies.birdblox.Robots.Hummingbird;
 import com.birdbraintechnologies.birdblox.Robots.Hummingbit;
 import com.birdbraintechnologies.birdblox.Robots.Microbit;
@@ -32,6 +34,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import static com.birdbraintechnologies.birdblox.MainWebView.bbxEncode;
@@ -51,13 +54,9 @@ public class RobotRequestHandler implements RequestHandler {
     private static final String TAG = RobotRequestHandler.class.getSimpleName();
 
     private static final String FIRMWARE_UPDATE_URL = "http://www.hummingbirdkit.com/learning/installing-birdblox#BurnFirmware";
+
     /* UUIDs for different Hummingbird features */
-    private static final String DEVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
-    private static final UUID UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
-    private static final UUID TX_UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
-    private static final UUID RX_UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
-    // TODO: Remove this, it is the same across devices... but actually all these uuids are the same across devices
-    private static final UUID RX_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+    private static String DEVICE_UUID;
 
     public static HashSet<String> robotsToConnect = new HashSet<>(); //List of robots to autoreconnect by GAP name (So that they do not autoreconnect if the type has changed)
 
@@ -66,7 +65,7 @@ public class RobotRequestHandler implements RequestHandler {
     private static HashMap<String, Thread> threadMap;
 
     private static UARTSettings uartSettings;
-    private static HashMap<String, Robot> connectedRobots;
+    private static HashMap<String, Robot<?, ?>> connectedRobots;
 
     private AlertDialog.Builder builder;
     private AlertDialog robotInfoDialog;
@@ -76,6 +75,24 @@ public class RobotRequestHandler implements RequestHandler {
 
     //public RobotRequestHandler(HttpService service) {
     public RobotRequestHandler(BluetoothHelper btService) {
+
+        UUID UART_UUID;
+        UUID TX_UUID;
+        UUID RX_UUID;
+        UUID RX_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"); //Is this necessary? Does it the same for hatchling?
+        if (BuildConfig.IS_HATCHLING) {
+            DEVICE_UUID = "bb37a001-b922-4018-8e74-e14824b3a638";
+            UART_UUID = UUID.fromString("bb37a001-b922-4018-8e74-e14824b3a638");
+            TX_UUID = UUID.fromString("bb37a002-b922-4018-8e74-e14824b3a638");
+            RX_UUID = UUID.fromString("bb37a003-b922-4018-8e74-e14824b3a638");
+        } else {
+            DEVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
+            UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+            TX_UUID = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
+            RX_UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+        }
+
+
         //this.service = service;
         //btHelper = service.getBluetoothHelper();
         btHelper = btService;
@@ -101,7 +118,13 @@ public class RobotRequestHandler implements RequestHandler {
         Map<String, List<String>> m = session.getParameters();
         // Generate response body
         String responseBody = "";
-        Robot robot;
+        Robot<?, ?> robot;
+
+        List<String> types = m.get("type");
+        String type = (types != null) ? types.get(0) : "unknown";
+        List<String> ids = m.get("id");
+        String id = (ids != null) ? ids.get(0) : "unknown";
+
         switch (path[0]) {
             case "startDiscover":
                 responseBody = startScan();
@@ -110,72 +133,76 @@ public class RobotRequestHandler implements RequestHandler {
                 responseBody = stopDiscover();
                 break;
             case "totalStatus":
-                responseBody = getTotalStatus(robotTypeFromString(m.get("type").get(0)));
+                responseBody = getTotalStatus(robotTypeFromString(type));
                 break;
             case "connect":
-                responseBody = connectToRobot(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                RobotType robotType = robotTypeFromString(type);
+                responseBody = (robotType != null) ? connectToRobot(robotType, id) : "unknown robot type";
                 break;
             case "disconnect":
                 //responseBody = disconnectFromRobot(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
-                responseBody = disconnectFromRobot(m.get("id").get(0));
+                responseBody = disconnectFromRobot(id);
                 break;
             case "out":
-                //Log.d(TAG, "setting output: " + path[1]);
+                if (Objects.equals(path[1], "microblocks")) {
+                    Log.d(TAG, "setting output: " + path[1] + " " + m.get("data").get(0));
+                }
                 //robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
-                robot = connectedRobots.get(m.get("id").get(0));
+                robot = connectedRobots.get(id);
                 if (robot == null) {
-                    runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
+                    runJavascript("CallbackManager.robot.updateStatus('" + id + "', false);");
                     //return NanoHTTPD.newFixedLengthResponse(
                     //        NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Robot " + m.get("id").get(0) + " was not found.");
-                    return new NativeAndroidResponse(Status.NOT_FOUND, "Robot " + m.get("id").get(0) + " was not found.");
+                    return new NativeAndroidResponse(Status.NOT_FOUND, "Robot " + id + " was not found.");
                 } else if (!robot.setOutput(path[1], m)) {
                     //TODO: Is it really true that when you fail to set output it always means not connected?
-                    runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
+                    runJavascript("CallbackManager.robot.updateStatus('" + id + "', false);");
                     //return NanoHTTPD.newFixedLengthResponse(
                     //        NanoHTTPD.Response.Status.EXPECTATION_FAILED, MIME_PLAINTEXT, "Failed to send to robot " + m.get("id").get(0) + ".");
                     Log.e(TAG, "set output failed " + path[1]);
-                    return new NativeAndroidResponse(Status.EXPECTATION_FAILED, "Failed to send to robot " + m.get("id").get(0) + ".");
+                    return new NativeAndroidResponse(Status.EXPECTATION_FAILED, "Failed to send to robot " + id + ".");
                 } else {
-                    runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', true);");
-                    responseBody = "Sent to robot " + m.get("type").get(0) + " successfully.";
+                    runJavascript("CallbackManager.robot.updateStatus('" + id + "', true);");
+                    responseBody = "Sent to robot " + type + " successfully.";
                 }
                 //Log.d(TAG, "successfully set output: " + path[1]);
                 break;
             case "in":
                 //robot = getRobotFromId(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
-                robot = connectedRobots.get(m.get("id").get(0));
+                robot = connectedRobots.get(id);
                 if (robot == null) {
-                    runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
+                    runJavascript("CallbackManager.robot.updateStatus('" + id + "', false);");
                     //return NanoHTTPD.newFixedLengthResponse(
                     //        NanoHTTPD.Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Robot " + m.get("id").get(0) + " was not found.");
-                    return new NativeAndroidResponse(Status.NOT_FOUND, "Robot " + m.get("id").get(0) + " was not found.");
+                    return new NativeAndroidResponse(Status.NOT_FOUND, "Robot " + id + " was not found.");
                 } else {
-                    String sensorPort = null;
-                    String sensorAxis = null;
-                    if (m.get("port") != null) {
-                        sensorPort = m.get("port").get(0);
-                    }
-                    if (m.get("axis") != null) {
-                        sensorAxis = m.get("axis").get(0);
-                    }
-                    if (m.get("position") != null) {
-                        sensorAxis = m.get("position").get(0);
+                    List<String> ports = m.get("port");
+                    String sensorPort = (ports != null) ? ports.get(0) : null;
+
+                    List<String> axes = m.get("axis");
+                    String sensorAxis = (axes != null) ? axes.get(0) : null;
+                    List<String> positions = m.get("position");
+                    if (positions != null) {
+                        sensorAxis = positions.get(0);
                     }
 
-                    String sensorValue = robot.readSensor(m.get("sensor").get(0), sensorPort, sensorAxis);
+                    List<String> sensors = m.get("sensor");
+                    String sensor = (sensors != null) ? sensors.get(0) : "unknown";
+
+                    String sensorValue = robot.readSensor(sensor, sensorPort, sensorAxis);
                     if (sensorValue == null) {
-                        runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', false);");
+                        runJavascript("CallbackManager.robot.updateStatus('" + id + "', false);");
                         //return NanoHTTPD.newFixedLengthResponse(
                         //        NanoHTTPD.Response.Status.NO_CONTENT, MIME_PLAINTEXT, "Failed to read sensors from robot " + m.get("id").get(0) + ".");
                         return new NativeAndroidResponse(Status.NO_CONTENT, "Failed to read sensors from robot " + m.get("id").get(0) + ".");
                     } else {
-                        runJavascript("CallbackManager.robot.updateStatus('" + m.get("id").get(0) + "', true);");
+                        runJavascript("CallbackManager.robot.updateStatus('" + id + "', true);");
                         responseBody = sensorValue;
                     }
                 }
                 break;
             case "showInfo":
-                responseBody = showRobotInfo(robotTypeFromString(m.get("type").get(0)), m.get("id").get(0));
+                responseBody = showRobotInfo(robotTypeFromString(type), id);
                 break;
             case "showUpdateInstructions":
                 showFirmwareUpdateInstructions();
@@ -193,14 +220,14 @@ public class RobotRequestHandler implements RequestHandler {
     // TODO: Synchronization of below functions
 
     private static String startScan() {
-        final List deviceFilter = generateDeviceFilter();
+        final List<ScanFilter> deviceFilter = generateDeviceFilter();
 
         if (BluetoothHelper.currentlyScanning) {
             return "";
         }
-        if (BluetoothHelper.currentlyScanning) {
+        /*if (BluetoothHelper.currentlyScanning) {
             stopDiscover();
-        }
+        }*/
         new Thread() {
             @Override
             public void run() {
@@ -253,11 +280,9 @@ public class RobotRequestHandler implements RequestHandler {
                     UARTConnection conn = btHelper.connectToDeviceUART(robotId, uartSettings);
                     if (conn != null && conn.isConnected() && connectedRobots != null) {
                         String gapName = conn.getBLEDevice().getName();
-                        if (robotsToConnect.contains(gapName)) {
-                            robotsToConnect.remove(gapName);
-                        }
+                        robotsToConnect.remove(gapName);
 
-                        Robot robot;
+                        Robot<?, ?> robot;
                         switch (robotType) {
                             case Hummingbird:
                                 robot = new Hummingbird(conn);
@@ -270,6 +295,9 @@ public class RobotRequestHandler implements RequestHandler {
                                 break;
                             case Finch:
                                 robot = new Finch(conn);
+                                break;
+                            case Hatchling:
+                                robot = new Hatchling(conn);
                                 break;
                             default:
                                 robot = null;
@@ -321,7 +349,7 @@ public class RobotRequestHandler implements RequestHandler {
         }.start();
 
         try {
-            Robot robot = connectedRobots.get(robotId);
+            Robot<?, ?> robot = connectedRobots.get(robotId);
             if (robot != null) {
                 robotsToConnect.remove(robot.getGAPName());
                 robot.disconnect();
@@ -352,14 +380,6 @@ public class RobotRequestHandler implements RequestHandler {
         return robotId + " disconnected successfully.";
     }
 
-    public static void disconnectAll() {
-        robotsToConnect = null;
-        if (connectedRobots != null) {
-            for (String individualRobot: connectedRobots.keySet()) {
-                String s = disconnectFromRobot(individualRobot);
-            }
-        }
-    }
 
     /**
      * @param robotType
@@ -373,7 +393,7 @@ public class RobotRequestHandler implements RequestHandler {
         }
 
         boolean robotsFoundForType = false;
-        for (Robot robot : connectedRobots.values()){
+        for (Robot<?, ?> robot : connectedRobots.values()){
             if (robot.type == robotType) {
                 robotsFoundForType = true;
                 if (!robot.isConnected()) {
@@ -396,7 +416,7 @@ public class RobotRequestHandler implements RequestHandler {
 
         // Get details
         //Robot robot = getRobotFromId(robotType, robotId);
-        Robot robot = connectedRobots.get(robotId);
+        Robot<?, ?> robot = connectedRobots.get(robotId);
         if (robot == null) {
             return "Failed to show robot info. Robot not found.";
         }
@@ -483,7 +503,7 @@ public class RobotRequestHandler implements RequestHandler {
      * and microbits and hummingbits to their default values.
      */
     private void stopAll() {
-        for (Robot robot : connectedRobots.values())
+        for (Robot<?, ?> robot : connectedRobots.values())
             robot.stopAll();
     }
 
