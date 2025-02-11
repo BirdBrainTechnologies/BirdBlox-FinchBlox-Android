@@ -67,7 +67,7 @@
                                           <PersistentState>
                                             <option name="values">
                                               <map>
-                                                <entry key="imagePath" value="$PROJECT_DIR$/app/src/main/assets/icon_assets/FinchBox-4_background.svg" />
+                                                <entry key="imagePath" value="$PROJECT_DIR$/app/src/main/assets/icon_assets/Hatchicons_background.svg" />
                                               </map>
                                             </option>
                                           </PersistentState>
@@ -90,8 +90,8 @@
                                             <option name="values">
                                               <map>
                                                 <entry key="color" value="000000" />
-                                                <entry key="imagePath" value="$PROJECT_DIR$/app/src/main/assets/icon_assets/FinchBox-4_foreground.svg" />
-                                                <entry key="scalingPercent" value="70" />
+                                                <entry key="imagePath" value="$PROJECT_DIR$/app/src/main/assets/icon_assets/Hatchicons_foreground.svg" />
+                                                <entry key="scalingPercent" value="68" />
                                               </map>
                                             </option>
                                           </PersistentState>
@@ -119,6 +119,12 @@
                                           </PersistentState>
                                         </value>
                                       </entry>
+                                    </map>
+                                  </option>
+                                  <option name="values">
+                                    <map>
+                                      <entry key="backgroundAssetType" value="COLOR" />
+                                      <entry key="backgroundColor" value="ffffff" />
                                     </map>
                                   </option>
                                 </PersistentState>
