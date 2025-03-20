@@ -50,6 +50,8 @@ public class UARTConnection extends BluetoothGattCallback {
     public Context context;
     private BluetoothDevice bluetoothDevice;
 
+    private int mtu; //Max packet size in bytes (maximum transmission unit)
+
     /**
      * Initializes a UARTConnection. This needs to know the context the Bluetooth connection is
      * being made from (Activity, Service, etc)
@@ -66,12 +68,15 @@ public class UARTConnection extends BluetoothGattCallback {
 
         this.context = context;
         this.bluetoothDevice = device;
+        this.mtu = 23;
 
         if (!establishUARTConnection(context, device)) {
             disconnect();
         }
         // TODO: Handle failure to establish UART connection
     }
+
+    public int getMtu() { return this.mtu; }
 
     /**
      * Sends a byte array to the device across TX
@@ -202,6 +207,11 @@ public class UARTConnection extends BluetoothGattCallback {
                 Log.e(TAG, "Error while trying to establish UART connection: " + e.toString());
                 return false;
             }
+
+            //This will be ignored for android 14+ which automatically set it to 517?
+            //boolean mtuSet = btGatt.requestMtu(512);
+            //Log.d(TAG, "mtuSet=" + mtuSet);
+
             // Enable RX notification
             if (!btGatt.setCharacteristicNotification(rx, true)) {
                 Log.e(TAG, "Unable to set characteristic notification");
@@ -232,9 +242,21 @@ public class UARTConnection extends BluetoothGattCallback {
                     Log.e(TAG, "Recieved STATE_CONNECTED without bluetooth connect permissions");
                     return;
                 }
-                gatt.discoverServices();
+                gatt.requestMtu(251);
+                //gatt.discoverServices();
             }
         }
+    }
+
+    @Override
+    public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
+        Log.d(TAG, "MTU: " + mtu);
+        this.mtu = mtu;
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "Recieved onMtuChanged without bluetooth connect permissions");
+            return;
+        }
+        gatt.discoverServices();
     }
 
     @Override

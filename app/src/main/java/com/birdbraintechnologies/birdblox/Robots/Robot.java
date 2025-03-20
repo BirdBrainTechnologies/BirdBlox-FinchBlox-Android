@@ -14,6 +14,7 @@ import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.R
 import com.birdbraintechnologies.birdblox.Util.NamingHandler;
 import com.birdbraintechnologies.birdblox.httpservice.RequestHandlers.RobotRequestHandler;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
@@ -536,12 +537,26 @@ public abstract class Robot<T1 extends RobotState<T1>, T2 extends RobotState<T2>
         return false;
     }
 
+    protected boolean sendMicroBlocksData(byte[] data) {
+        int maxData = conn.getMtu() - 3; //3 bytes are used by command type and attribute ID (https://stackoverflow.com/questions/38913743/maximum-packet-length-for-bluetooth-le)
+
+        if (data.length > maxData) {
+            boolean firstPart = sendCommand(Arrays.copyOfRange(data, 0, maxData));
+            boolean remainder = sendMicroBlocksData(Arrays.copyOfRange(data, maxData, data.length));
+            return (firstPart && remainder);
+        }
+
+        return sendCommand(data);
+    }
+
     protected boolean sendCommand(byte[] command) {
+
         if (command == null) { return false; }
         pauseIfNeeded();
 
         boolean success = conn.writeBytes(command);
         logCommandSentTime(success, command);
+        Log.d(TAG, "sendCommand newdata " + Arrays.toString(command) + " success=" + success);
         return success;
     }
 

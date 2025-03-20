@@ -13,6 +13,7 @@ import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.R
 import com.birdbraintechnologies.birdblox.Robots.RobotStates.RobotStateObjects.TriLED;
 import com.birdbraintechnologies.birdblox.Util.DeviceUtil;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -163,12 +164,13 @@ public class Hatchling extends Robot<HLState, HLState> {
         return true;
     }
 
-    public boolean sendMicroBlocksData(byte[] data) {
+    /*public boolean sendMicroBlocksData(byte[] data) {
         return sendCommand(data);
-    }
+    }*/
 
     @Override
     public void onRXData(byte[] newData) {
+        Log.d(TAG, "onRXData newdata " + Arrays.toString(newData) );
         String[] dataStrings = new String[newData.length];
         for (int i = 0; i < newData.length; i++) {
             dataStrings[i] = String.valueOf(newData[i] & 0xFF);

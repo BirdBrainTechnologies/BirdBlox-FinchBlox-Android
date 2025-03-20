@@ -92,6 +92,8 @@ public class FileManagementHandler implements RequestHandler {
                 return duplicateProject(m.get("filename").get(0), m.get("newFilename").get(0));
             case "markAsNamed":
                 return markNamed();
+            case "currentFile":
+                return currentFilename();
         }
         return new NativeAndroidResponse(Status.BAD_REQUEST, "Bad Request");
     }
@@ -492,6 +494,12 @@ public class FileManagementHandler implements RequestHandler {
         return new NativeAndroidResponse(Status.OK, "Successfully marked named");
     }
 
+    private NativeAndroidResponse currentFilename() {
+
+        String filename = filesPrefs.getString(CURRENT_PREFS_KEY, null);
+        Log.d(TAG, "currentFilename called. filename=" + filename);
+        return new NativeAndroidResponse(Status.OK, filename);
+    }
 
     // -----------------------------------------------------------------------------
 
