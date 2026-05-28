@@ -43,8 +43,8 @@ android {
             applicationIdSuffix ".hatchling"
             manifestPlaceholders["appLabel"] = "Hatchicons"
             manifestPlaceholders["orientation"] = "landscape"
-            versionCode 1
-            versionName "1.0"
+            versionCode 4
+            versionName "1.2"
         }
         hatchblox {
             buildConfigField "boolean", "IS_FINCHBLOX", "false"
@@ -53,8 +53,8 @@ android {
             applicationIdSuffix ".hatchplus"
             manifestPlaceholders["appLabel"] = "HatchBlox"
             manifestPlaceholders["orientation"] = "landscape"
-            versionCode 3
-            versionName "1.0"
+            versionCode 4
+            versionName "1.1"
         }
     }
     namespace 'com.birdbraintechnologies.birdblox'

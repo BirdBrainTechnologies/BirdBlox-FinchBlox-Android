@@ -275,11 +275,13 @@ public class FileManagementHandler implements RequestHandler {
             File[] files = getBirdbloxDir().listFiles();
             JSONArray fileList = new JSONArray();
             if (files != null) {
+              //  Log.d(TAG, "**** got some files");
                 for (File file : files) {
                     if (file.isDirectory()) {
                         fileList.put(file.getName());
                     }
                 }
+                //  Log.d(TAG, "**** " + fileList);
                 JSONObject sendObj = new JSONObject();
                 sendObj.put("files", fileList);
                 if (dropboxSignedIn()) {
@@ -287,6 +289,8 @@ public class FileManagementHandler implements RequestHandler {
                     sendObj.put("account", dropboxSignInInfo);
                 }
                 return new NativeAndroidResponse(Status.OK, sendObj.toString());
+            } else {
+                Log.e(TAG, "**** files is null");
             }
         } catch (JSONException | SecurityException | NullPointerException e) {
             Log.e(TAG, "List Projects: " + e.getMessage());
